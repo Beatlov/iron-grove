@@ -1,0 +1,11 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const {Game}=require('../engine.js');
+const advance=(g,t)=>{for(let i=0;i<t*20;i++)g.tick(.05);};
+test('path crosses the open pass and never enters blocked terrain',()=>{const g=new Game(),p=g.path(10.5,6.5,30.5,6.5);assert.ok(p.length);assert.ok(p.some(c=>c.x>19&&c.y>=11&&c.y<15));assert.ok(p.every(c=>!g.cellBlocked(Math.floor(c.x),Math.floor(c.y))));assert.deepEqual(g.path(10,10,-1,5),[]);});
+test('worker gathers and deposits wood at the base',()=>{const g=new Game(),u=g.entities.find(e=>e.type==='worker'),tree=g.entities.find(e=>e.type==='tree');g.command([u.id],tree.x,tree.y,tree.id);advance(g,40);assert.ok(g.wood>160);assert.ok(tree.hp<tree.maxHp);});
+test('construction charges only for valid placement',()=>{const g=new Game();assert.equal(g.build(6,13),false);assert.equal(g.wood,160);assert.equal(g.build(11,18),true);assert.equal(g.wood,40);assert.equal(g.build(13,18),false);assert.equal(g.wood,40);});
+test('production consumes resources and spawns a worker on walkable terrain',()=>{const g=new Game(),b=g.entities.find(e=>e.type==='base'&&e.team===0);assert.equal(g.train(b.id,'worker'),true);assert.equal(g.wood,120);advance(g,5);const units=g.alive().filter(e=>e.type==='worker');assert.equal(units.length,4);assert.equal(b.queue.length,0);const u=units.at(-1);assert.equal(g.cellBlocked(Math.floor(u.x),Math.floor(u.y)),false);assert.equal(g.train(b.id,'soldier'),false);});
+test('enemy waves damage defenders or base',()=>{const g=new Game();advance(g,105);assert.ok(g.wave>=2);assert.ok(g.alive().some(e=>e.team===1&&e.type==='soldier'));assert.ok(g.alive().filter(e=>e.team===0).length<6||g.alive().some(e=>e.team===0&&e.hp<e.maxHp));});
+test('destroying a base ends simulation',()=>{const g=new Game();g.entities.find(e=>e.team===1&&e.type==='base').hp=0;g.tick(.05);assert.equal(g.result,'victory');const time=g.time;g.tick(.05);assert.equal(g.time,time);});
+test('an attacking army can win through normal combat',()=>{const g=new Game(),b=g.entities.find(e=>e.team===1&&e.type==='base');const ids=[];for(let i=0;i<12;i++)ids.push(g.add('soldier',0,32.5,10.5+i%6).id);g.command(ids,b.x,b.y,b.id);advance(g,40);assert.equal(g.result,'victory');});
