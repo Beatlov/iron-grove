@@ -6,7 +6,7 @@ This is a desktop-mouse, single-player pixel RTS prototype. User-facing text is 
 - No build tools, remote assets, telemetry, dependencies or external fonts.
 - Keep simulation in engine.js independent of DOM and rendering, export to both window.RTS and CommonJS.
 - Keep controls and Canvas rendering in game.js. Use native Canvas drawing for pixel assets.
-- World coordinates use tiles; rendering uses 24 pixels/tile. World grid: 144×96, partitioned into 12 seeded territories; viewport: 42×26 with a scrollable camera and minimap.
+- World coordinates use tiles; rendering uses 24 pixels/tile. World grid: 144×96, partitioned into 12 seeded territories; viewport adapts to the available battlefield area at 24 pixels per tile, with a scrollable camera and minimap.
 - Use fixed/delta simulation time rather than wall-clock timers for gameplay.
 - Validate changes with `node --test tests/*.test.cjs`.
 - Review gameplay and layout in a desktop browser after UI changes.
