@@ -4,10 +4,11 @@ const vm=require('node:vm'),fs=require('node:fs'),path=require('node:path');
 test('UI shows economy, builds a farm, assigns workers, pauses and restarts',()=>{
  const elements=new Map(),handlers={},windowHandlers={};let frame;
  const ctx=new Proxy({},{get:()=>()=>{},set:()=>true});
- const make=()=>({textContent:'',style:{},children:[],tagName:'DIV',replaceChildren(){this.children=[];},append(e){this.children.push(e);}});
- const canvas=make();Object.assign(canvas,{getContext:()=>ctx,addEventListener:(n,fn)=>handlers[n]=fn,setPointerCapture(){},getBoundingClientRect:()=>({left:0,top:0,width:1008,height:624})});elements.set('#game',canvas);const minimap=make();Object.assign(minimap,{getContext:()=>ctx,addEventListener:(n,fn)=>handlers['mini:'+n]=fn,getBoundingClientRect:()=>({left:0,top:0,width:216,height:132})});elements.set('#minimap',minimap);
+ const make=()=>({textContent:'',style:{},children:[],tagName:'DIV',value:'',checked:true,getContext:()=>ctx,addEventListener(){},replaceChildren(){this.children=[];},append(e){this.children.push(e);}});
+ const canvas=make();Object.assign(canvas,{getContext:()=>ctx,addEventListener:(n,fn)=>handlers[n]=fn,setPointerCapture(){},getBoundingClientRect:()=>({left:0,top:0,width:1008,height:624})});elements.set('#game',canvas);const minimap=make();Object.assign(minimap,{getContext:()=>ctx,addEventListener:(n,fn)=>handlers['mini:'+n]=fn,getBoundingClientRect:()=>({left:0,top:0,width:288,height:192})});elements.set('#minimap',minimap);const world=make();world.addEventListener=(n,fn)=>handlers['world:'+n]=fn;world.getBoundingClientRect=()=>({left:0,top:0,width:864,height:576});elements.set('#worldmap',world);
  const sandbox={console,document:{querySelector:id=>{if(!elements.has(id))elements.set(id,make());return elements.get(id);},createElement:make},requestAnimationFrame:fn=>frame=fn};sandbox.window=sandbox;sandbox.addEventListener=(n,fn)=>windowHandlers[n]=fn;
  vm.createContext(sandbox);for(const file of ['engine.js','game.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'..',file),'utf8'),sandbox,{filename:file});
+ assert.equal(elements.get('#menu').hidden,false);frame(0);frame(100);assert.equal(vm.runInContext('game.time',sandbox),0);sandbox.document.querySelector('#seed').value='42';elements.get('#menu-speed').value='0.6';elements.get('#start').onclick();assert.equal(elements.get('#menu').hidden,true);
  assert.match(elements.get('#population').textContent,/6\/6/);assert.equal(elements.get('#resources').children.length,5);
  const farmButton=elements.get('#buildings').children.find(e=>e.textContent.startsWith('Ферма'));farmButton.onclick();
  const site=vm.runInContext("game.findSite('farm',0)",sandbox);const cameraY=vm.runInContext('camera.y',sandbox);
@@ -20,8 +21,10 @@ test('UI shows economy, builds a farm, assigns workers, pauses and restarts',()=
  elements.get('#actions').children.find(e=>e.textContent==='Назначить свободного рабочего').onclick();
  assert.equal(vm.runInContext('game.workers(game.get(selected[0])).length',sandbox),1);
  const time=vm.runInContext('game.time',sandbox);frame(0);frame(100);assert.ok(Math.abs(vm.runInContext('game.time',sandbox)-time-.06)<1e-6);
- handlers['mini:pointerdown']({clientX:216,clientY:132});assert.equal(vm.runInContext('camera.x',sandbox),30);assert.equal(vm.runInContext('camera.y',sandbox),18);
+ handlers['mini:pointerdown']({clientX:288,clientY:192});assert.equal(vm.runInContext('camera.x',sandbox),102);assert.equal(vm.runInContext('camera.y',sandbox),70);
  elements.get('#home').onclick();assert.equal(vm.runInContext('camera.x',sandbox),0);
+ elements.get('#world-open').onclick();assert.equal(elements.get('#world').hidden,false);assert.ok(elements.get('#region-name').textContent);elements.get('#world-close').onclick();assert.equal(elements.get('#world').hidden,true);assert.equal(elements.get('#selection-cards').children.length,1);
+ elements.get('#menu-open').onclick();const saved=vm.runInContext('game.time',sandbox);frame(200);assert.equal(vm.runInContext('game.time',sandbox),saved);elements.get('#resume').onclick();
  elements.get('#pause').onclick();assert.equal(elements.get('#overlay').hidden,false);
  elements.get('#restart').onclick();assert.equal(elements.get('#overlay').hidden,true);assert.match(elements.get('#population').textContent,/6\/6/);assert.equal(vm.runInContext("game.alive().filter(e=>e.type==='farm').length",sandbox),0);
 });
