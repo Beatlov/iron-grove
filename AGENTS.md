@@ -14,7 +14,10 @@ This is a desktop-mouse, single-player pixel RTS prototype. User-facing text is 
 - Do not migrate engines or add multiplayer without an explicit project decision.
 
 - Keep menu/selection/global-map UI in game.js. Territory ownership and capture rules belong in engine.js.
-- Captures require soldiers at an adjacent territory outpost. Outposts are invulnerable, non-shooting control points; town halls take damage only after their territory is captured.
+- Captures require military units (isMilitary) at an adjacent territory outpost. Outposts are invulnerable, non-shooting control points; command cores take damage only after their territory is captured.
 
 - Construction advances only with its reserved worker adjacent to the site; queued sites wait for an idle carrier and never steal production workers.
 - Workers inside workplaces stay in population/upkeep but are excluded from rendering, picking, selection and combat targets. Release them through the building or when it is destroyed.
+
+- Setting: Russian-language cosmic cyberpunk «Неоновый предел / Протокол Гелиос». Display composite, regolith, biogel, titanium, xenocrystals; keep stable internal resource/entity keys. Workers are autonomous drones.
+- Military classes are soldier (ranged marine), assault (armored melee), medic (healing only), grenadier (siege). Use isMilitary() across population, upkeep, capture, AI and UI; unitCosts defines class-specific prices. Medics must never deal damage. Both factions obey the same economic rules.

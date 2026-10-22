@@ -3,7 +3,10 @@
 'use strict';
 const W=144,H=96,resources=['wood','stone','food','iron','gold'];
 const stats={
- worker:{hp:60,speed:2.8,size:1},soldier:{hp:120,speed:2.5,size:1,damage:18,range:1.3},
+ worker:{hp:60,speed:2.8,size:1},soldier:{hp:140,speed:2.5,size:1,damage:18,range:5,armor:3,military:true,trainTime:6},
+ assault:{hp:210,speed:3.1,size:1,damage:32,range:1.3,armor:5,military:true,trainTime:8},
+ medic:{hp:100,speed:2.7,size:1,heal:16,range:5,military:true,trainTime:8},
+ grenadier:{hp:130,speed:2.1,size:1,damage:16,buildingDamage:90,range:6.5,armor:2,military:true,trainTime:12,cooldown:2},
  outpost:{hp:Infinity,size:2},base:{hp:1600,size:3,cost:{}},house:{hp:300,size:2,buildTime:12,cost:{wood:50,stone:15}},
  warehouse:{buildTime:14,hp:450,size:2,cost:{wood:50,stone:20}},
  sawmill:{buildTime:16,hp:350,size:2,cost:{wood:50},resource:'wood',slots:2,rate:2},
@@ -13,12 +16,13 @@ const stats={
  goldmine:{buildTime:20,hp:400,size:2,cost:{wood:60,stone:20},resource:'gold',slots:2,rate:1.5},
  barracks:{buildTime:22,hp:650,size:2,cost:{wood:90,stone:30}},tower:{buildTime:24,hp:800,size:2,cost:{wood:60,stone:80},damage:26,range:7}
 };
-const soldierCost={wood:20,iron:15,gold:10};
+const unitCosts={soldier:{wood:20,iron:15,gold:10},assault:{wood:25,iron:25,gold:15},medic:{wood:20,iron:10,gold:25},grenadier:{wood:45,iron:40,gold:40}};
+const soldierCost=unitCosts.soldier,isMilitary=e=>!!stats[e?.type]?.military;
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 class Game{
  constructor(seed=Math.floor(Math.random()*0xffffffff),options={}){
-  this.seed=seed>>>0;this.rng=this.seed;this.aiEnabled=options.ai!==false;this.time=0;this.result=null;this.nextId=1;this.entities=[];this.economyClock=0;this.aiClock=0;
-  this.message='Постройте ферму и лесопилку. Выделите рабочих и нажмите ПКМ по зданию, чтобы назначить их.';
+  this.seed=seed>>>0;this.rng=this.seed;this.aiEnabled=options.ai!==false;this.time=0;this.result=null;this.nextId=1;this.entities=[];this.economyClock=0;this.aiClock=0;this.effects=[];this.aiTrainIndex=0;
+  this.message='Постройте биореактор и переработчик. Выделите дронов и нажмите ПКМ по зданию, чтобы назначить их.';
   this.teams=[0,1].map(()=>({stock:{wood:380,stone:180,food:180,iron:60,gold:80},birth:0,hungry:false,unpaid:false}));
   this.terrain=Array.from({length:H},(_,y)=>Array.from({length:W},(_,x)=>+(x===0||y===0||x===W-1||y===H-1)));
   this.generateRegions();
@@ -35,7 +39,7 @@ class Game{
  }
  generateRegions(){
   this.regions=[];
-  for(let row=0;row<3;row++)for(let col=0;col<4;col++)this.regions.push({id:row*4+col,name:['Лесной край','Тихая долина','Северный тракт','Сосновый берег','Каменные поля','Срединные земли','Речная излучина','Высокий бор','Южные луга','Золотая низина','Старый рубеж','Красный предел'][row*4+col],x:Math.round((col+.5)*W/4+(this.random()-.5)*14),y:Math.round((row+.5)*H/3+(this.random()-.5)*14),owner:-1,neighbors:[],cells:[],outline:[],progress:0,capturing:-1});
+  for(let row=0;row<3;row++)for(let col=0;col<4;col++)this.regions.push({id:row*4+col,name:['Док «Гелиос»','Пепельный кратер','Неоновый разлом','Обломки «Икара»','Хитиновые пустоши','Чёрный ретранслятор','Кристальный шрам','Долина машин','Гнездо Левиафана','Предел Пустоты','Кровавый шлюз','Цитадель роя'][row*4+col],x:Math.round((col+.5)*W/4+(this.random()-.5)*14),y:Math.round((row+.5)*H/3+(this.random()-.5)*14),owner:-1,neighbors:[],cells:[],outline:[],progress:0,capturing:-1});
   this.regionGrid=Array.from({length:H},(_,y)=>Array.from({length:W},(_,x)=>{
    const wx=x+.5+6*Math.sin(y/12)+3*Math.sin(x/19+y/23),wy=y+.5+5*Math.sin(x/17)+2*Math.sin(y/11);
    const r=this.regions.reduce((best,r)=>Math.hypot(wx-r.x,wy-r.y)<Math.hypot(wx-best.x,wy-best.y)?r:best,this.regions[0]);r.cells.push({x,y});return r.id;
@@ -71,17 +75,17 @@ class Game{
  regionAt(x,y){const id=this.regionGrid[Math.floor(y)]?.[Math.floor(x)];return id===undefined?null:this.regions[id];}
  canCapture(id,team=0){const r=this.regions[id];return !!r&&r.owner!==team&&r.neighbors.some(n=>this.regions[n].owner===team);}
  capture(ids,id,team=0){
-  if(this.result||!this.canCapture(id,team)){if(team===0)this.message='Можно захватить только соседнюю с вашими владениями территорию.';return false;}
+  if(this.result||!this.canCapture(id,team)){if(team===0)this.message='Можно захватить только сектор, соседний с вашими владениями.';return false;}
   const tower=this.get(this.regions[id].towerId);let count=0;
-  for(const uid of ids){const u=this.get(uid);if(u?.team!==team||u.type!=='soldier')continue;this.release(u);u.order={type:'capture',id:tower.id};u.path=this.nearPath(u,tower);count++;}
-  if(team===0)this.message=count?'Отряд направлен к башне. Удерживайте её 12 игровых секунд без противника рядом.':'Для захвата выберите солдат.';return count>0;
+  for(const uid of ids){const u=this.get(uid);if(u?.team!==team||!isMilitary(u))continue;this.release(u);u.order={type:'capture',id:tower.id};u.path=this.nearPath(u,tower);count++;}
+  if(team===0)this.message=count?'Отряд направлен к ретранслятору. Удерживайте его 12 игровых секунд без противника рядом.':'Для захвата выберите бойцов.';return count>0;
  }
  updateCaptures(dt){
-  for(const r of this.regions){const tower=this.get(r.towerId),soldiers=this.alive().filter(u=>u.type==='soldier'&&dist(u,tower)<=3.5),teams=[0,1].filter(t=>soldiers.some(u=>u.team===t));
+  for(const r of this.regions){const tower=this.get(r.towerId),soldiers=this.alive().filter(u=>isMilitary(u)&&dist(u,tower)<=3.5),teams=[0,1].filter(t=>soldiers.some(u=>u.team===t));
    if(teams.length===2)continue;
    const team=teams[0];if(team===undefined||team===r.owner||!this.canCapture(r.id,team)){r.progress=Math.max(0,r.progress-dt);if(!r.progress)r.capturing=-1;continue;}
    if(r.capturing!==team){r.capturing=team;r.progress=0;}r.progress+=dt;
-   if(r.progress>=12){r.owner=team;tower.team=team;r.progress=0;r.capturing=-1;this.message=team===0?'Территория «'+r.name+'» присоединена. Теперь доступны её соседи.':'Противник захватил территорию «'+r.name+'».';}
+   if(r.progress>=12){r.owner=team;tower.team=team;r.progress=0;r.capturing=-1;this.message=team===0?'Сектор «'+r.name+'» присоединён. Теперь доступны его соседи.':'Противник захватил сектор «'+r.name+'».';}
   }
  }
 
@@ -92,7 +96,7 @@ class Game{
  ready(b){return !!b&&b.hp>0&&b.construction<=0;}
  get(id){return this.entities.find(e=>e.id===id&&e.hp>0);}
  stock(team=0){return this.teams[team].stock;}
- population(team=0){const all=this.alive().filter(e=>e.team===team);return{total:all.filter(e=>stats[e.type]?.speed).length,workers:all.filter(e=>e.type==='worker').length,soldiers:all.filter(e=>e.type==='soldier').length,capacity:6+all.filter(e=>e.type==='house'&&this.ready(e)).length*4};}
+ population(team=0){const all=this.alive().filter(e=>e.team===team);return{total:all.filter(e=>stats[e.type]?.speed).length,workers:all.filter(e=>e.type==='worker').length,soldiers:all.filter(e=>isMilitary(e)).length,capacity:6+all.filter(e=>e.type==='house'&&this.ready(e)).length*4};}
  affordable(cost,team=0){return Object.entries(cost).every(([r,n])=>this.stock(team)[r]>=n);}
  pay(cost,team=0){if(!this.affordable(cost,team))return false;for(const [r,n]of Object.entries(cost))this.stock(team)[r]-=n;return true;}
  cellBlocked(x,y){return x<0||y<0||x>=W||y>=H||this.terrain[y][x]===1||this.alive().some(e=>!stats[e.type]?.speed&&Math.abs(x+.5-e.x)<e.size/2&&Math.abs(y+.5-e.y)<e.size/2);}
@@ -131,7 +135,7 @@ class Game{
  }
  build(type,x,y,team=0){if(!this.canBuild(type,x,y,team)){if(team===0)this.message='Нельзя строить: проверьте цену, свободные 2×2 клетки, проход между зданиями (1) и принадлежность территории. Добывающее здание — в 5 клетках от залежи.';return false;}
   this.pay(stats[type].cost,team);const b=this.add(type,team,x,y);b.construction=stats[type].buildTime;if(stats[type].resource&&stats[type].resource!=='food')b.node=this.alive().filter(e=>e.type==='deposit'&&e.resource===stats[type].resource&&e.amount>0).sort((a,c)=>dist(a,b)-dist(c,b))[0].id;
-  if(team===0)this.message='Участок размещён. Свободный рабочий подойдёт и начнёт строительство; если все заняты, участок подождёт.';return b;
+  if(team===0)this.message='Участок размещён. Свободный дрон подойдёт и начнёт строительство; если все заняты, участок подождёт.';return b;
  }
  release(u){if(u.training)return false;const site=this.get(u.building);if(site?.builder===u.id)site.builder=null;u.building=null;u.inside=null;u.job=null;u.order=null;u.pickup=null;u.path=[];return true;}
  updateConstruction(dt){
@@ -146,17 +150,17 @@ class Game{
    }
    if(!this.adjacent(u,b))continue;
    worked.add(u.id);b.construction=Math.max(0,b.construction-dt);
-   if(b.construction<1e-8){b.construction=0;b.builder=null;u.building=null;u.path=[];if(b.team===0)this.message='Строительство завершено. Рабочий вернулся к перевозке.';}
+   if(b.construction<1e-8){b.construction=0;b.builder=null;u.building=null;u.path=[];if(b.team===0)this.message='Строительство завершено. Дрон вернулся к перевозке.';}
   }
  }
 
  assign(ids,id,team=0){const b=this.get(id);if(!this.ready(b)||b.team!==team||!stats[b.type]?.slots||this.result)return 0;let n=0;for(const uid of ids){const u=this.get(uid);if(!u||u.type!=='worker'||u.team!==team||u.training||u.carry||u.job===b.id||this.workers(b).length>=stats[b.type].slots)continue;this.release(u);u.job=b.id;n++;}return n;}
- train(id,team=0){const b=this.get(id);if(this.result||!this.ready(b)||b.team!==team||b.type!=='barracks'||b.queue.length>=3||!this.affordable(soldierCost,team))return false;
-  // Prefer idle carriers, but every worker can be retrained; population does not increase.
+ train(id,team=0,type='soldier'){const b=this.get(id),cost=unitCosts[type];if(this.result||!cost||!this.ready(b)||b.team!==team||b.type!=='barracks'||b.queue.length>=3||!this.affordable(cost,team))return false;
+  // A drone core is installed in a combat chassis; population remains shared.
   const u=this.alive().filter(e=>e.team===team&&e.type==='worker'&&!e.training&&!e.building&&!e.carry).sort((a,c)=>Number(!!a.job)-Number(!!c.job)||dist(a,b)-dist(c,b))[0];if(!u)return false;
-  this.pay(soldierCost,team);this.release(u);u.training=b.id;b.queue.push({id:u.id,left:6});return true;
+  this.pay(cost,team);this.release(u);u.training=b.id;b.queue.push({id:u.id,type,left:stats[type].trainTime});return true;
  }
- demobilize(ids,team=0){if(this.result)return;for(const id of ids){const u=this.get(id);if(u?.team===team&&u.type==='soldier'){u.type='worker';u.maxHp=stats.worker.hp;u.hp=Math.min(u.hp,u.maxHp);u.order=null;u.path=[];}}}
+ demobilize(ids,team=0){if(this.result)return;for(const id of ids){const u=this.get(id);if(u?.team===team&&isMilitary(u)){u.type='worker';u.maxHp=stats.worker.hp;u.hp=Math.min(u.hp,u.maxHp);u.order=null;u.path=[];}}}
  command(ids,x,y,targetId,team=0){if(this.result)return;const target=this.get(targetId);if(target?.type==='outpost'){this.capture(ids,target.region,team);return;}let index=0;const columns=Math.ceil(Math.sqrt(ids.length));for(const id of ids){const u=this.get(id);if(!u||u.team!==team||!stats[u.type]?.speed||u.training||u.inside)continue;
   if(target?.team===team&&stats[target.type]?.slots&&u.type==='worker'){this.assign([id],target.id,team);continue;}
   this.release(u);if(target&&target.team>=0&&target.team!==team){u.order={type:'attack',id:target.id};u.path=this.nearPath(u,target);}else{u.order={type:'move'};const n=index++,tx=x+(n%columns-(columns-1)/2)*1.1,ty=y+(Math.floor(n/columns)-(Math.ceil(ids.length/columns)-1)/2)*1.1;u.path=this.path(u.x,u.y,this.cellBlocked(Math.floor(tx),Math.floor(ty))?x:tx,this.cellBlocked(Math.floor(tx),Math.floor(ty))?y:ty);}
@@ -167,12 +171,22 @@ class Game{
   let b=this.get(u.pickup);if(!b||b.buffer<4){u.pickup=null;u.path=[];b=this.alive().filter(e=>e.team===u.team&&e.buffer>=4).sort((a,c)=>c.buffer/(dist(c,u)+1)-a.buffer/(dist(a,u)+1))[0];if(b)u.pickup=b.id;}
   if(b&&this.walkTo(u,b,dt)){const amount=Math.min(20,Math.floor(b.buffer));if(amount){b.buffer-=amount;u.carry={resource:stats[b.type].resource,amount};}u.pickup=null;u.path=[];}
  }
- combat(e,dt){e.cool=Math.max(0,e.cool-dt);const s=stats[e.type],explicit=this.get(e.order?.id);if(e.order?.type==='attack'&&explicit?.inside){e.order=null;e.path=[];}let foes=this.alive().filter(t=>!t.inside&&t.team>=0&&t.team!==e.team&&t.type!=='outpost'&&(t.type!=='base'||this.regionAt(t.x,t.y).owner===e.team)&&dist(e,t)<= (s.range||1.1)+(t.size-1)/2);
-  foes.sort((a,b)=>Number(!stats[a.type]?.speed)-Number(!stats[b.type]?.speed)||dist(e,a)-dist(e,b));const foe=foes[0];
-  if(foe){if(!e.cool){foe.hp-=s.damage||4;e.cool=1;}return true;}
+ combat(e,dt){
+  e.cool=Math.max(0,e.cool-dt);const s=stats[e.type],explicit=this.get(e.order?.id);
+  if(e.order?.type==='attack'&&(!explicit||explicit.inside)){e.order=null;e.path=[];}
+  if(s.heal){
+   const allies=this.visible().filter(t=>t.id!==e.id&&t.team===e.team&&stats[t.type]?.speed&&!t.training&&t.hp<t.maxHp&&dist(e,t)<=s.range).sort((a,b)=>dist(e,a)-dist(e,b)||a.hp/a.maxHp-b.hp/b.maxHp);
+   if(allies[0]&&!e.cool){const ally=allies[0];ally.hp=Math.min(ally.maxHp,ally.hp+s.heal);e.cool=1;this.effects.push({kind:'heal',x:e.x,y:e.y,tx:ally.x,ty:ally.y,left:.45});}
+   if(e.order?.type==='attack'){e.order=null;e.path=[];}return false;
+  }
+  const valid=t=>!t.inside&&t.team>=0&&t.team!==e.team&&t.type!=='outpost'&&(t.type!=='base'||this.regionAt(t.x,t.y).owner===e.team);
+  const foes=this.alive().filter(t=>valid(t)&&dist(e,t)<=(s.range||1.1)+(t.size-1)/2);
+  foes.sort((a,b)=>Number(a.id!==explicit?.id)-Number(b.id!==explicit?.id)||(s.buildingDamage?Number(!!stats[a.type]?.speed)-Number(!!stats[b.type]?.speed):Number(!stats[a.type]?.speed)-Number(!stats[b.type]?.speed))||dist(e,a)-dist(e,b));
+  const foe=foes[0];
+  if(foe){if(!e.cool){const damage=s.buildingDamage&&!stats[foe.type]?.speed?s.buildingDamage:s.damage||4;foe.hp-=Math.max(1,damage-(stats[foe.type]?.armor||0));e.cool=s.cooldown||1;this.effects.push({kind:e.type==='grenadier'?'grenade':e.type==='assault'?'slash':'shot',x:e.x,y:e.y,tx:foe.x,ty:foe.y,left:.3});}return true;}
   if(e.type==='tower')return false;
-  if(e.order?.type==='attack'){if(!explicit){e.order=null;e.path=[];}else {if(!e.path.length)e.path=this.nearPath(e,explicit);this.move(e,dt);}return true;}
-  const nearby=this.alive().filter(t=>!t.inside&&t.team>=0&&t.team!==e.team&&t.type!=='outpost'&&(t.type!=='base'||this.regionAt(t.x,t.y).owner===e.team)&&dist(e,t)<6).sort((a,b)=>dist(e,a)-dist(e,b))[0];if(nearby){if(!e.path.length)e.path=this.nearPath(e,nearby);this.move(e,dt);return true;}return false;
+  if(e.order?.type==='attack'){if(!explicit){e.order=null;e.path=[];}else{if(!e.path.length)e.path=this.nearPath(e,explicit);this.move(e,dt);}return true;}
+  const nearby=this.alive().filter(t=>valid(t)&&dist(e,t)<8).sort((a,b)=>dist(e,a)-dist(e,b))[0];if(nearby){if(!e.path.length)e.path=this.nearPath(e,nearby);this.move(e,dt);return true;}return false;
  }
  findSite(type,team){const b=this.alive().find(e=>e.type==='base'&&e.team===team);if(!b)return null;const points=[];for(const r of this.regions.filter(r=>r.owner===team))for(const {x,y}of r.cells)if(x>1&&y>1&&x<W-1&&y<H-1&&this.canBuild(type,x,y,team))points.push({x,y});points.sort((a,c)=>dist(a,b)-dist(c,b));return points[0];}
  ai(){
@@ -182,14 +196,14 @@ class Game{
   let idle=this.alive().filter(u=>u.team===team&&u.type==='worker'&&!u.job&&!u.training&&!u.building&&!u.carry);
   // Reserve at least two residents to transport resources.
   for(const type of ['farm','sawmill','quarry','ironmine','goldmine'])for(const b of buildings.filter(e=>e.type===type&&this.ready(e))){const need=type==='farm'?2:1;while(this.workers(b).length<need&&idle.length>2)this.assign([idle.shift().id],b.id,team);}
-  const barracks=buildings.find(b=>b.type==='barracks');if(barracks&&pop.workers>10&&pop.soldiers<10)this.train(barracks.id,team);
-  const army=this.alive().filter(e=>e.team===team&&e.type==='soldier'),base=this.alive().find(e=>e.team===0&&e.type==='base');
+  const barracks=buildings.find(b=>b.type==='barracks');if(barracks&&pop.workers>10&&pop.soldiers<10){const roster=['soldier','assault','soldier','medic','grenadier'];if(this.train(barracks.id,team,roster[this.aiTrainIndex%roster.length]))this.aiTrainIndex++;}
+  const army=this.alive().filter(e=>e.team===team&&isMilitary(e)),base=this.alive().find(e=>e.team===0&&e.type==='base');
   if(base&&army.length>=3){
    if(this.regions[this.homeRegions[0]].owner===team)this.command(army.map(e=>e.id),base.x,base.y,base.id,team);
    else{const frontier=this.regions.filter(r=>this.canCapture(r.id,team)).sort((a,b)=>dist(a,base)-dist(b,base));if(frontier[0]){const target=frontier.find(r=>army.some(u=>u.order?.type==='capture'&&u.order.id===r.towerId))||frontier[0];if(!army.every(u=>u.order?.type==='capture'&&u.order.id===target.towerId))this.capture(army.map(e=>e.id),target.id,team);}}
   }
  }
- tick(dt){if(this.result)return;dt=Math.max(0,Math.min(dt,.1));this.time+=dt;this.economyClock+=dt;this.aiClock+=dt;
+ tick(dt){if(this.result)return;dt=Math.max(0,Math.min(dt,.1));this.time+=dt;this.effects=this.effects.filter(f=>(f.left-=dt)>0);this.economyClock+=dt;this.aiClock+=dt;
   for(const u of this.alive().filter(e=>stats[e.type]?.speed)){u.moving=false;if(u.inside&&(!this.get(u.inside)||u.job!==u.inside))this.release(u);if(u.building&&!this.get(u.building))this.release(u);}
   this.updateConstruction(dt);
   for(const team of [0,1]){const t=this.teams[team],pop=this.population(team),house=this.alive().find(b=>b.team===team&&b.type==='house'&&this.ready(b)),base=this.alive().find(b=>b.team===team&&b.type==='base');
@@ -198,24 +212,24 @@ class Game{
   for(const b of this.alive().filter(e=>!stats[e.type]?.speed&&e.team>=0&&this.ready(e))){
    const s=stats[b.type];if(s.resource){const count=this.workers(b).filter(u=>u.inside===b.id).length;let amount=Math.min(60-b.buffer,count*s.rate*dt);if(s.resource!=='food'){let n=this.get(b.node);if(!n||n.amount<=0){n=this.alive().filter(e=>e.type==='deposit'&&e.resource===s.resource&&e.amount>0&&dist(e,b)<=5).sort((a,c)=>dist(a,b)-dist(c,b))[0];b.node=n?.id;}amount=Math.min(amount,n?.amount||0);if(n)n.amount-=amount;}b.buffer+=amount;}
    if(b.type==='tower')this.combat(b,dt);
-   if(b.queue.length){const q=b.queue[0],u=this.get(q.id);if(!u){b.queue.shift();continue;}if(this.walkTo(u,b,dt)){q.left-=dt;if(q.left<=0){u.type='soldier';u.maxHp=stats.soldier.hp;u.hp=u.maxHp;u.training=null;u.path=[];b.queue.shift();}}}
+   if(b.queue.length){const q=b.queue[0],u=this.get(q.id);if(!u){b.queue.shift();continue;}if(this.walkTo(u,b,dt)){q.left-=dt;if(q.left<=0){u.type=q.type||'soldier';u.maxHp=stats[u.type].hp;u.hp=u.maxHp;u.training=null;u.path=[];b.queue.shift();}}}
   }
   for(const u of this.alive().filter(e=>stats[e.type]?.speed)){
    if(u.training){if(!this.get(u.training)){u.training=null;u.path=[];}continue;}
    if(u.building){const b=this.get(u.building);if(b&&b.construction>0)this.walkTo(u,b,dt);else this.release(u);continue;}
    if(u.inside)continue;
-   if(u.type==='soldier'&&this.combat(u,dt))continue;
+   if(isMilitary(u)&&this.combat(u,dt))continue;
    if(u.order?.type==='attack'&&this.combat(u,dt))continue;
    if(u.order?.type==='capture'){const tower=this.get(u.order.id);if(tower)this.walkTo(u,tower,dt);else u.order=null;continue;}
    if(u.order?.type==='move'){this.move(u,dt);if(!u.path.length)u.order=null;continue;}
    if(u.type==='worker')this.logistics(u,dt);
   }
   this.updateCaptures(dt);
-  if(this.economyClock>=5){this.economyClock-=5;for(const team of [0,1]){const t=this.teams[team],p=this.population(team);t.hungry=t.stock.food<p.total;t.unpaid=t.stock.gold<p.soldiers*.5;t.stock.food=Math.max(0,t.stock.food-p.total);t.stock.gold=Math.max(0,t.stock.gold-p.soldiers*.5);for(const u of this.alive().filter(e=>e.team===team&&stats[e.type]?.speed)){if(t.hungry)u.hp-=8;if(t.unpaid&&u.type==='soldier')u.hp-=8;}}}
+  if(this.economyClock>=5){this.economyClock-=5;for(const team of [0,1]){const t=this.teams[team],p=this.population(team);t.hungry=t.stock.food<p.total;t.unpaid=t.stock.gold<p.soldiers*.5;t.stock.food=Math.max(0,t.stock.food-p.total);t.stock.gold=Math.max(0,t.stock.gold-p.soldiers*.5);for(const u of this.alive().filter(e=>e.team===team&&stats[e.type]?.speed)){if(t.hungry)u.hp-=8;if(t.unpaid&&isMilitary(u))u.hp-=8;}}}
   if(this.aiEnabled&&this.aiClock>=3){this.aiClock=0;this.ai();}
   const bases=[0,1].map(team=>this.alive().some(e=>e.type==='base'&&e.team===team));if(!bases[0])this.result='defeat';else if(!bases[1])this.result='victory';
   this.entities=this.entities.filter(e=>e.hp>0);
  }
 }
-const api={Game,stats,W,H,dist,resources,soldierCost};if(typeof module!=='undefined')module.exports=api;else root.RTS=api;
+const api={Game,stats,W,H,dist,resources,soldierCost,unitCosts,isMilitary};if(typeof module!=='undefined')module.exports=api;else root.RTS=api;
 })(typeof window!=='undefined'?window:globalThis);
