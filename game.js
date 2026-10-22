@@ -1,7 +1,7 @@
 'use strict';
 const {Game,stats,W,H,dist,resources,soldierCost}=RTS;
 const $=s=>document.querySelector(s),canvas=$('#game'),ctx=canvas.getContext('2d'),T=24;
-let VW=42,VH=26,commandTab='orders',commandMode=null,helpOpen=false,hoveredCommand=null,buildUIKey='',orderUIKey='';
+let VW=42,VH=26,commandMode=null,helpOpen=false,hoveredCommand=null,buildUIKey='',orderUIKey='';
 ctx.imageSmoothingEnabled=false;
 const minimap=$('#minimap'),mini=minimap.getContext('2d'),camera={x:0,y:H/2-VH/2},keys=new Set(),cursor={x:0,y:0};
 const worldCanvas=$('#worldmap'),worldContext=worldCanvas.getContext('2d');
@@ -33,22 +33,20 @@ function drawCommandIcon(canvas,type){
  if(type==='warehouse'||type==='sawmill'){r(2,24,8,6,'#b18e5a');r(21,24,9,6,'#b18e5a');}
  if(type==='barracks'){r(15,11,2,12,'#e3e4cd');r(11,20,10,2,'#d3bb7b');}
 }
-function canCommandSelection(){return selected.some(id=>{const u=game.get(id);return u&&stats[u.type]?.speed&&!u.training;});}
-function setCommandTab(tab){commandTab=tab;hoveredCommand=null;updateUI();}
-function setCommandMode(mode){if(paused||inMenu||game.result||helpOpen||!canCommandSelection())return;commandMode=mode;placing=null;commandTab='orders';hoveredCommand=null;updateUI();}
-function stopSelected(){if(paused||inMenu||game.result)return;for(const id of selected){const u=game.get(id);if(u&&stats[u.type]?.speed)game.release(u);}commandMode=null;placing=null;game.message='Приказ прекращён. Свободные рабочие вернутся к перевозке.';updateUI();}
+function canCommandSelection(){return selected.some(id=>{const u=game.get(id);return u&&stats[u.type]?.speed&&!u.training&&!u.inside;});}
+function setCommandMode(mode){if(paused||inMenu||game.result||helpOpen||!canCommandSelection())return;commandMode=mode;placing=null;hoveredCommand=null;updateUI();}
+function stopSelected(){if(paused||inMenu||game.result)return;for(const id of selected){const u=game.get(id);if(u&&stats[u.type]?.speed&&!u.inside)game.release(u);}commandMode=null;placing=null;game.message='Приказ прекращён. Свободные рабочие вернутся к перевозке.';updateUI();}
 function resizeViewport(){const r=$('#battlefield').getBoundingClientRect();if(!r.width||!r.height)return;VW=Math.min(W,Math.max(12,r.width/T));VH=Math.min(H,Math.max(8,r.height/T));canvas.width=Math.round(VW*T);canvas.height=Math.round(VH*T);ctx.imageSmoothingEnabled=false;clampCamera();}
 function toggleHelp(show){helpOpen=show;$('#help').hidden=!show;keys.clear();drag=null;}
-$('#orders-tab').onclick=()=>setCommandTab('orders');$('#build-tab').onclick=()=>setCommandTab('build');
 $('#help-open').onclick=()=>toggleHelp(true);$('#help-close').onclick=()=>toggleHelp(false);
 window.addEventListener('resize',resizeViewport);
 
 function updateUI(){
- selected=selected.filter(id=>game.get(id));
+ selected=selected.filter(id=>game.get(id)&&!game.get(id).inside);
  const p=game.population(),stock=game.stock(),units=selected.map(id=>game.get(id)),e=units[0];
  const resourceBar=$('#resources');resourceBar.replaceChildren();
  for(const r of resources){const item=document.createElement('span');item.className='resource';item.style.color=colors[r];const icon=document.createElement('i');icon.className='resource-icon';icon.style.backgroundColor=colors[r];const data=document.createElement('span'),label=document.createElement('span'),value=document.createElement('strong');label.className='resource-label';label.textContent=resourceNames[r];value.className='resource-value';value.textContent=Math.floor(stock[r]);data.append(label);data.append(value);item.append(icon);item.append(data);resourceBar.append(item);}
- const carriers=game.alive().filter(u=>u.team===0&&u.type==='worker'&&!u.job&&!u.training).length;
+ const carriers=game.alive().filter(u=>u.team===0&&u.type==='worker'&&!u.job&&!u.training&&!u.building).length;
  $('#population').textContent=`Население: ${p.total}/${p.capacity}`;
  $('#population').title=`Рабочие: ${p.workers} · Солдаты: ${p.soldiers} · Перевозчики: ${carriers}. За 5 с: ${p.total} еды, ${p.soldiers*.5} золота.`;
  $('#economy-info').textContent=`Рабочие ${p.workers} · Бойцы ${p.soldiers} · Перевозчики ${carriers}`;
@@ -62,51 +60,50 @@ function updateUI(){
    const b=commandButton(builds,names[type],type,()=>{if(!paused&&!game.result&&!inMenu){commandMode=null;placing=placing===type?null:type;}},paused||!game.affordable(stats[type].cost)||!!game.result,detail);if(placing===type)b.className+=' active';}
  }
  $('#selection').textContent=units.length>1?`Отряд · ${units.length}`:e?names[e.type]||resourceNames[e.resource]:'Нет выбранного объекта';
- let details='Выберите юнита или здание на карте.\nПриказы — справа. Стройка — во вкладке «Постройки».';
+ let details='Выберите юнита или здание на карте.\nПриказы — справа, постройки — в ряду над панелью.';
  if(e&&units.length===1){details=`Здоровье: ${Math.ceil(e.hp)} / ${e.maxHp}`;
   if(stats[e.type]?.resource){details+=`\nРаботники: ${game.workers(e).length}/2 · продукция: ${Math.floor(e.buffer)}/60`;if(e.node)details+=`\nОстаток залежи: ${Math.floor(game.get(e.node)?.amount||0)}`;}
-  if(e.type==='worker')details+=`\n${e.training?'Обучение в казарме':e.job?'Работает: '+names[game.get(e.job)?.type]:'Перевозчик'}${e.carry?' · несёт '+e.carry.amount+' '+resourceNames[e.carry.resource]:''}`;
+  if(e.type==='worker')details+=`\n${e.training?'Обучение в казарме':e.building?'Строитель':e.job?'Работает: '+names[game.get(e.job)?.type]:'Перевозчик'}${e.carry?' · несёт '+e.carry.amount+' '+resourceNames[e.carry.resource]:''}`;
   if(e.type==='soldier')details+='\nБоевая пехота · содержание: 1 еда и 0,5 золота / 5 с';
   if(e.type==='house')details+='\n+4 места · житель каждые 20 с за 8 еды';
   if(e.type==='deposit')details=`${resourceNames[e.resource]}: ${Math.floor(e.amount)}`;
   if(e.type==='outpost'){const r=game.regions[e.region];details=r.name+'\n'+(r.owner===0?'Ваша территория':r.owner===1?'Вражеская территория':'Нейтральная территория')+'\nЗахват: '+Math.floor(r.progress/12*100)+'% · 12 с у башни';}
-  if(e.construction>0)details+=`\nСтроится: ${Math.round((1-e.construction/stats[e.type].buildTime)*100)}% · осталось ${Math.ceil(e.construction)} с`;
+  if(e.construction>0){const builder=game.get(e.builder);details+=`\nГотовность: ${Math.round((1-e.construction/stats[e.type].buildTime)*100)}% · ${Math.ceil(e.construction)} с работы\n${builder?(game.adjacent(builder,e)?'Рабочий строит':'Строитель в пути'):'Ожидает свободного рабочего'}`;}
   if(e.type==='barracks')details+=`\nОчередь: ${e.queue.length}/3${e.queue.length?' · '+Math.ceil(e.queue[0].left)+' с после прибытия':''}`;
  }else if(units.length>1){const workers=units.filter(u=>u.type==='worker').length,soldiers=units.filter(u=>u.type==='soldier').length;details=`Рабочие: ${workers} · Солдаты: ${soldiers}\nКлик по карточке — выбрать одного. Shift — добавить к выбору.`;}
  selectionCards(units);$('#details').textContent=details;const health=$('#portrait-health');health.hidden=units.length!==1||!Number.isFinite(e?.maxHp);if(!health.hidden){$('#health-fill').style.width=Math.max(0,e.hp/e.maxHp*100)+'%';health.ariaValueNow=String(Math.ceil(e.hp));health.ariaValueMin='0';health.ariaValueMax=String(e.maxHp);}
- const orderKey=JSON.stringify([selected,paused,!!game.result,commandMode,game.ready(e),game.affordable(soldierCost),units.map(u=>u.training)]);
+ const orderKey=JSON.stringify([selected,paused,!!game.result,commandMode,game.ready(e),game.affordable(soldierCost),units.map(u=>[u.training,u.building]),e?game.workers(e).length:0]);
  if(orderKey!==orderUIKey){orderUIKey=orderKey;const actions=$('#actions');actions.replaceChildren();const canAct=units.some(u=>stats[u.type]?.speed&&!u.training),blocked=paused||!!game.result;
   if(canAct){commandButton(actions,'Идти','move',()=>setCommandMode('move'),blocked,'Идти · G. Укажите место левой кнопкой.');commandButton(actions,'Атака','attack',()=>setCommandMode('attack'),blocked,'Атаковать · F. Укажите противника левой кнопкой.');commandButton(actions,'Стоп','stop',stopSelected,blocked,'Прекратить приказ · X. Рабочие вернутся к перевозке.');}
   if(e?.type==='barracks')commandButton(actions,'Солдат','soldier',()=>{if(!game.train(e.id))game.message='Нужен рабочий без груза, ресурсы и место в очереди (до 3).';},blocked||!game.ready(e)||!game.affordable(soldierCost),'Обучить солдата — '+costText(soldierCost));
   if(e?.type==='outpost')commandButton(actions,'Владения','map',()=>{selectedRegion=e.region;toggleWorld(true);},false,'Открыть башню на глобальной карте.');
   if(units.some(u=>u.type==='worker'))commandButton(actions,'Перевозка','worker',()=>{for(const u of units)if(u.type==='worker')game.release(u);},blocked,'Освободить рабочих → перевозчики');
   if(units.some(u=>u.type==='soldier'))commandButton(actions,'В рабочие','worker',()=>game.demobilize(selected),blocked,'Вернуть солдат в рабочие без возврата цены.');
-  if(e&&stats[e.type]?.slots)commandButton(actions,'Назначить','assign',()=>{const u=game.alive().find(u=>u.team===0&&u.type==='worker'&&!u.job&&!u.training&&!u.carry);if(!u||!game.assign([u.id],e.id))game.message='Нет свободного рабочего или все места заняты.';},blocked||!game.ready(e),'Назначить свободного рабочего');
+  if(e&&stats[e.type]?.slots)commandButton(actions,'Назначить','assign',()=>{const u=game.alive().find(u=>u.team===0&&u.type==='worker'&&!u.job&&!u.training&&!u.building&&!u.carry);if(!u||!game.assign([u.id],e.id))game.message='Нет свободного рабочего или все места заняты.';},blocked||!game.ready(e),'Назначить свободного рабочего');
+  if(e&&stats[e.type]?.slots&&game.workers(e).length)commandButton(actions,'Снять рабочих','worker',()=>{for(const u of game.workers(e))game.release(u);},blocked,'Освободить рабочих из здания');
   while(actions.children.length<9){const slot=document.createElement('span');slot.className='empty-slot';actions.append(slot);}
  }
- $('#actions').hidden=commandTab!=='orders';$('#buildings').hidden=commandTab!=='build';
- $('#orders-tab').className=commandTab==='orders'?'active':'';$('#build-tab').className=commandTab==='build'?'active':'';
- $('#orders-tab').ariaPressed=String(commandTab==='orders');$('#build-tab').ariaPressed=String(commandTab==='build');
- $('#command-hint').textContent=hoveredCommand||(commandTab==='build'?'Наведите на постройку: цена и время возведения.':canCommandSelection()?'G — идти · F — атака · X — стоп':'Выберите объект или откройте «Постройки».');
+ $('#command-hint').textContent=hoveredCommand||(canCommandSelection()?'G — идти · F — атака · X — стоп':'Постройки — в ряду слева. Наведите на иконку, чтобы узнать цену.');
  const owned=game.regions.filter(r=>r.owner===0).length,enemy=game.regions.filter(r=>r.owner===1).length;
  $('#territory-score').textContent=`Владения: ${owned} / 12 · Враг: ${enemy}`;$('#territory-label').textContent=game.regionAt(camera.x+VW/2,camera.y+VH/2)?.name||'Рубежи';if(worldOpen)updateRegionPanel();
- $('#overlay').hidden=!paused&&!game.result;$('#endtitle').textContent=game.result==='victory'?'Победа! Вражеская ратуша разрушена':game.result==='defeat'?'Поражение: ратуша разрушена':'Пауза';$('#pause').textContent=paused?'Продолжить':'Пауза';
+ $('#overlay').hidden=!paused&&!game.result;$('#endtitle').textContent=game.result==='victory'?'Победа! Вражеская ратуша разрушена':game.result==='defeat'?'Поражение: ратуша разрушена':'Пауза';$('#pause').className='speed-button'+(paused?' active':'');$('#pause').ariaPressed=String(paused);$('#pause').title=paused?'Продолжить · пробел':'Пауза · пробел';for(const [id,speed]of [['speed-slow',.4],['speed-normal',.6],['speed-fast',1]]){$('#'+id).className='speed-button'+(!paused&&gameSpeed===speed?' active':'');$('#'+id).ariaPressed=String(!paused&&gameSpeed===speed);}
 }
 
 function point(ev){const r=canvas.getBoundingClientRect();cursor.x=(ev.clientX-r.left)*VW/r.width;cursor.y=(ev.clientY-r.top)*VH/r.height;return{x:camera.x+cursor.x,y:camera.y+cursor.y};}
-function hit(p){return game.alive().filter(e=>Math.abs(e.x-p.x)<e.size/2+.15&&Math.abs(e.y-p.y)<e.size/2+.15).sort((a,b)=>a.size-b.size)[0];}
+function hit(p){return game.visible().filter(e=>Math.abs(e.x-p.x)<e.size/2+.15&&Math.abs(e.y-p.y)<e.size/2+.15).sort((a,b)=>a.size-b.size)[0];}
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
-canvas.addEventListener('pointerdown',e=>{if(paused||game.result||inMenu||worldOpen||helpOpen)return;mouse=point(e);const target=hit(mouse);pings.push({...mouse,age:0,kind:commandMode==='move'?'move':(e.button===2||commandMode==='attack')?(target?.type==='outpost'?'capture':target?.team===1?'attack':'move'):'select'});if(e.button===2){commandMode=null;placing=null;game.command(selected,mouse.x,mouse.y,hit(mouse)?.id);updateUI();return;}if(e.button!==0)return;if(commandMode){if(commandMode==='attack'&&target?.team!==1&&target?.type!=='outpost'){game.message='Укажите противника для атаки.';updateUI();return;}game.command(selected,mouse.x,mouse.y,commandMode==='attack'?target?.id:undefined);commandMode=null;updateUI();return;}if(placing){if(game.build(placing,Math.round(mouse.x),Math.round(mouse.y))){placing=null;commandTab='orders';}updateUI();return;}drag={start:mouse,end:mouse,shift:e.shiftKey};canvas.setPointerCapture(e.pointerId);});
+canvas.addEventListener('pointerdown',e=>{if(paused||game.result||inMenu||worldOpen||helpOpen)return;mouse=point(e);const target=hit(mouse);pings.push({...mouse,age:0,kind:commandMode==='move'?'move':(e.button===2||commandMode==='attack')?(target?.type==='outpost'?'capture':target?.team===1?'attack':'move'):'select'});if(e.button===2){commandMode=null;placing=null;game.command(selected,mouse.x,mouse.y,hit(mouse)?.id);updateUI();return;}if(e.button!==0)return;if(commandMode){if(commandMode==='attack'&&target?.team!==1&&target?.type!=='outpost'){game.message='Укажите противника для атаки.';updateUI();return;}game.command(selected,mouse.x,mouse.y,commandMode==='attack'?target?.id:undefined);commandMode=null;updateUI();return;}if(placing){if(game.build(placing,Math.round(mouse.x),Math.round(mouse.y))){placing=null;}updateUI();return;}drag={start:mouse,end:mouse,shift:e.shiftKey};canvas.setPointerCapture(e.pointerId);});
 canvas.addEventListener('pointermove',e=>{mouse=point(e);if(drag)drag.end=mouse;});
-canvas.addEventListener('pointerup',e=>{if(!drag)return;const a=drag.start,b=point(e);let ids=[];if(dist(a,b)<.3){const unit=hit(b);if(unit&&(unit.team===0||unit.type==='deposit'||unit.type==='outpost'))ids=[unit.id];}else ids=game.alive().filter(u=>u.team===0&&stats[u.type]?.speed&&u.x>=Math.min(a.x,b.x)&&u.x<=Math.max(a.x,b.x)&&u.y>=Math.min(a.y,b.y)&&u.y<=Math.max(a.y,b.y)).map(u=>u.id);selected=drag.shift?[...new Set([...selected,...ids])]:ids;drag=null;commandTab='orders';commandMode=null;hoveredCommand=null;updateUI();});
+canvas.addEventListener('pointerup',e=>{if(!drag)return;const a=drag.start,b=point(e);let ids=[];if(dist(a,b)<.3){const unit=hit(b);if(unit&&(unit.team===0||unit.type==='deposit'||unit.type==='outpost'))ids=[unit.id];}else ids=game.visible().filter(u=>u.team===0&&stats[u.type]?.speed&&u.x>=Math.min(a.x,b.x)&&u.x<=Math.max(a.x,b.x)&&u.y>=Math.min(a.y,b.y)&&u.y<=Math.max(a.y,b.y)).map(u=>u.id);selected=drag.shift?[...new Set([...selected,...ids])]:ids;drag=null;commandMode=null;hoveredCommand=null;updateUI();});
 canvas.addEventListener('pointercancel',()=>drag=null);
 function pause(){if(!game.result&&!inMenu){paused=!paused;drag=null;commandMode=null;updateUI();}}
-function restart(fresh){game=new Game(fresh?undefined:game.seed,{ai:game.aiEnabled});commandMode=null;commandTab='orders';buildUIKey='';orderUIKey='';pings=[];selectedRegion=game.homeRegions[0];selected=[];placing=null;paused=false;drag=null;home();updateUI();}
+function restart(fresh){game=new Game(fresh?undefined:game.seed,{ai:game.aiEnabled});commandMode=null;buildUIKey='';orderUIKey='';pings=[];selectedRegion=game.homeRegions[0];selected=[];placing=null;paused=false;drag=null;home();updateUI();}
 $('#pause').onclick=pause;$('#restart').onclick=()=>restart(false);
 function clampCamera(){camera.x=Math.round(Math.max(0,Math.min(W-VW,camera.x))*T)/T;camera.y=Math.round(Math.max(0,Math.min(H-VH,camera.y))*T)/T;}
 function home(){const b=game.alive().find(e=>e.team===0&&e.type==='base');camera.x=b?b.x-VW/2:0;camera.y=b?b.y-VH/2:0;clampCamera();}
 $('#home').onclick=home;
-$('#speed').onchange=e=>{gameSpeed=Number(e.target.value);};
+function setSpeed(speed){gameSpeed=speed;paused=false;$('#menu-speed').value=String(speed);updateUI();}
+$('#speed-slow').onclick=()=>setSpeed(.4);$('#speed-normal').onclick=()=>setSpeed(.6);$('#speed-fast').onclick=()=>setSpeed(1);
 minimap.addEventListener('pointerdown',e=>{const r=minimap.getBoundingClientRect();camera.x=(e.clientX-r.left)/r.width*W-VW/2;camera.y=(e.clientY-r.top)/r.height*H-VH/2;clampCamera();});
 window.addEventListener('keydown',e=>{
  if(inMenu)return;
@@ -138,29 +135,35 @@ function drawDeposit(e,x,y){
  }
 }
 function drawUnit(e,x,y){
- const c=e.team===0?'#76b6cf':'#db8271',dark=e.team===0?'#365569':'#773e3c',walk=e.path.length?Math.sin(game.time*10+e.id)*2:0;
- rect(x-7,y+6,15,4,'#263f2b88');rect(x-4,y+2,3,5+walk,'#292e31');rect(x+2,y+2,3,5-walk,'#292e31');
- rect(x-5,y-5,11,9,dark);rect(x-4,y-5,9,4,c);rect(x-3,y-12,7,7,'#dab78d');rect(x+1,y-10,2,2,'#272f31');
+ const c=e.team===0?'#76b6cf':'#db8271',dark=e.team===0?'#365569':'#773e3c',phase=e.walkDistance*7,step=e.moving?Math.sin(phase)*2.5:0,bob=e.moving?Math.round(Math.abs(Math.sin(phase))*1.4):0,face=e.facingX<-.15?-1:1;
+ rect(x-7,y+6,15,4,'#263f2b66');
+ rect(x-4,y+2+Math.max(0,step),3,5,'#292e31');rect(x+2,y+2+Math.max(0,-step),3,5,'#292e31');
+ rect(x-5,y-5-bob,11,9,dark);rect(x-4,y-5-bob,9,4,c);rect(x-3,y-12-bob,7,7,'#dab78d');rect(x+(face>0?1:-2),y-10-bob,2,2,'#272f31');
+ rect(x-7,y-3-bob-step*.4,3,6,'#c5a47e');rect(x+5,y-3-bob+step*.4,3,6,'#c5a47e');
  if(e.type==='soldier'){
-  rect(x-4,y-15,9,5,'#9aaab0');rect(x-3,y-15,7,2,'#d8e2dc');rect(x-1,y-17,3,3,c);
-  rect(x-9,y-3,5,8,dark);rect(x-8,y-2,3,5,c);rect(x+7,y-12,2,14,'#e1e5dc');rect(x+5,y+1,6,2,'#c2a064');
+  rect(x-4,y-15-bob,9,5,'#9aaab0');rect(x-3,y-15-bob,7,2,'#d8e2dc');rect(x-1,y-17-bob,3,3,c);
+  rect(x-9*face,y-3-bob-step*.3,5,8,dark);rect(x-8*face,y-2-bob-step*.3,3,5,c);rect(x+7*face,y-12-bob+step*.3,2,14,'#e1e5dc');rect(x+7*face-2,y+1-bob+step*.3,6,2,'#c2a064');
  }else{
-  rect(x-4,y-14,9,3,'#c6a16b');rect(x-6,y-12,12,2,'#e0bc7b');rect(x+6,y-4,2,12,'#9c7947');rect(x+5,y-7,6,4,'#b9c5c3');
+  rect(x-4,y-14-bob,9,3,'#c6a16b');rect(x-6,y-12-bob,12,2,'#e0bc7b');
+  const b=game.get(e.building),working=b&&game.adjacent(e,b),swing=working?Math.sin(game.time*11):0;
+  const hx=x+7*face,hy=y-6-bob+step*.3-(working?(swing+1)*4:0);
+  line(hx,y+3-bob,hx+face*(working?swing*4:0),hy,'#ad8850',2);rect(hx-2+face*(working?swing*4:0),hy-3,7,4,'#c3ccc4');
+  if(working&&swing<-.7){rect(hx+face*4,y-3,2,2,'#e8cc8b');rect(hx+face*7,y-6,1,2,'#c1b78b');}
  }
- if(e.carry){rect(x-11,y-2,6,8,'#715138');rect(x-10,y-3,5,5,colors[e.carry.resource]);rect(x-10,y+4,5,1,'#d4b47c');}
- if(e.job&&!e.path.length){rect(x+9,y-9,2,2,'#f4d88b');}
+ if(e.carry){const sway=e.moving?Math.round(step*.35):0;rect(x-11,y-2-bob+sway,6,8,'#715138');rect(x-10,y-3-bob+sway,5,5,colors[e.carry.resource]);rect(x-10,y+4-bob+sway,5,1,'#d4b47c');}
+ if(e.moving&&Math.sin(phase)>.85)rect(x-5*face,y+10,2,1,'#a8b38b55');
 }
 function drawBuilding(e,x,y){
  const s=e.size*T,l=x-s/2,t=y-s/2,c=e.team===0?'#74b6d3':e.team===1?'#d98271':'#c9bb87',dark=e.team===0?'#335b72':e.team===1?'#794443':'#646248';
  rect(l+3,t+7,s,s-2,'#243a2b88');
  if(e.construction>0){
-  rect(l+2,t+4,s-4,s-8,'#81725b');
-  for(let row=0;row<4;row++)for(let col=0;col<5;col++)rect(l+4+col*8+(row%2?2:0),t+8+row*8,6,4,'#a69a7b');
-  for(const dx of [3,s-5])rect(l+dx,t,3,s,'#c9a36a');
-  for(const dy of [6,s-8])rect(l,t+dy,s,3,'#d7b37a');
-  line(l+4,t+s-9,l+s-4,t+8,'#97733f',3);
-  const p=1-e.construction/stats[e.type].buildTime;rect(l,y+s/2+3,s,5,'#202c2e');rect(l,y+s/2+3,s*p,5,'#e6cb7c');
-  ctx.font='10px monospace';ctx.fillStyle='#fff1ce';ctx.fillText(Math.ceil(e.construction)+'с',x-9,t-4);return;
+  const p=1-e.construction/stats[e.type].buildTime,builder=game.get(e.builder),working=builder&&game.adjacent(builder,e),wallHeight=Math.round(5+p*(s-12));
+  rect(l+2,t+s-8,s-4,7,'#6b614c');rect(l+3,t+s-wallHeight,s-6,wallHeight-3,'#90876b');
+  for(let row=0;row<Math.ceil(wallHeight/8);row++)for(let col=0;col<5;col++){const by=t+s-7-row*8;if(by>=t+s-wallHeight)rect(l+4+col*8+(row%2?2:0),by,6,3,'#b1a281');}
+  for(const dx of [3,s-5])rect(l+dx,t,3,s,'#c9a36a');for(const dy of [6,s-8])rect(l,t+dy,s,3,'#d7b37a');line(l+4,t+s-9,l+s-4,t+8,'#97733f',3);
+  if(working){const phase=(game.time*1.7)%1;rect(l+8+Math.sin(game.time*3)*3,t+s-4-phase*10,3,2,'#d3c89988');rect(l+s-12,t+s-7-phase*6,2,2,'#b4b08c66');}
+  rect(l,y+s/2+3,s,4,'#202c2e');rect(l,y+s/2+3,s*p,4,working?'#e6cb7c':'#a8b08c');
+  ctx.font='9px monospace';ctx.fillStyle='#fff1ce';ctx.fillText(builder?(working?Math.ceil(e.construction)+'с':'в пути'):'ждёт',x-12,t-4);return;
  }
  if(e.type==='farm'){
   rect(l,t,s,s,'#69533a');for(let row=0;row<5;row++){rect(l+3,t+4+row*8,s-6,3,'#3d3829');for(let col=0;col<6;col++){rect(l+5+col*6,t+3+row*8,2,5,'#c6b85f');rect(l+4+col*6,t+3+row*8,4,2,'#e0d17d');}}
@@ -187,6 +190,14 @@ function drawBuilding(e,x,y){
   if(e.type==='barracks'){line(x-10,t+16,x+9,t+31,'#e1ded0',2);line(x+10,t+16,x-9,t+31,'#e1ded0',2);rect(x-4,t+20,8,9,c);}
   if(e.type==='house'){rect(l+s-14,t-6,5,11,'#6f6558');rect(l+s-15,t-7,7,3,'#b2a284');}
  }
+ const occupants=game.workers(e).filter(u=>u.inside===e.id).length;
+ if(occupants){
+  // Warm activity lights make occupied buildings readable even when workers are hidden.
+  for(let i=0;i<occupants;i++)rect(x-7+i*8,y+s/2-7,4,4,'#efd89b');
+  const operating=e.buffer<60&&(!e.node||(game.get(e.node)?.amount||0)>0);
+  if(operating&&e.type==='farm'){const offset=Math.floor(game.time*1.5+e.id)%5;rect(l+6+offset*7,t+11,2,4,'#f4e1a1');rect(l+8+offset*7,t+10,2,2,'#dce6a0');}
+  else if(operating){for(let i=0;i<2;i++){const phase=(game.time*.45+i*.5)%1;rect(x+8+Math.sin(phase*5+e.id)*3,t-4-phase*13,3+phase*2,2,'#c6cbb04d');}if(e.type==='sawmill'){const saw=Math.round(Math.sin(game.time*7)*3);rect(x-10+saw,y+s/2-14,15,2,'#d2d7bf');}}
+ }
  // A small team pennant also identifies farms and mines.
  rect(l+s-4,t+14,2,14,'#cdb485');rect(l+s-2,t+14,7,5,c);
  if(stats[e.type].resource){rect(l,y+s/2+3,s,3,'#23352b');rect(l,y+s/2+3,s*e.buffer/60,3,'#e5ce83');ctx.font='9px monospace';ctx.fillStyle='#f4e8c7';ctx.fillText(`${game.workers(e).length}/2`,x-8,y+s/2+14);}
@@ -200,7 +211,7 @@ function render(){
   if(game.regionGrid[y]?.[x+1]!==region?.id)line(px+T,py,px+T,py+T,'#ddcc8d88');if(game.regionGrid[y+1]?.[x]!==region?.id)line(px,py+T,px+T,py+T,'#ddcc8d88');
   if(!game.terrain[y][x]){rect(px+3+n%15,py+4+n%14,2,3,'#6c8552');if(n<5)rect(px+14,py+15,2,2,'#b3ab70');}
  }
- for(const e of game.alive().sort((a,b)=>a.y-b.y)){
+ for(const e of game.visible().sort((a,b)=>a.y-b.y)){
   if(e.x<camera.x-3||e.y<camera.y-3||e.x>camera.x+VW+3||e.y>camera.y+VH+3)continue;
   const x=Math.round(e.x*T),y=Math.round(e.y*T),s=e.size*T;
   if(e.type==='deposit'){drawDeposit(e,x,y);continue;}
@@ -214,7 +225,7 @@ function render(){
  for(const p of pings){const x=p.x*T,y=p.y*T,r=5+p.age*22;ctx.globalAlpha=1-p.age/.6;ctx.strokeStyle=p.kind==='attack'?'#f49f8b':p.kind==='capture'?'#f1db87':'#c7edb1';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(x,y,r,r*.55,0,0,Math.PI*2);ctx.stroke();if(p.kind!=='select'){line(x-5,y,x+5,y,ctx.strokeStyle);line(x,y-5,x,y+5,ctx.strokeStyle);}ctx.globalAlpha=1;}
  ctx.restore();
  drawRegionMap(mini,288,192);
- for(const e of game.alive()){if(e.type==='deposit'||e.type==='outpost')continue;mini.fillStyle=e.team===0?'#a5dbee':'#f2a28b';const size=stats[e.type]?.speed?2:e.size*2;mini.fillRect(e.x*2-size/2,e.y*2-size/2,size,size);}
+ for(const e of game.visible()){if(e.type==='deposit'||e.type==='outpost')continue;mini.fillStyle=e.team===0?'#a5dbee':'#f2a28b';const size=stats[e.type]?.speed?2:e.size*2;mini.fillRect(e.x*2-size/2,e.y*2-size/2,size,size);}
  mini.strokeStyle='#fff2bb';mini.lineWidth=1;mini.strokeRect(camera.x*2,camera.y*2,VW*2,VH*2);
  if(worldOpen)drawRegionMap(worldContext,864,576,true);
 }
@@ -248,10 +259,10 @@ function updateRegionPanel(){
 function toggleWorld(show=!worldOpen){if(inMenu||!started)return;worldOpen=show;$('#world').hidden=!worldOpen;drag=null;keys.clear();updateRegionPanel();}
 function showMenu(){inMenu=true;toggleHelp(false);commandMode=null;worldOpen=false;keys.clear();drag=null;$('#world').hidden=true;$('#menu').hidden=false;$('#app').hidden=true;$('#resume').hidden=!started;$('#menu-speed').value=String(gameSpeed);$('#start').textContent=started?'Начать новую игру':'Начать игру';}
 function resume(){if(!started)return;inMenu=false;$('#menu').hidden=true;$('#app').hidden=false;resizeViewport();last=null;updateUI();}
-function startMatch(){const value=($('#seed').value||'').trim(),seed=value===''?undefined:Number(value)>>>0;gameSpeed=Number($('#menu-speed').value)||.6;$('#speed').value=String(gameSpeed);game=new Game(seed,{ai:$('#ai').checked});commandMode=null;commandTab='orders';buildUIKey='';orderUIKey='';selected=[];placing=null;paused=false;drag=null;pings=[];selectedRegion=game.homeRegions[0];started=true;resume();home();}
+function startMatch(){const value=($('#seed').value||'').trim(),seed=value===''?undefined:Number(value)>>>0;gameSpeed=Number($('#menu-speed').value)||.6;game=new Game(seed,{ai:$('#ai').checked});commandMode=null;buildUIKey='';orderUIKey='';selected=[];placing=null;paused=false;drag=null;pings=[];selectedRegion=game.homeRegions[0];started=true;resume();home();}
 $('#start').onclick=startMatch;$('#resume').onclick=resume;$('#menu-open').onclick=showMenu;
-$('#menu-speed').onchange=e=>{gameSpeed=Number(e.target.value);$('#speed').value=String(gameSpeed);};
-$('#world-open').onclick=()=>toggleWorld();$('#world-bottom').onclick=()=>toggleWorld();$('#world-close').onclick=()=>toggleWorld(false);
+$('#menu-speed').onchange=e=>{gameSpeed=Number(e.target.value);};
+$('#world-bottom').onclick=()=>toggleWorld();$('#world-close').onclick=()=>toggleWorld(false);
 worldCanvas.addEventListener('pointerdown',e=>{const b=worldCanvas.getBoundingClientRect(),r=game.regionAt((e.clientX-b.left)/b.width*W,(e.clientY-b.top)/b.height*H);if(r){selectedRegion=r.id;updateRegionPanel();}});
 function portrait(e){
  const c=$('#portrait').getContext('2d');c.imageSmoothingEnabled=false;c.fillStyle='#23382f';c.fillRect(0,0,64,64);if(!e)return;
@@ -261,7 +272,7 @@ function portrait(e){
 }
 function selectionCards(units){
  const cards=$('#selection-cards');cards.replaceChildren();cards.hidden=units.length<2;portrait(units[0]);
- for(const e of units){const b=action(cards,'',()=>{selected=[e.id];commandTab='orders';commandMode=null;});b.className='unit-card';const title=document.createElement('strong');title.textContent=names[e.type]||resourceNames[e.resource];b.append(title);const status=document.createElement('small');status.textContent=e.type==='outpost'?'Контроль территории':Math.ceil(e.hp)+' / '+e.maxHp;b.append(status);
+ for(const e of units){const b=action(cards,'',()=>{selected=[e.id];commandMode=null;});b.className='unit-card';const title=document.createElement('strong');title.textContent=names[e.type]||resourceNames[e.resource];b.append(title);const status=document.createElement('small');status.textContent=e.type==='outpost'?'Контроль территории':Math.ceil(e.hp)+' / '+e.maxHp;b.append(status);
   if(Number.isFinite(e.maxHp)){const bar=document.createElement('span');bar.className='hp-track';const fill=document.createElement('span');fill.style.width=Math.max(0,e.hp/e.maxHp*100)+'%';bar.append(fill);b.append(bar);}
  }
 }

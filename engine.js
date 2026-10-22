@@ -86,8 +86,9 @@ class Game{
  }
 
  random(){this.rng=(Math.imul(this.rng,1664525)+1013904223)>>>0;return this.rng/4294967296;}
- add(type,team,x,y){const s=stats[type]||{hp:1,size:1};const e={id:this.nextId++,type,team,x,y,hp:s.hp,maxHp:s.hp,size:s.size,path:[],order:null,job:null,training:null,carry:null,buffer:0,cool:0,queue:[],node:null,construction:0};this.entities.push(e);return e;}
+ add(type,team,x,y){const s=stats[type]||{hp:1,size:1};const e={id:this.nextId++,type,team,x,y,hp:s.hp,maxHp:s.hp,size:s.size,path:[],order:null,job:null,training:null,carry:null,buffer:0,cool:0,queue:[],node:null,construction:0,builder:null,building:null,inside:null,walkDistance:0,moving:false,facingX:team===1?-1:1,facingY:0};this.entities.push(e);return e;}
  alive(){return this.entities.filter(e=>e.hp>0);}
+ visible(){return this.alive().filter(e=>!e.inside);}
  ready(b){return !!b&&b.hp>0&&b.construction<=0;}
  get(id){return this.entities.find(e=>e.id===id&&e.hp>0);}
  stock(team=0){return this.teams[team].stock;}
@@ -116,13 +117,13 @@ class Game{
  nearPath(u,b){const cells=[],r=Math.ceil(b.size/2)+1;for(let y=Math.floor(b.y)-r;y<=Math.floor(b.y)+r;y++)for(let x=Math.floor(b.x)-r;x<=Math.floor(b.x)+r;x++)if(!this.cellBlocked(x,y))cells.push({x:x+.5,y:y+.5});cells.sort((a,c)=>dist(a,b)+dist(a,u)*.2-dist(c,b)-dist(c,u)*.2);for(const c of cells){const p=this.path(u.x,u.y,c.x,c.y);if(p.length||dist(u,c)<.1)return p;}return [];}
  adjacent(u,b){return Math.abs(u.x-b.x)<=b.size/2+.65&&Math.abs(u.y-b.y)<=b.size/2+.65;}
  walkTo(u,b,dt){if(this.adjacent(u,b))return true;if(!u.path.length)u.path=this.nearPath(u,b);this.move(u,dt);return this.adjacent(u,b);}
- move(u,dt){let n=stats[u.type].speed*dt;while(n>0&&u.path.length){const p=u.path[0];if(this.cellBlocked(Math.floor(p.x),Math.floor(p.y))){u.path=[];break;}const d=dist(u,p);if(d<=n){u.x=p.x;u.y=p.y;u.path.shift();n-=d;}else{u.x+=(p.x-u.x)*n/d;u.y+=(p.y-u.y)*n/d;n=0;}}}
+ move(u,dt){const oldX=u.x,oldY=u.y;let n=stats[u.type].speed*dt;while(n>0&&u.path.length){const p=u.path[0];if(this.cellBlocked(Math.floor(p.x),Math.floor(p.y))){u.path=[];break;}const d=dist(u,p);if(d<=n){u.x=p.x;u.y=p.y;u.path.shift();n-=d;}else{u.x+=(p.x-u.x)*n/d;u.y+=(p.y-u.y)*n/d;n=0;}}const dx=u.x-oldX,dy=u.y-oldY,d=Math.hypot(dx,dy);if(d>1e-7){u.moving=true;u.walkDistance+=d;u.facingX=dx/d;u.facingY=dy/d;}}
  workers(b){return this.alive().filter(u=>u.type==='worker'&&u.job===b.id&&!u.training);}
  canBuild(type,x,y,team=0){const s=stats[type];if(this.result||!s?.cost||type==='base'||!Number.isInteger(x)||!Number.isInteger(y)||!this.affordable(s.cost,team))return false;
   if(!this.population(team).workers)return false;
   for(const dx of [-.5,.5])for(const dy of [-.5,.5])if(this.regionAt(x+dx,y+dy)?.owner!==team)return false;
   for(const dx of [-.5,.5])for(const dy of [-.5,.5])if(this.cellBlocked(Math.floor(x+dx),Math.floor(y+dy)))return false;
-  if(this.alive().some(e=>stats[e.type]?.speed&&Math.abs(e.x-x)<1&&Math.abs(e.y-y)<1))return false;
+  if(this.alive().some(e=>stats[e.type]?.speed&&!e.inside&&Math.abs(e.x-x)<1&&Math.abs(e.y-y)<1))return false;
   // Preserve a one-tile transport lane between buildings.
   if(this.alive().some(e=>e.team>=0&&!stats[e.type]?.speed&&Math.abs(e.x-x)<e.size/2+2&&Math.abs(e.y-y)<e.size/2+2))return false;
   if(s.resource&&s.resource!=='food'&&!this.alive().some(e=>e.type==='deposit'&&e.resource===s.resource&&e.amount>0&&dist(e,{x,y})<=5))return false;
@@ -130,39 +131,55 @@ class Game{
  }
  build(type,x,y,team=0){if(!this.canBuild(type,x,y,team)){if(team===0)this.message='Нельзя строить: проверьте цену, свободные 2×2 клетки, проход между зданиями (1) и принадлежность территории. Добывающее здание — в 5 клетках от залежи.';return false;}
   this.pay(stats[type].cost,team);const b=this.add(type,team,x,y);b.construction=stats[type].buildTime;if(stats[type].resource&&stats[type].resource!=='food')b.node=this.alive().filter(e=>e.type==='deposit'&&e.resource===stats[type].resource&&e.amount>0).sort((a,c)=>dist(a,b)-dist(c,b))[0].id;
-  if(team===0)this.message='Строительство началось. После завершения можно назначить рабочих. Цена списана сразу.';return b;
+  if(team===0)this.message='Участок размещён. Свободный рабочий подойдёт и начнёт строительство; если все заняты, участок подождёт.';return b;
  }
- release(u){if(u.training)return false;u.job=null;u.order=null;u.pickup=null;u.path=[];return true;}
+ release(u){if(u.training)return false;const site=this.get(u.building);if(site?.builder===u.id)site.builder=null;u.building=null;u.inside=null;u.job=null;u.order=null;u.pickup=null;u.path=[];return true;}
+ updateConstruction(dt){
+  const worked=new Set();
+  for(const b of this.alive().filter(e=>e.construction>0)){
+   let u=this.get(b.builder);if(!u||u.type!=='worker'||u.team!==b.team||u.building!==b.id||u.training){b.builder=null;u=null;}
+   if(!u){
+    const candidates=this.alive().filter(w=>w.team===b.team&&w.type==='worker'&&!w.job&&!w.training&&!w.building&&!w.carry&&!w.order&&!w.inside&&!worked.has(w.id)).sort((a,c)=>dist(a,b)-dist(c,b));
+    if(this.time<(b.builderRetry||0))continue;
+    for(const worker of candidates){const path=this.adjacent(worker,b)?[]:this.nearPath(worker,b);if(path.length||this.adjacent(worker,b)){this.release(worker);worker.building=b.id;worker.path=path;b.builder=worker.id;u=worker;break;}}
+    if(!u){b.builderRetry=this.time+1;continue;}
+   }
+   if(!this.adjacent(u,b))continue;
+   worked.add(u.id);b.construction=Math.max(0,b.construction-dt);
+   if(b.construction<1e-8){b.construction=0;b.builder=null;u.building=null;u.path=[];if(b.team===0)this.message='Строительство завершено. Рабочий вернулся к перевозке.';}
+  }
+ }
+
  assign(ids,id,team=0){const b=this.get(id);if(!this.ready(b)||b.team!==team||!stats[b.type]?.slots||this.result)return 0;let n=0;for(const uid of ids){const u=this.get(uid);if(!u||u.type!=='worker'||u.team!==team||u.training||u.carry||u.job===b.id||this.workers(b).length>=stats[b.type].slots)continue;this.release(u);u.job=b.id;n++;}return n;}
  train(id,team=0){const b=this.get(id);if(this.result||!this.ready(b)||b.team!==team||b.type!=='barracks'||b.queue.length>=3||!this.affordable(soldierCost,team))return false;
   // Prefer idle carriers, but every worker can be retrained; population does not increase.
-  const u=this.alive().filter(e=>e.team===team&&e.type==='worker'&&!e.training&&!e.carry).sort((a,c)=>Number(!!a.job)-Number(!!c.job)||dist(a,b)-dist(c,b))[0];if(!u)return false;
+  const u=this.alive().filter(e=>e.team===team&&e.type==='worker'&&!e.training&&!e.building&&!e.carry).sort((a,c)=>Number(!!a.job)-Number(!!c.job)||dist(a,b)-dist(c,b))[0];if(!u)return false;
   this.pay(soldierCost,team);this.release(u);u.training=b.id;b.queue.push({id:u.id,left:6});return true;
  }
  demobilize(ids,team=0){if(this.result)return;for(const id of ids){const u=this.get(id);if(u?.team===team&&u.type==='soldier'){u.type='worker';u.maxHp=stats.worker.hp;u.hp=Math.min(u.hp,u.maxHp);u.order=null;u.path=[];}}}
- command(ids,x,y,targetId,team=0){if(this.result)return;const target=this.get(targetId);if(target?.type==='outpost'){this.capture(ids,target.region,team);return;}let index=0;const columns=Math.ceil(Math.sqrt(ids.length));for(const id of ids){const u=this.get(id);if(!u||u.team!==team||!stats[u.type]?.speed||u.training)continue;
+ command(ids,x,y,targetId,team=0){if(this.result)return;const target=this.get(targetId);if(target?.type==='outpost'){this.capture(ids,target.region,team);return;}let index=0;const columns=Math.ceil(Math.sqrt(ids.length));for(const id of ids){const u=this.get(id);if(!u||u.team!==team||!stats[u.type]?.speed||u.training||u.inside)continue;
   if(target?.team===team&&stats[target.type]?.slots&&u.type==='worker'){this.assign([id],target.id,team);continue;}
   this.release(u);if(target&&target.team>=0&&target.team!==team){u.order={type:'attack',id:target.id};u.path=this.nearPath(u,target);}else{u.order={type:'move'};const n=index++,tx=x+(n%columns-(columns-1)/2)*1.1,ty=y+(Math.floor(n/columns)-(Math.ceil(ids.length/columns)-1)/2)*1.1;u.path=this.path(u.x,u.y,this.cellBlocked(Math.floor(tx),Math.floor(ty))?x:tx,this.cellBlocked(Math.floor(tx),Math.floor(ty))?y:ty);}
  }}
  logistics(u,dt){
   if(u.carry){const stores=this.alive().filter(b=>b.team===u.team&&this.ready(b)&&['base','warehouse'].includes(b.type)).sort((a,b)=>dist(u,a)-dist(u,b));const b=stores[0];if(b&&this.walkTo(u,b,dt)){this.stock(u.team)[u.carry.resource]+=u.carry.amount;u.carry=null;u.path=[];}return;}
-  if(u.job){const b=this.get(u.job);if(!b){u.job=null;u.path=[];return;}this.walkTo(u,b,dt);return;}
+  if(u.job){const b=this.get(u.job);if(!b){this.release(u);return;}if(u.inside===b.id)return;if(this.walkTo(u,b,dt)){u.inside=b.id;u.path=[];}return;}
   let b=this.get(u.pickup);if(!b||b.buffer<4){u.pickup=null;u.path=[];b=this.alive().filter(e=>e.team===u.team&&e.buffer>=4).sort((a,c)=>c.buffer/(dist(c,u)+1)-a.buffer/(dist(a,u)+1))[0];if(b)u.pickup=b.id;}
   if(b&&this.walkTo(u,b,dt)){const amount=Math.min(20,Math.floor(b.buffer));if(amount){b.buffer-=amount;u.carry={resource:stats[b.type].resource,amount};}u.pickup=null;u.path=[];}
  }
- combat(e,dt){e.cool=Math.max(0,e.cool-dt);const s=stats[e.type],explicit=this.get(e.order?.id);let foes=this.alive().filter(t=>t.team>=0&&t.team!==e.team&&t.type!=='outpost'&&(t.type!=='base'||this.regionAt(t.x,t.y).owner===e.team)&&dist(e,t)<= (s.range||1.1)+(t.size-1)/2);
+ combat(e,dt){e.cool=Math.max(0,e.cool-dt);const s=stats[e.type],explicit=this.get(e.order?.id);if(e.order?.type==='attack'&&explicit?.inside){e.order=null;e.path=[];}let foes=this.alive().filter(t=>!t.inside&&t.team>=0&&t.team!==e.team&&t.type!=='outpost'&&(t.type!=='base'||this.regionAt(t.x,t.y).owner===e.team)&&dist(e,t)<= (s.range||1.1)+(t.size-1)/2);
   foes.sort((a,b)=>Number(!stats[a.type]?.speed)-Number(!stats[b.type]?.speed)||dist(e,a)-dist(e,b));const foe=foes[0];
   if(foe){if(!e.cool){foe.hp-=s.damage||4;e.cool=1;}return true;}
   if(e.type==='tower')return false;
   if(e.order?.type==='attack'){if(!explicit){e.order=null;e.path=[];}else {if(!e.path.length)e.path=this.nearPath(e,explicit);this.move(e,dt);}return true;}
-  const nearby=this.alive().filter(t=>t.team>=0&&t.team!==e.team&&t.type!=='outpost'&&(t.type!=='base'||this.regionAt(t.x,t.y).owner===e.team)&&dist(e,t)<6).sort((a,b)=>dist(e,a)-dist(e,b))[0];if(nearby){if(!e.path.length)e.path=this.nearPath(e,nearby);this.move(e,dt);return true;}return false;
+  const nearby=this.alive().filter(t=>!t.inside&&t.team>=0&&t.team!==e.team&&t.type!=='outpost'&&(t.type!=='base'||this.regionAt(t.x,t.y).owner===e.team)&&dist(e,t)<6).sort((a,b)=>dist(e,a)-dist(e,b))[0];if(nearby){if(!e.path.length)e.path=this.nearPath(e,nearby);this.move(e,dt);return true;}return false;
  }
  findSite(type,team){const b=this.alive().find(e=>e.type==='base'&&e.team===team);if(!b)return null;const points=[];for(const r of this.regions.filter(r=>r.owner===team))for(const {x,y}of r.cells)if(x>1&&y>1&&x<W-1&&y<H-1&&this.canBuild(type,x,y,team))points.push({x,y});points.sort((a,c)=>dist(a,b)-dist(c,b));return points[0];}
  ai(){
   const team=1,buildings=this.alive().filter(e=>e.team===team&&!stats[e.type]?.speed),pop=this.population(team);
   for(const type of ['farm','sawmill','quarry','house','ironmine','goldmine','barracks'])if(!buildings.some(e=>e.type===type)){const p=this.findSite(type,team);if(p)this.build(type,p.x,p.y,team);break;}
   if(pop.total>=pop.capacity&&buildings.some(b=>b.type==='barracks')&&!buildings.some(b=>b.type==='house'&&!this.ready(b))){const p=this.findSite('house',team);if(p)this.build('house',p.x,p.y,team);}
-  let idle=this.alive().filter(u=>u.team===team&&u.type==='worker'&&!u.job&&!u.training&&!u.carry);
+  let idle=this.alive().filter(u=>u.team===team&&u.type==='worker'&&!u.job&&!u.training&&!u.building&&!u.carry);
   // Reserve at least two residents to transport resources.
   for(const type of ['farm','sawmill','quarry','ironmine','goldmine'])for(const b of buildings.filter(e=>e.type===type&&this.ready(e))){const need=type==='farm'?2:1;while(this.workers(b).length<need&&idle.length>2)this.assign([idle.shift().id],b.id,team);}
   const barracks=buildings.find(b=>b.type==='barracks');if(barracks&&pop.workers>10&&pop.soldiers<10)this.train(barracks.id,team);
@@ -173,17 +190,20 @@ class Game{
   }
  }
  tick(dt){if(this.result)return;dt=Math.max(0,Math.min(dt,.1));this.time+=dt;this.economyClock+=dt;this.aiClock+=dt;
-  for(const b of this.alive().filter(e=>e.construction>0)){b.construction=Math.max(0,b.construction-dt);if(b.construction<1e-8){b.construction=0;if(b.team===0)this.message='Строительство завершено. Выделите здание, чтобы назначить рабочих.';}}
+  for(const u of this.alive().filter(e=>stats[e.type]?.speed)){u.moving=false;if(u.inside&&(!this.get(u.inside)||u.job!==u.inside))this.release(u);if(u.building&&!this.get(u.building))this.release(u);}
+  this.updateConstruction(dt);
   for(const team of [0,1]){const t=this.teams[team],pop=this.population(team),house=this.alive().find(b=>b.team===team&&b.type==='house'&&this.ready(b)),base=this.alive().find(b=>b.team===team&&b.type==='base');
    if(house&&base&&pop.total<pop.capacity&&t.stock.food>=8){t.birth+=dt;if(t.birth>=20){const cells=[];for(let y=Math.floor(house.y)-2;y<=Math.floor(house.y)+2;y++)for(let x=Math.floor(house.x)-2;x<=Math.floor(house.x)+2;x++)if(!this.cellBlocked(x,y))cells.push({x:x+.5,y:y+.5});const p=cells[0];if(p){t.stock.food-=8;this.add('worker',team,p.x,p.y);t.birth=0;}}}else t.birth=0;
   }
   for(const b of this.alive().filter(e=>!stats[e.type]?.speed&&e.team>=0&&this.ready(e))){
-   const s=stats[b.type];if(s.resource){const count=this.workers(b).filter(u=>this.adjacent(u,b)).length;let amount=Math.min(60-b.buffer,count*s.rate*dt);if(s.resource!=='food'){let n=this.get(b.node);if(!n||n.amount<=0){n=this.alive().filter(e=>e.type==='deposit'&&e.resource===s.resource&&e.amount>0&&dist(e,b)<=5).sort((a,c)=>dist(a,b)-dist(c,b))[0];b.node=n?.id;}amount=Math.min(amount,n?.amount||0);if(n)n.amount-=amount;}b.buffer+=amount;}
+   const s=stats[b.type];if(s.resource){const count=this.workers(b).filter(u=>u.inside===b.id).length;let amount=Math.min(60-b.buffer,count*s.rate*dt);if(s.resource!=='food'){let n=this.get(b.node);if(!n||n.amount<=0){n=this.alive().filter(e=>e.type==='deposit'&&e.resource===s.resource&&e.amount>0&&dist(e,b)<=5).sort((a,c)=>dist(a,b)-dist(c,b))[0];b.node=n?.id;}amount=Math.min(amount,n?.amount||0);if(n)n.amount-=amount;}b.buffer+=amount;}
    if(b.type==='tower')this.combat(b,dt);
    if(b.queue.length){const q=b.queue[0],u=this.get(q.id);if(!u){b.queue.shift();continue;}if(this.walkTo(u,b,dt)){q.left-=dt;if(q.left<=0){u.type='soldier';u.maxHp=stats.soldier.hp;u.hp=u.maxHp;u.training=null;u.path=[];b.queue.shift();}}}
   }
   for(const u of this.alive().filter(e=>stats[e.type]?.speed)){
    if(u.training){if(!this.get(u.training)){u.training=null;u.path=[];}continue;}
+   if(u.building){const b=this.get(u.building);if(b&&b.construction>0)this.walkTo(u,b,dt);else this.release(u);continue;}
+   if(u.inside)continue;
    if(u.type==='soldier'&&this.combat(u,dt))continue;
    if(u.order?.type==='attack'&&this.combat(u,dt))continue;
    if(u.order?.type==='capture'){const tower=this.get(u.order.id);if(tower)this.walkTo(u,tower,dt);else u.order=null;continue;}

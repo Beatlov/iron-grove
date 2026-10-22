@@ -15,3 +15,6 @@ This is a desktop-mouse, single-player pixel RTS prototype. User-facing text is 
 
 - Keep menu/selection/global-map UI in game.js. Territory ownership and capture rules belong in engine.js.
 - Captures require soldiers at an adjacent territory outpost. Outposts are invulnerable, non-shooting control points; town halls take damage only after their territory is captured.
+
+- Construction advances only with its reserved worker adjacent to the site; queued sites wait for an idle carrier and never steal production workers.
+- Workers inside workplaces stay in population/upkeep but are excluded from rendering, picking, selection and combat targets. Release them through the building or when it is destroyed.
