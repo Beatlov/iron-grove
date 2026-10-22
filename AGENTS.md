@@ -21,3 +21,5 @@ This is a desktop-mouse, single-player pixel RTS prototype. User-facing text is 
 
 - Setting: Russian-language cosmic cyberpunk «Неоновый предел / Протокол Гелиос». Display composite, regolith, biogel, titanium, xenocrystals; keep stable internal resource/entity keys. Workers are autonomous drones.
 - Military classes are soldier (ranged marine), assault (armored melee), medic (healing only), grenadier (siege). Use isMilitary() across population, upkeep, capture, AI and UI; unitCosts defines class-specific prices. Medics must never deal damage. Both factions obey the same economic rules.
+
+- For an HTTP preview use `python3 serve.py 8000`: it serves this checkout regardless of cwd and disables caching. Update the HTML asset version and visible HELIOS version stamp together when shipping visual changes.
