@@ -103,3 +103,9 @@ canvas{display:block;image-rendering:pixelated;touch-action:none}
 #resources{gap:10px}.resource{gap:3px}.resource-label{font-size:8px}.resource-icon{width:23px}.inventory-grid{grid-template-columns:repeat(6,minmax(42px,1fr));gap:3px;margin-top:4px}.inventory-item{padding:1px 4px}.inventory-item canvas{width:18px;height:18px}.selection-panel:has(.inventory-grid:not([hidden])) #details{max-height:48px}
 @media(max-width:1400px){#resources{gap:7px}.resource-label{display:none}.resource-icon{width:20px}.economy-bar{gap:8px}}
 @media(max-width:1100px){#resources{gap:5px}.resource{gap:1px}.resource-value{font-size:10px}.resource-icon{width:16px}.inventory-grid{grid-template-columns:repeat(6,minmax(28px,1fr))}.inventory-item{font-size:9px;padding:1px}.inventory-item canvas{width:14px;height:14px}.selection-panel:has(.inventory-grid:not([hidden])) #details{max-height:42px}}
+
+/* H10: restrained olive console, solid readable edges, no changes to the layout. */
+.command-button{border-color:#738164;background:linear-gradient(145deg,#3c4937,#26352c)}
+.command-button:hover{border-color:#c1ce94;background:#4b5d40}
+.inventory-item{background:#1e3029bb;border-color:#526549}
+.portrait-frame{border-color:#8e9e73;background:#18261f}

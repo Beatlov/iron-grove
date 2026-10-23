@@ -35,6 +35,7 @@ function resume(){inMenu=false;$('#menu').hidden=true;$('#app').hidden=false;clo
 function menu(){inMenu=true;closeModal();$('#menu').hidden=false;$('#app').hidden=true;$('#resume').hidden=!started;$('#start').textContent=started?'Новая кампания':'Начать кампанию';}
 $('#start').onclick=start;$('#resume').onclick=resume;$('#menu-open').onclick=menu;$('#restart').onclick=start;$('#pause').onclick=pause;
 for(const [id,v]of [['speed-slow',.4],['speed-normal',.6],['speed-fast',1]])$('#'+id).onclick=()=>setSpeed(v);
+$('#art-style').onchange=e=>{RTSArt.setStyle(e.target.value);icons.clear();buildKey='';actionsKey='';RTSArt.menuScene($('#menu-art').getContext('2d'),640,320);updateUI();};
 $('#planet-select').onchange=e=>switchPlanet(e.target.value);$('#home').onclick=home;
 $('#world-bottom').onclick=()=>showModal('world');$('#world-close').onclick=closeModal;$('#army-open').onclick=()=>showModal('army');$('#army-close').onclick=closeModal;$('#help-open').onclick=()=>showModal('help');$('#help-close').onclick=closeModal;$('#battle-close').onclick=closeModal;
 $('#battle-open').onclick=()=>openBattle(game.battles.find(b=>!b.done)?.id||game.battles.at(-1)?.id);
@@ -103,7 +104,20 @@ window.addEventListener('resize',resize);window.addEventListener('keydown',e=>{i
 window.addEventListener('keyup',e=>keys.delete(e.code));window.addEventListener('blur',()=>{keys.clear();roadDrag=null;if(started){paused=true;updateUI();}});
 function rect(c,x,y,w,h,color){c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),Math.ceil(w),Math.ceil(h));}
 function hash(x,y,seed){let n=Math.imul(x+113,374761393)^Math.imul(y+71,668265263)^seed;n=Math.imul(n^(n>>>13),1274126177);return(n^(n>>>16))>>>0;}
-function ground(c,width,height,cam,seed){for(let y=Math.floor(cam.y);y<Math.min(height,Math.ceil(cam.y+viewH));y++)for(let x=Math.floor(cam.x);x<Math.min(width,Math.ceil(cam.x+viewW));x++){const n=hash(x,y,seed);rect(c,x*T,y*T,T,T,n%3?'#4a4f46':'#4d5046');if(n%17===0)rect(c,x*T+5,y*T+11,5,2,'#343e34');if(n%29===0)rect(c,x*T+13,y*T+7,3,2,'#737565');}for(let gy=Math.floor(cam.y/12);gy<=Math.ceil((cam.y+viewH)/12);gy++)for(let gx=Math.floor(cam.x/12);gx<=Math.ceil((cam.x+viewW)/12);gx++){const n=hash(gx+500,gy+500,seed),x=(gx*12+3+n%6)*T,y=(gy*12+3+(n>>>6)%6)*T,p=RTSArt.painter(c,x,y,2);if(n%2){p.plate(-15,-4,29,9,'#626655','#323d32');p.r(-12,-2,5,4,'#404c3e');p.r(-3,-2,7,4,'#404c3e');p.r(8,-2,3,4,'#404c3e');}else{p.poly([[-13,-3],[-6,-9],[9,-7],[15,-1],[10,6],[-6,8],[-13,3]],'#656c56');p.poly([[-11,-2],[-5,-7],[8,-5],[12,-1],[8,4],[-5,6],[-11,2]],'#354034');}}}
+function ground(c,width,height,cam,seed){
+ if(RTSArt.getStyle()==='classic')return groundClassic(c,width,height,cam,seed);
+ // Sparse, broad patches leave the silhouettes readable at normal zoom.
+ for(let y=Math.floor(cam.y);y<Math.min(height,Math.ceil(cam.y+viewH));y++)for(let x=Math.floor(cam.x);x<Math.min(width,Math.ceil(cam.x+viewW));x++){
+  const n=hash(x,y,seed),patch=hash(Math.floor(x/5),Math.floor(y/5),seed);rect(c,x*T,y*T,T,T,['#444d43','#454e44','#434c42'][patch%3]);
+  if(n%23===0)rect(c,x*T+4,y*T+14,6,2,'#323f37');if(n%61===0)rect(c,x*T+15,y*T+5,4,3,'#697260');
+ }
+ for(let gy=Math.floor(cam.y/12);gy<=Math.ceil((cam.y+viewH)/12);gy++)for(let gx=Math.floor(cam.x/12);gx<=Math.ceil((cam.x+viewW)/12);gx++){
+  const n=hash(gx+500,gy+500,seed),x=(gx*12+3+n%6)*T,y=(gy*12+3+(n>>>6)%6)*T,p=RTSArt.painter(c,x,y,2);
+  if(n%2){p.plate(-13,-4,26,8,'#596353','#2d3a32');p.r(-10,-2,6,3,'#313f35');p.r(4,-2,6,3,'#313f35');}
+  else{p.poly([[-12,-2],[-6,-7],[8,-6],[13,-1],[9,5],[-7,6]],'#344138');p.r(-4,-3,9,4,'#29372e');p.r(5,3,5,2,'#646c59');}
+ }
+}
+function groundClassic(c,width,height,cam,seed){for(let y=Math.floor(cam.y);y<Math.min(height,Math.ceil(cam.y+viewH));y++)for(let x=Math.floor(cam.x);x<Math.min(width,Math.ceil(cam.x+viewW));x++){const n=hash(x,y,seed);rect(c,x*T,y*T,T,T,n%3?'#4a4f46':'#4d5046');if(n%17===0)rect(c,x*T+5,y*T+11,5,2,'#343e34');if(n%29===0)rect(c,x*T+13,y*T+7,3,2,'#737565');}for(let gy=Math.floor(cam.y/12);gy<=Math.ceil((cam.y+viewH)/12);gy++)for(let gx=Math.floor(cam.x/12);gx<=Math.ceil((cam.x+viewW)/12);gx++){const n=hash(gx+500,gy+500,seed),x=(gx*12+3+n%6)*T,y=(gy*12+3+(n>>>6)%6)*T,p=RTSArt.painter(c,x,y,2);if(n%2){p.plate(-15,-4,29,9,'#626655','#323d32');p.r(-12,-2,5,4,'#404c3e');p.r(-3,-2,7,4,'#404c3e');p.r(8,-2,3,4,'#404c3e');}else{p.poly([[-13,-3],[-6,-9],[9,-7],[15,-1],[10,6],[-6,8],[-13,3]],'#656c56');p.poly([[-11,-2],[-5,-7],[8,-5],[12,-1],[8,4],[-5,6],[-11,2]],'#354034');}}}
 function render(){rect(ctx,0,0,canvas.width,canvas.height,'#253027');ctx.save();ctx.scale(zoom,zoom);ctx.translate(-camera.x*T,-camera.y*T);ctx.beginPath();ctx.rect(0,0,W*T,H*T);ctx.clip();const p=game.planet();ground(ctx,W,H,camera,p.seed);
  for(const k of p.roads){const x=k%W,y=Math.floor(k/W);if(x<camera.x-1||y<camera.y-1||x>camera.x+viewW+1||y>camera.y+viewH+1)continue;RTSArt.road(ctx,x*T,y*T,T);}
  if(gridVisible||placing){ctx.beginPath();for(let x=Math.max(0,Math.floor(camera.x));x<=Math.min(W,Math.ceil(camera.x+viewW));x++){ctx.moveTo(x*T,camera.y*T);ctx.lineTo(x*T,(camera.y+viewH)*T);}for(let y=Math.max(0,Math.floor(camera.y));y<=Math.min(H,Math.ceil(camera.y+viewH));y++){ctx.moveTo(camera.x*T,y*T);ctx.lineTo((camera.x+viewW)*T,y*T);}ctx.strokeStyle=placing?'#d8e2bd35':'#d8e2bd20';ctx.lineWidth=1/zoom;ctx.stroke();}

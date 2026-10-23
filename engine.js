@@ -1,4 +1,4 @@
-/* HELIOS H9: independent planetary economies, campaign fleets and automatic battles. */
+/* HELIOS H10: independent planetary economies, campaign fleets and automatic battles. */
 (function(root){
 'use strict';
 const W=144,H=96,BW=48,BH=32,resources=['food','money','metal','crystals','gas','sulfur','weapons','ammo','armor','explosives','medicines'];

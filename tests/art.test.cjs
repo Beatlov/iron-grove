@@ -22,3 +22,11 @@ test('drawing factions, work, combat and corpse frames leaves the simulation int
  assert.ok(calls.length>100);assert.ok(calls.every(args=>args.every(Number.isInteger)),'all sprite rectangles align to the native pixel grid');
  assert.equal(JSON.stringify(g),before);
 });
+test('both graphic styles preserve simulation and H9 remains an exact renderer fallback',()=>{
+ const classic=require('../art-legacy.js'),g=new Game(42,{ai:false}),before=JSON.stringify(g);
+ function calls(draw){const out=[],c=new Proxy({fillRect:(...a)=>out.push(a)},{get:(t,k)=>k in t?t[k]:()=>{},set:()=>true});draw(c);return out;}
+ const e={type:'worker',team:0,moving:true,walkDistance:1.2,facingX:1,carry:{resource:'metal'}};
+ art.setStyle('classic');const old=calls(c=>art.unit(c,e,40,50,2));assert.deepEqual(old,calls(c=>classic.unit(c,e,40,50,2)));
+ art.setStyle('refined');const current=calls(c=>art.unit(c,e,40,50,2));assert.notDeepEqual(current,old);
+ assert.equal(art.setStyle('invalid'),false);assert.equal(art.getStyle(),'refined');assert.equal(JSON.stringify(g),before);
+});
