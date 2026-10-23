@@ -1,7 +1,8 @@
-/* HELIOS H5: independent planetary economies, campaign fleets and automatic battles. */
+/* HELIOS H5.1: independent planetary economies, campaign fleets and automatic battles. */
 (function(root){
 'use strict';
-const W=144,H=96,BW=48,BH=32,resources=['food','money','metal','crystals','weapons'];
+const W=144,H=96,BW=48,BH=32,resources=['food','money','metal','crystals','gas','weapons'];
+const resourceTiers={metal:1,crystals:1,gas:1,weapons:2};
 const stats={
  worker:{hp:60,speed:2.1,size:1},
  soldier:{hp:140,speed:2.5,size:1,damage:18,range:5,armor:3,military:true,trainTime:10,food:1,money:1},
@@ -14,18 +15,19 @@ const stats={
  field:{hp:180,size:2,buildTime:8,cost:{metal:8,money:10}},
  ironmine:{hp:400,size:2,buildTime:18,cost:{metal:25,money:25},resource:'metal',slots:2,rate:1.4},
  goldmine:{hp:400,size:2,buildTime:18,cost:{metal:30,money:30},resource:'crystals',slots:2,rate:.9},
+ gasstation:{hp:450,size:2,buildTime:20,cost:{metal:35,money:30},resource:'gas',slots:2},
  factory:{hp:550,size:2,buildTime:22,cost:{metal:50,money:40,crystals:10},resource:'weapons',slots:1},
  guild:{hp:450,size:2,buildTime:16,cost:{metal:30,money:45},resource:'money',slots:2,rate:.15},
  barracks:{hp:650,size:2,buildTime:22,cost:{metal:45,money:40}},
  tower:{hp:800,size:2,buildTime:24,cost:{metal:50,money:45},damage:24,range:7}
 };
 const unitCosts={soldier:{weapons:2,money:28},assault:{weapons:3,money:38},medic:{weapons:2,money:42},grenadier:{weapons:5,money:65}};
-const colonyCost={money:180,metal:80,crystals:15,food:30},workerCost={money:20},weaponRecipe={metal:8,crystals:3},ROAD_SPEED=1.7,FIELD_YIELD=16,SOW_TIME=4,GROW_TIME=40;
+const colonyCost={money:180,metal:80,crystals:15,food:30},workerCost={money:20},weaponRecipe={metal:8,crystals:3,gas:2},ROAD_SPEED=1.7,FIELD_YIELD=16,SOW_TIME=4,GROW_TIME=40,GAS_RADIUS=9,GAS_LOAD=4,GAS_GATHER_TIME=3,GAS_PACK_TIME=2;
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),isMilitary=e=>!!stats[e?.type]?.military;
 class Game{
  constructor(seed=Math.floor(Math.random()*0xffffffff),options={}){
   this.seed=seed>>>0;this.rng=this.seed;this.aiEnabled=options.ai!==false;this.time=0;this.result=null;this.nextId=1;this.regions=[];this.maps={};this.military=[];this.missions=[];this.battles=[];this.history=[];this.effects=[];this.activePlanet=0;this.economyClock=0;this.aiClock=0;
-  this.teams=[0,1].map(()=>({stock:{food:200,money:220,metal:180,crystals:60,weapons:8},pending:Object.fromEntries(resources.map(r=>[r,0])),hungry:false,unpaid:false,desertion:0}));
+  this.teams=[0,1].map(()=>({stock:{food:200,money:220,metal:180,crystals:60,gas:0,weapons:8},pending:Object.fromEntries(resources.map(r=>[r,0])),hungry:false,unpaid:false,desertion:0}));
   this.generateRegions();this.homeRegions=[0,11];
   for(const team of [0,1]){const id=this.homeRegions[team];this.regions[id].owner=team;const p=this.planet(id);const base=this.add('base',team,72,48,id);base.inventory={...this.teams[team].stock};for(let i=0;i<6;i++)this.add('worker',team,76.5,45.5+i,id);}
   for(const team of [0,1])for(const resource of resources)Object.defineProperty(this.teams[team].stock,resource,{enumerable:true,configurable:true,get:()=>this.available(resource,team),set:value=>{const delta=Math.max(0,value)-this.available(resource,team);if(delta>0)this.credit(resource,delta,team);else this.withdraw(resource,-delta,team);}});
@@ -73,6 +75,9 @@ class Game{
   this.maps[id]=p;let n=p.seed;const rand=()=>{n=(Math.imul(n,1664525)+1013904223)>>>0;return n/4294967296;};
   for(const [resource,dx,dy]of [['metal',-11,-8],['crystals',11,-8]])for(let i=0;i<3;i++){const e=this.add('deposit',-1,72+dx+(i%2)*1.5,48+dy+Math.floor(i/2)*1.5,id);e.resource=resource;e.amount=2400;}
   for(let i=0;i<18;i++){const x=6+Math.floor(rand()*(W-12)),y=6+Math.floor(rand()*(H-12));if(Math.hypot(x-72,y-48)<18)continue;const e=this.add('deposit',-1,x+.5,y+.5,id);e.resource=i%2?'metal':'crystals';e.amount=2000;}
+  // Guaranteed vents sit beyond the initial metal/crystal belt on every planet.
+  for(const [dx,dy]of [[-18,-12],[18,12]]){const e=this.add('deposit',-1,72+dx,48+dy,id);e.resource='gas';e.amount=1800;}
+  for(let i=0;i<3;i++){const angle=rand()*Math.PI*2,radius=26+rand()*12;const e=this.add('deposit',-1,Math.round(72+Math.cos(angle)*radius)+.5,Math.round(48+Math.sin(angle)*radius)+.5,id);e.resource='gas';e.amount=1800;}
   return p;
  }
  switchPlanet(id,team=0){if(this.regions[id]?.owner!==team)return false;this.planet(id);this.activePlanet=id;return true;}
@@ -123,13 +128,13 @@ class Game{
  canBuild(type,x,y,team=0,id=this.activePlanet){const s=stats[type];if(this.result||!s?.cost||type==='base'||!Number.isInteger(x)||!Number.isInteger(y)||this.regions[id]?.owner!==team||!this.alive(id).some(e=>e.type==='base'&&e.team===team&&this.ready(e))||!this.affordable(s.cost,team))return false;
   for(const dx of [-.5,.5])for(const dy of [-.5,.5])if(this.cellBlocked(Math.floor(x+dx),Math.floor(y+dy),id))return false;
   if(this.alive(id).some(e=>!stats[e.type]?.speed&&e.team>=0&&Math.abs(e.x-x)<e.size/2+2&&Math.abs(e.y-y)<e.size/2+2))return false;
-  if(['metal','crystals'].includes(s.resource)&&!this.alive(id).some(e=>e.type==='deposit'&&e.resource===s.resource&&e.amount>0&&dist(e,{x,y})<=6))return false;return true;
+  if(['metal','crystals','gas'].includes(s.resource)&&!this.alive(id).some(e=>e.type==='deposit'&&e.resource===s.resource&&e.amount>0&&dist(e,{x,y})<=(type==='gasstation'?GAS_RADIUS:6)))return false;return true;
  }
- build(type,x,y,team=0,id=this.activePlanet){if(!this.canBuild(type,x,y,team,id)){if(team===0)this.message='Нужно своё поселение, ресурсы, свободное место и проход между зданиями. Шахте нужна залежь в радиусе 6 клеток.';return false;}this.pay(stats[type].cost,team);const b=this.add(type,team,x,y,id);b.construction=stats[type].buildTime;if(['metal','crystals'].includes(stats[type].resource))b.node=this.alive(id).filter(e=>e.type==='deposit'&&e.resource===stats[type].resource&&e.amount>0).sort((a,c)=>dist(a,b)-dist(c,b))[0]?.id;this.message='Участок размещён. Свободный житель автоматически подойдёт и построит здание.';return b;}
+ build(type,x,y,team=0,id=this.activePlanet){if(!this.canBuild(type,x,y,team,id)){if(team===0)this.message='Нужно своё поселение, ресурсы, свободное место и проход между зданиями. Шахте нужна залежь в радиусе 6 клеток, газовой станции — источник в радиусе 9.';return false;}this.pay(stats[type].cost,team);const b=this.add(type,team,x,y,id);b.construction=stats[type].buildTime;if(['metal','crystals'].includes(stats[type].resource))b.node=this.alive(id).filter(e=>e.type==='deposit'&&e.resource===stats[type].resource&&e.amount>0).sort((a,c)=>dist(a,b)-dist(c,b))[0]?.id;this.message='Участок размещён. Свободный житель автоматически подойдёт и построит здание.';return b;}
  findSite(type,team=0,id=this.activePlanet){const base=this.alive(id).find(e=>e.type==='base'&&e.team===team);if(!base)return null;for(let r=4;r<60;r++)for(let y=Math.floor(base.y)-r;y<=Math.floor(base.y)+r;y++)for(let x=Math.floor(base.x)-r;x<=Math.floor(base.x)+r;x++){if(Math.abs(x-base.x)<r-1&&Math.abs(y-base.y)<r-1)continue;if(this.canBuild(type,x,y,team,id))return{x,y};}return null;}
  road(x,y,team=0,id=this.activePlanet){const p=this.planet(id),key=y*W+x;if(this.result||!Number.isInteger(x)||!Number.isInteger(y)||this.regions[id].owner!==team||!this.alive(id).some(b=>b.type==='base'&&b.team===team&&this.ready(b))||p.roads.has(key)||this.cellBlocked(x,y,id)||!this.pay({money:1,metal:1},team))return false;p.roads.add(key);for(const u of this.alive(id).filter(e=>e.type==='worker'))u.path=[];return true;}
  workers(b){return this.alive(b.planet).filter(e=>e.type==='worker'&&e.job===b.id&&e.team===b.team);}
- release(u){const site=this.get(u.building);if(site?.builder===u.id)site.builder=null;if(site?.repairer===u.id)site.repairer=null;u.job=null;u.building=null;u.inside=null;u.path=[];u.phase=null;u.field=null;u.action=0;u.retry=0;u.pickup=null;u.supply=null;}
+ release(u){const site=this.get(u.building);if(site?.builder===u.id)site.builder=null;if(site?.repairer===u.id)site.repairer=null;u.job=null;u.building=null;u.inside=null;u.path=[];u.phase=null;u.field=null;u.action=0;u.retry=0;u.pickup=null;u.supply=null;u.gasSource=null;u.gasWaiting=false;}
  assign(id,team=0){const b=this.get(id);if(this.result||!this.operational(b)||b.team!==team||this.regions[b.planet].owner!==team||!stats[b.type]?.slots||this.workers(b).length>=stats[b.type].slots)return false;const u=this.alive(b.planet).filter(e=>e.type==='worker'&&e.team===team&&!e.job&&!e.building&&!e.carry).sort((a,c)=>dist(a,b)-dist(c,b))[0];if(!u)return false;this.release(u);u.job=b.id;return true;}
  setHarvestWaiting(id,wait,team=0){const b=this.get(id);if(this.result||b?.type!=='farm'||b.team!==team||!this.ready(b)||this.regions[b.planet].owner!==team||typeof wait!=='boolean')return false;b.waitForRipe=wait;for(const u of this.workers(b))if(!u.phase){u.field=null;u.path=[];u.action=0;u.retry=0;}return true;}
  unassign(id,team=0){const b=this.get(id),u=b&&b.team===team&&this.workers(b).at(-1);if(!u||this.result)return false;this.release(u);return true;}
@@ -145,9 +150,18 @@ class Game{
   if(b.type==='factory'&&inside&&b.buffer<20){if(!b.batch){if(!this.pay(weaponRecipe,b.team))return;b.batch=8;}b.batch=Math.max(0,b.batch-dt);if(b.batch<1e-8){b.batch=0;b.buffer++;}}
   if(b.type==='barracks'&&b.queue.length){const q=b.queue[0],u=this.military.find(u=>u.id===q.id&&u.hp>0);if(!u){this.cancelTraining(b,q);b.queue.shift();return;}if(q.delivered<unitCosts[q.type].weapons)return;q.left-=dt;if(q.left<=0){u.location='reserve';b.queue.shift();}}
  }
+ packGas(u,b,dt){if(!this.operational(b))return;if(this.walkTo(u,b,dt)){u.inside=b.id;u.phase='gas-pack';u.action=Math.min(GAS_PACK_TIME,u.action+dt);if(u.action>=GAS_PACK_TIME&&b.buffer+u.carry.amount<=60){b.buffer+=u.carry.amount;u.carry=null;u.inside=null;u.phase=null;u.action=0;u.path=[];}}}
  worker(u,dt){u.moving=false;if(u.building&&!this.get(u.building))this.release(u);if(u.job&&!this.get(u.job))this.release(u);
   if(u.building){const b=this.get(u.building);if(b.construction>0){this.walkTo(u,b,dt);return;}if(b.hp<b.maxHp&&b.team===u.team){if(this.walkTo(u,b,dt)){u.action+=dt;if(u.action>=1){u.action-=1;if(this.pay({metal:1},u.team))b.hp=Math.min(b.maxHp,b.hp+12);else{b.repairer=null;this.release(u);u.repairRetry=this.time+5;}}}return;}b.repairer=null;this.release(u);}
+  // Raw gas must be sealed at a station before carriers can store it, even after unassignment.
+  if(u.carry?.raw){let station=this.get(u.carry.station);if(station?.team!==u.team||station.type!=='gasstation'){station=this.alive(u.planet).filter(e=>e.type==='gasstation'&&e.team===u.team&&this.ready(e)).sort((a,c)=>dist(a,u)-dist(c,u))[0];if(station){u.carry.station=station.id;u.path=[];u.inside=null;u.phase=null;u.action=0;}}if(station)this.packGas(u,station,dt);return;}
   if(u.job){const b=this.get(u.job);if(!this.ready(b)){this.release(u);return;}if(!this.operational(b))return;
+   if(b.type==='gasstation'){
+    let source=this.get(u.gasSource);if(!source||source.type!=='deposit'||source.resource!=='gas'||source.amount<=0||dist(source,b)>GAS_RADIUS){source=this.alive(u.planet).filter(e=>e.type==='deposit'&&e.resource==='gas'&&e.amount>0&&dist(e,b)<=GAS_RADIUS).sort((a,c)=>dist(a,u)-dist(c,u))[0];if(u.gasSource!==source?.id){u.path=[];u.action=0;u.retry=0;}u.gasSource=source?.id;}
+    const waiting=!source||b.buffer>60-GAS_LOAD;if(!!u.gasWaiting!==waiting){u.gasWaiting=waiting;u.path=[];u.retry=0;u.action=0;}
+    if(waiting){if(u.inside!==b.id&&this.walkTo(u,b,dt)){u.inside=b.id;u.path=[];}return;}
+    u.inside=null;if(this.walkTo(u,source,dt)){u.action+=dt;if(u.action>=GAS_GATHER_TIME){const amount=Math.min(GAS_LOAD,source.amount);source.amount-=amount;u.carry={resource:'gas',amount,raw:true,station:b.id};u.phase=null;u.action=0;u.path=[];u.gasSource=null;}}return;
+   }
    if(b.type==='farm'){
     if(u.phase==='process'){u.action+=dt;if(u.action>=1.5&&b.buffer<=56){b.buffer+=4;u.phase=null;u.field=null;u.action=0;u.inside=null;}return;}
     if(u.phase==='return'){if(this.walkTo(u,b,dt)){u.phase='process';u.inside=b.id;u.action=0;u.path=[];}return;}
@@ -231,10 +245,10 @@ class Game{
   }
  }
  ai(){const team=1;for(const r of this.regions.filter(r=>r.owner===team)){const id=r.id;this.aiDispatch(id);const all=this.alive(id),base=all.find(e=>e.type==='base'&&e.team===team);if(!base){if(!this.missions.some(m=>m.to===id&&m.kind==='colony')&&this.population(team).free>=6)this.colonize(id,team);continue;}
-   const buildOrder=['house','farm','field','ironmine','goldmine','factory','guild','barracks'];for(const type of buildOrder)if(!all.some(e=>e.type===type&&e.team===team)){const site=this.findSite(type,team,id);if(site)this.build(type,site.x,site.y,team,id);break;}
+   const buildOrder=['house','farm','field','ironmine','goldmine','gasstation','factory','guild','barracks'];for(const type of buildOrder)if(!all.some(e=>e.type===type&&e.team===team)){const site=this.findSite(type,team,id);if(site)this.build(type,site.x,site.y,team,id);break;}
    if(this.population(team).free<3&&!all.some(e=>e.type==='house'&&e.construction>0)){const site=this.findSite('house',team,id);if(site)this.build('house',site.x,site.y,team,id);}
    const farms=all.filter(e=>e.type==='farm'&&e.team===team).length,localWorkers=all.filter(e=>e.type==='worker'&&e.team===team);if(localWorkers.length<Math.min(18,8+farms*2)&&this.population(team).free>2&&this.stock(team).money>50)this.hire(base.id,team);
-   for(const b of all.filter(e=>this.ready(e)&&stats[e.type]?.slots)){const desired=['farm','guild'].includes(b.type)?2:1;if(this.workers(b).length<desired&&localWorkers.filter(u=>!u.job&&!u.building&&!u.carry).length>2)this.assign(b.id,team);}
+   for(const b of all.filter(e=>this.ready(e)&&stats[e.type]?.slots)){const desired=['farm','guild','gasstation'].includes(b.type)?2:1;if(this.workers(b).length<desired&&localWorkers.filter(u=>!u.job&&!u.building&&!u.carry).length>2)this.assign(b.id,team);}
    const barracks=all.find(e=>e.type==='barracks'&&this.ready(e));if(barracks&&this.population(team).free>0&&this.army(team,id).length<6&&this.stock(team).money>(this.regions.some(r=>r.owner===team&&!this.alive(r.id).some(e=>e.type==='base'))?240:35)){const order=['soldier','assault','medic','soldier','grenadier'];this.train(barracks.id,team,order[this.military.filter(e=>e.team===team).length%5]);}
    const neededFields=Math.max(2,Math.ceil((this.upkeep(team).food+5)/4));
    if(!all.some(e=>e.construction>0&&['farm','field'].includes(e.type))){const need=all.filter(e=>e.type==='field').length<neededFields?'field':farms<Math.ceil(neededFields/2)?'farm':null;if(need){const site=this.findSite(need,team,id);if(site)this.build(need,site.x,site.y,team,id);}}
@@ -252,5 +266,5 @@ class Game{
   this.military=this.military.filter(u=>u.hp>0);if(this.aiEnabled&&this.aiClock>=4){this.aiClock=0;this.ai();}
  }
 }
-const api={Game,stats,W,H,BW,BH,dist,resources,unitCosts,isMilitary,colonyCost,workerCost,weaponRecipe,ROAD_SPEED,FIELD_YIELD,SOW_TIME,GROW_TIME};if(typeof module!=='undefined')module.exports=api;else root.RTS=api;
+const api={Game,stats,W,H,BW,BH,dist,resources,resourceTiers,unitCosts,isMilitary,colonyCost,workerCost,weaponRecipe,ROAD_SPEED,FIELD_YIELD,SOW_TIME,GROW_TIME,GAS_RADIUS,GAS_LOAD,GAS_GATHER_TIME,GAS_PACK_TIME};if(typeof module!=='undefined')module.exports=api;else root.RTS=api;
 })(typeof window!=='undefined'?window:globalThis);
