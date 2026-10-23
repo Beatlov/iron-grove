@@ -130,6 +130,8 @@ function buildingSprite(ctx,e,x,y,time=0,state={}){
   r(0,3,24,21,'#524d35');r(1,4,22,19,'#726243');for(let row=0;row<4;row++){r(2,6+row*4,20,2,'#3e4931');for(let col=0;col<5;col++){if(e.fieldStage!=='sowing'&&row*5+col<Math.ceil((e.crop||0)/4*20))r(3+col*4,5+row*4,2,e.fieldStage==='growing'?2:3,e.fieldStage==='growing'?'#6d7845':'#a8b763');}}r(0,3,24,1,c.sand);r(0,4,1,19,c.sand);
  }else if(e.type==='factory'){
   panel(1,5,22,18);r(4,10,16,10,c.ink);r(6,12,12,6,c.steel);r(7,13,10,2,c.steelLight);r(10,16,3,4,c.pack);r(1,20,22,2,c.sand);r(4,1,5,8,c.steel);r(16,-2,5,11,c.steel);r(16,-3,5,2,c.sand);r(5,2,3,1,c.glow);r(17,11,3,2,c.hot);
+ }else if(e.type==='weaponshop'){
+  panel(0,6,24,17);r(3,10,18,10,c.ink);r(4,11,16,4,c.steel);r(6,12,12,1,c.steelLight);r(9,15,5,7,c.pack);r(2,2,7,6,c.steel);r(3,1,5,2,c.sand);r(16,5,5,3,c.glow);r(16,18,6,2,c.hot);
  }else if(e.type==='guild'){
   panel(1,6,22,17);panel(4,1,16,7);r(6,3,12,2,c.sand);r(10,8,5,14,c.ink);r(11,10,3,11,c.sand);r(3,12,5,6,c.steel);r(16,12,5,6,c.steel);r(4,13,3,2,c.glow);r(17,13,3,2,c.glow);r(2,20,20,2,c.pack);
  }else if(e.type==='barracks'){
@@ -143,7 +145,7 @@ function buildingSprite(ctx,e,x,y,time=0,state={}){
   // Demonic architecture is armored metal with horn brackets, never organic tentacles.
   poly([[1,10],[0,3],[3,5],[5,9]],trim);poly([[19,9],[23,3],[23,8],[22,12]],trim);if(['barracks','house'].includes(e.type))skull(10,6);r(2,s-3,2,1,c.hot);r(s-4,s-3,2,1,c.hot);
  }
- for(let i=0;i<(state.occupants||0);i++)r(3+i*3,s-1,2,1,signal);
+
  if(state.operating){const shift=Math.floor(time*4)%3;r(s-5,12+shift*2,1,1,signal);if(e.type==='gasstation'){r(5,7+shift*2,2,1,'#d3ebd0');r(17,11-shift*2,2,1,'#d3ebd0');}else if(e.type==='ironmine'){r(3,-2-Math.floor(time*2)%4,2,1,'#afa98b77');}else if(e.type==='quarry'){line(10,9+shift,13,11+shift,trim);}else if(e.type==='farm'){r(11,10+shift,2,1,c.cream);}else if(e.type==='sawmill'){r(5+shift*2,19,3,2,trim);}}
 }
 function fallen(ctx,e,x,y,age){
