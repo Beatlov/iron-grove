@@ -116,7 +116,7 @@ function building(ctx,e,x,y,time=0,state={}){
  }else if(e.type==='goldmine'){
   panel(2,16,20,7);for(const side of [-1,1]){line(12+side*8,17,12+side*6,4,steel,2);r(12+side*6,5,2,4,resources.crystals);}poly([[10,14],[9,6],[12,0],[15,6],[14,14]],edge);poly([[11,12],[10,6],[12,2],[14,6],[13,12]],resources.crystals);r(11,5,1,6,'#e4c5e3');r(9,19,6,1,resources.crystals);
  }else if(e.type==='field'){
-  r(0,3,24,21,'#524d35');r(1,4,22,19,'#726243');for(let row=0;row<4;row++){r(2,6+row*4,20,2,'#3e4931');for(let col=0;col<5;col++){r(3+col*4,5+row*4,2,3,(e.crop||0)>=4?'#a8b763':'#6d7845');}}r(0,3,24,1,c.sand);r(0,4,1,19,c.sand);
+  r(0,3,24,21,'#524d35');r(1,4,22,19,'#726243');for(let row=0;row<4;row++){r(2,6+row*4,20,2,'#3e4931');for(let col=0;col<5;col++){if(e.fieldStage!=='sowing'&&row*5+col<Math.ceil((e.crop||0)/16*20))r(3+col*4,5+row*4,2,e.fieldStage==='growing'?2:3,e.fieldStage==='growing'?'#6d7845':'#a8b763');}}r(0,3,24,1,c.sand);r(0,4,1,19,c.sand);
  }else if(e.type==='factory'){
   panel(1,5,22,18);r(4,10,16,10,c.ink);r(6,12,12,6,c.steel);r(7,13,10,2,c.steelLight);r(10,16,3,4,c.pack);r(1,20,22,2,c.sand);r(4,1,5,8,c.steel);r(16,-2,5,11,c.steel);r(16,-3,5,2,c.sand);r(5,2,3,1,c.glow);r(17,11,3,2,c.hot);
  }else if(e.type==='guild'){

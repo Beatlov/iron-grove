@@ -2,7 +2,7 @@ const {test}=require('node:test');const assert=require('node:assert/strict');
 const {Game,stats,resources,weaponRecipe}=require('../engine');
 const create=()=>new Game(42,{ai:false});const advance=(g,s)=>{for(let i=0;i<Math.ceil(s*10);i++)g.tick(.1);};
 const until=(g,fn,s=150)=>{for(let i=0;i<s*10&&!fn();i++)g.tick(.1);assert.ok(fn(),'simulation condition completed');};
-const rich=g=>{for(const r of resources)g.stock()[r]=10000;};
+const rich=g=>{for(const b of g.storages())b.capacity=100000;for(const r of resources)g.stock()[r]=10000;};
 const build=(g,type)=>{const pos=g.findSite(type);assert.ok(pos,type);const b=g.build(type,pos.x,pos.y);until(g,()=>g.ready(b));return b;};
 test('sides start equally, resources are replaced, workers never appear by themselves',()=>{const g=create();assert.deepEqual(g.stock(0),g.stock(1));assert.deepEqual(resources,['food','money','metal','crystals','weapons']);assert.equal(g.population().total,6);advance(g,60);assert.equal(g.population().workers,6);assert.equal(g.population().capacity,6);});
 test('taxes are earned by all owned planets, independent of a settlement or current view',()=>{const g=create();g.regions[1].owner=0;const money=g.stock().money;advance(g,20);assert.ok(Math.abs(g.stock().money-money-24)<1e-6);assert.equal(g.income(),24);assert.equal(g.alive(1).filter(e=>e.type==='base').length,0);});
