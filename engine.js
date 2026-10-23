@@ -1,4 +1,4 @@
-/* HELIOS H4.2: independent planetary economies, campaign fleets and automatic battles. */
+/* HELIOS H4.3: independent planetary economies, campaign fleets and automatic battles. */
 (function(root){
 'use strict';
 const W=144,H=96,BW=48,BH=32,resources=['food','money','metal','crystals','weapons'];
@@ -127,7 +127,7 @@ class Game{
   }
  }
  production(b,dt){if(!this.operational(b))return;const s=stats[b.type],inside=this.workers(b).filter(u=>u.inside===b.id).length;
-  if(b.type==='field'){b.crop=Math.min(16,b.crop+dt*.4);return;}
+  if(b.type==='field'){b.crop=Math.min(16,b.crop+dt*.4);if(b.crop>=16)b.harvestOpen=true;return;}
   if(b.type==='guild'){this.stock(b.team).money+=inside*s.rate*dt;return;}
   if(['metal','crystals'].includes(s.resource)&&inside){let node=this.get(b.node);if(!node||node.amount<=0){node=this.alive(b.planet).filter(e=>e.type==='deposit'&&e.resource===s.resource&&e.amount>0&&dist(e,b)<=6).sort((a,c)=>dist(a,b)-dist(c,b))[0];b.node=node?.id;}const amount=Math.min(60-b.buffer,inside*s.rate*dt,node?.amount||0);if(node)node.amount-=amount;b.buffer+=amount;}
   if(b.type==='factory'&&inside&&b.buffer<20){if(!b.batch){if(!this.pay(weaponRecipe,b.team))return;b.batch=8;}b.batch=Math.max(0,b.batch-dt);if(b.batch<1e-8){b.batch=0;b.buffer++;}}
@@ -140,11 +140,11 @@ class Game{
     if(u.phase==='process'){u.action+=dt;if(u.action>=1.5){b.buffer=Math.min(60,b.buffer+4);u.phase=null;u.field=null;u.action=0;u.inside=null;}return;}
     if(u.phase==='return'){if(this.walkTo(u,b,dt)){u.phase='process';u.inside=b.id;u.action=0;u.path=[];}return;}
     if(b.buffer>=56)return;
-    const threshold=b.waitForRipe?16:4;
-    let f=this.get(u.field);if(!f||f.team!==u.team||!this.ready(f)||f.crop<threshold){f=this.alive(u.planet).filter(e=>e.type==='field'&&e.team===u.team&&this.ready(e)&&e.crop>=threshold&&dist(e,b)<=9).sort((a,c)=>dist(a,b)-dist(c,b))[0];if(u.field!==f?.id){u.path=[];u.retry=0;}u.field=f?.id;u.action=0;}
+    const harvestable=f=>f?.type==='field'&&f.team===u.team&&this.ready(f)&&f.crop>=4&&(!b.waitForRipe||f.crop>=16||f.harvestOpen)&&dist(f,b)<=9;
+    let f=this.get(u.field);if(!harvestable(f)){f=this.alive(u.planet).filter(harvestable).sort((a,c)=>dist(a,b)-dist(c,b))[0];if(u.field!==f?.id){u.path=[];u.retry=0;}u.field=f?.id;u.action=0;}
     if(!f){if(u.inside!==b.id&&this.walkTo(u,b,dt)){u.inside=b.id;u.path=[];}return;}
     u.inside=null;
-    if(this.walkTo(u,f,dt)){u.action+=dt;if(u.action>=3&&f.crop>=threshold){f.crop-=4;u.action=0;u.phase='return';u.path=[];}}return;
+    if(this.walkTo(u,f,dt)){u.action+=dt;if(u.action>=3&&harvestable(f)){if(f.crop>=16)f.harvestOpen=true;f.crop-=4;if(f.crop<4)f.harvestOpen=false;u.action=0;u.phase='return';u.path=[];}}return;
    }
    if(u.inside===b.id)return;if(this.walkTo(u,b,dt)){u.inside=b.id;u.path=[];}return;
   }
