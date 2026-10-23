@@ -87,6 +87,11 @@ function deposit(ctx,e,x,y,time=0){
  }
 }
 function building(ctx,e,x,y,time=0,state={}){
+ const w=(e.width||e.size||2)*24,h=(e.height||e.size||2)*24,left=x-w/2,top=y-h/2,base=e.type==='base';
+ ctx.save();ctx.beginPath();ctx.rect(left,top,w,h);ctx.clip();ctx.fillStyle='#354234';ctx.fillRect(Math.round(left),Math.round(top),w,h);ctx.strokeStyle='#a0ac7c88';ctx.lineWidth=1;ctx.strokeRect(left+.5,top+.5,w-1,h-1);
+ ctx.translate(left+2,top+2);ctx.scale((w-4)/(base?80:56),(h-4)/(base?84:64));buildingSprite(ctx,{...e,size:base?3:2},base?40:28,base?46:36,time,state);ctx.restore();
+}
+function buildingSprite(ctx,e,x,y,time=0,state={}){
  const c=palettes[e.team===1?1:0],demon=e.team===1,neutral=e.team<0,n=e.size===3?36:24,p=painter(ctx,Math.round(x)-n,Math.round(y)-n,2),{r,line,plate,poly}=p;
  const s=n,roof=c.armor,edge=c.ink,steel=c.steel,trim=c.sand,signal=neutral?'#e1bd78':c.glow;
  const foundation=()=>{plate(0,s-9,s,10,c.dark);r(2,s-2,s-4,1,c.steel);for(let i=0;i<3;i++){r(2+i*3,s-4,2,1,c.hot);r(3+i*3,s-4,1,1,edge);}};
@@ -122,7 +127,7 @@ function building(ctx,e,x,y,time=0,state={}){
  }else if(e.type==='gasstation'){
   panel(0,16,24,8);for(const dx of [2,14]){plate(dx,2,8,17,c.steel);r(dx+1,5,6,10,c.shade);r(dx+2,6,4,8,resources.gas);r(dx+2,6,1,7,c.cream);r(dx,2,8,3,c.sand);r(dx+2,0,4,2,c.steelLight);}line(6,1,18,1,c.steelLight,2);r(9,18,6,5,c.ink);r(10,19,4,2,signal);for(const dx of [2,18]){plate(dx,21,4,5,c.pack);r(dx+1,22,2,2,resources.gas);}
  }else if(e.type==='field'){
-  r(0,3,24,21,'#524d35');r(1,4,22,19,'#726243');for(let row=0;row<4;row++){r(2,6+row*4,20,2,'#3e4931');for(let col=0;col<5;col++){if(e.fieldStage!=='sowing'&&row*5+col<Math.ceil((e.crop||0)/16*20))r(3+col*4,5+row*4,2,e.fieldStage==='growing'?2:3,e.fieldStage==='growing'?'#6d7845':'#a8b763');}}r(0,3,24,1,c.sand);r(0,4,1,19,c.sand);
+  r(0,3,24,21,'#524d35');r(1,4,22,19,'#726243');for(let row=0;row<4;row++){r(2,6+row*4,20,2,'#3e4931');for(let col=0;col<5;col++){if(e.fieldStage!=='sowing'&&row*5+col<Math.ceil((e.crop||0)/4*20))r(3+col*4,5+row*4,2,e.fieldStage==='growing'?2:3,e.fieldStage==='growing'?'#6d7845':'#a8b763');}}r(0,3,24,1,c.sand);r(0,4,1,19,c.sand);
  }else if(e.type==='factory'){
   panel(1,5,22,18);r(4,10,16,10,c.ink);r(6,12,12,6,c.steel);r(7,13,10,2,c.steelLight);r(10,16,3,4,c.pack);r(1,20,22,2,c.sand);r(4,1,5,8,c.steel);r(16,-2,5,11,c.steel);r(16,-3,5,2,c.sand);r(5,2,3,1,c.glow);r(17,11,3,2,c.hot);
  }else if(e.type==='guild'){
