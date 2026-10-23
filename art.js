@@ -1,7 +1,7 @@
 /* HELIOS H3. Native pixel artwork only; this module never advances simulation. */
 (function(root){
 'use strict';
-const resources={food:'#9bd34f',money:'#ddc779',metal:'#8daab8',crystals:'#c48bcc',gas:'#72c7bd',weapons:'#c7a376'};
+const resources={food:'#9bd34f',money:'#ddc779',metal:'#8daab8',crystals:'#c48bcc',gas:'#72c7bd',sulfur:'#d6c85c',weapons:'#c7a376',ammo:'#d8a85c',armor:'#8dabc2',explosives:'#d48162',medicines:'#b8dbc2'};
 const palettes=[
  {ink:'#171b1c',dark:'#303a2c',shade:'#465733',armor:'#718846',light:'#94a760',sand:'#ddc79b',cream:'#f0dcad',steel:'#626a70',steelLight:'#9ca3a0',pack:'#8e6643',glow:'#9ded32',hot:'#dcb76d'},
  {ink:'#1b191d',dark:'#332b30',shade:'#57343a',armor:'#8b4444',light:'#b55b4c',sand:'#b9a080',cream:'#ddc5a0',steel:'#565361',steelLight:'#8e8690',pack:'#695049',glow:'#ffb34c',hot:'#ef7644'}
@@ -31,7 +31,7 @@ function unit(ctx,e,x,y,time=0,state={}){
   plate(9,1,10,9,c.sand);r(8,1,12,3,c.armor);r(9,0,10,2,c.light);r(10,5,8,2,c.ink);r(11,5,6,1,c.glow);r(11,8,6,2,c.sand);
   if(demon){poly([[9,3],[6,-1],[9,0],[11,3]],c.cream);poly([[17,3],[21,-1],[20,3],[19,5]],c.cream);}
   if(state.working){line(18,13,23,8,c.steelLight,2);r(22,6,4,3,c.sand);if(Math.floor(time*7)%2){r(25,6,2,1,c.hot);r(25,10,1,2,c.cream);}}
-  else if(e.carry?.resource==='gas'){for(const dx of [5,15]){plate(dx,13,7,11,c.steel);r(dx+1,15,5,5,resources.gas);r(dx+2,12,3,2,e.carry.raw?c.steelLight:c.glow);r(dx+2,16,1,3,c.cream);}}
+  else if(['gas','sulfur'].includes(e.carry?.resource)){for(const dx of [5,15]){plate(dx,13,7,11,c.steel);r(dx+1,15,5,5,resources[e.carry.resource]);r(dx+2,12,3,2,e.carry.raw?c.steelLight:c.glow);r(dx+2,16,1,3,c.cream);}}
   else if(e.carry){plate(4,13,19,10,c.pack);r(5,14,17,2,c.sand);r(10,16,7,4,resources[e.carry.resource]||c.light);r(7,16,1,5,c.cream);}
   else{r(3,10,4,8,c.sand);r(19,10,4,8,c.sand);r(4,16,3,3,c.pack);r(19,16,3,3,c.pack);}
   return;
@@ -80,6 +80,11 @@ function deposit(ctx,e,x,y,time=0){
  }else if(e.resource==='gas'){
   if(e.type==='deposit'){poly([[1,20],[3,14],[8,10],[17,11],[23,18],[21,22]],'#4b5750');r(6,15,13,5,'#202d2b');r(8,16,9,2,'#416e66');const drift=Math.floor(time*2)%3;r(8,10-drift,5,4,'#6dafa2');r(12,5-drift,5,5,'#88c4b3');r(9,1-drift,4,3,'#a2c8b488');}
   else{plate(5,4,15,19,'#4a6463');r(7,7,11,11,c);r(8,8,2,8,'#bee6d7');r(6,4,13,3,'#a9b4a4');r(10,1,5,3,'#687d71');r(8,19,9,2,'#314941');r(16,9,2,6,'#4d8f85');}
+ }else if(e.resource==='sulfur'){poly([[2,20],[5,11],[10,8],[14,12],[20,10],[24,20]],'#736b3b');r(6,12,5,7,c);r(15,14,6,5,c);r(7,12,2,4,'#f0df91');r(16,14,2,2,'#f0df91');
+ }else if(e.resource==='ammo'){plate(2,8,22,14,'#485045');for(let i=0;i<3;i++){r(5+i*6,10,3,9,c);r(5+i*6,8,3,3,'#efe0b0');}r(3,20,20,2,'#a18c60');
+ }else if(e.resource==='armor'){poly([[4,7],[9,5],[10,8],[14,8],[15,5],[21,7],[19,15],[19,22],[6,22],[6,15]],'#242e35');r(8,9,9,11,c);r(9,10,2,8,'#c8dae0');r(10,20,5,2,'#596e80');
+ }else if(e.resource==='explosives'){plate(3,9,19,13,'#663e36');r(5,11,15,9,c);for(let i=0;i<3;i++)r(6+i*5,11,2,9,'#af503d');r(9,6,7,3,'#49554d');r(12,4,2,3,'#e7c773');
+ }else if(e.resource==='medicines'){plate(3,8,19,14,'#acc3ab');r(5,10,15,10,c);r(11,10,4,10,'#4f875b');r(8,13,10,4,'#4f875b');r(9,5,8,3,'#526b59');
  }else if(e.resource==='food'){
   plate(6,4,14,18,'#75846b');r(8,7,10,11,'#aad06d');r(9,8,2,8,'#e3e9a4');r(7,3,12,4,'#c2c2a8');r(8,18,10,3,'#495945');
  }else if(e.resource==='money'){plate(3,7,20,14,'#827447');r(5,9,16,8,'#d8c478');r(10,10,6,6,'#7e8050');r(12,9,2,8,'#f0df98');}else if(e.resource==='weapons'){plate(2,11,22,6,c||'#6d7472');r(4,12,15,2,'#b3bab0');r(10,16,4,5,'#343b39');r(20,12,6,4,'#303735');r(6,13,2,2,'#b3cb80');}else{
@@ -124,14 +129,15 @@ function buildingSprite(ctx,e,x,y,time=0,state={}){
   panel(5,8,18,15);plate(9,12,10,11,edge);r(11,14,6,8,'#af6c3d');r(12,17,4,5,'#efb465');r(13,19,2,3,c.cream);for(const [dx,dy]of [[1,2],[17,-1]]){r(dx,dy,5,12,edge);r(dx+1,dy+1,3,10,steel);r(dx,dy-1,5,2,trim);}r(1,19,6,3,resources.metal);
  }else if(e.type==='goldmine'){
   panel(2,16,20,7);for(const side of [-1,1]){line(12+side*8,17,12+side*6,4,steel,2);r(12+side*6,5,2,4,resources.crystals);}poly([[10,14],[9,6],[12,0],[15,6],[14,14]],edge);poly([[11,12],[10,6],[12,2],[14,6],[13,12]],resources.crystals);r(11,5,1,6,'#e4c5e3');r(9,19,6,1,resources.crystals);
- }else if(e.type==='gasstation'){
-  panel(0,16,24,8);for(const dx of [2,14]){plate(dx,2,8,17,c.steel);r(dx+1,5,6,10,c.shade);r(dx+2,6,4,8,resources.gas);r(dx+2,6,1,7,c.cream);r(dx,2,8,3,c.sand);r(dx+2,0,4,2,c.steelLight);}line(6,1,18,1,c.steelLight,2);r(9,18,6,5,c.ink);r(10,19,4,2,signal);for(const dx of [2,18]){plate(dx,21,4,5,c.pack);r(dx+1,22,2,2,resources.gas);}
+ }else if(['gasstation','sulfurstation'].includes(e.type)){
+  panel(0,16,24,8);for(const dx of [2,14]){plate(dx,2,8,17,c.steel);r(dx+1,5,6,10,c.shade);r(dx+2,6,4,8,resources[e.type==='sulfurstation'?'sulfur':'gas']);r(dx+2,6,1,7,c.cream);r(dx,2,8,3,c.sand);r(dx+2,0,4,2,c.steelLight);}line(6,1,18,1,c.steelLight,2);r(9,18,6,5,c.ink);r(10,19,4,2,signal);for(const dx of [2,18]){plate(dx,21,4,5,c.pack);r(dx+1,22,2,2,resources[e.type==='sulfurstation'?'sulfur':'gas']);}
  }else if(e.type==='field'){
   r(0,3,24,21,'#524d35');r(1,4,22,19,'#726243');for(let row=0;row<4;row++){r(2,6+row*4,20,2,'#3e4931');for(let col=0;col<5;col++){if(e.fieldStage!=='sowing'&&row*5+col<Math.ceil((e.crop||0)/4*20))r(3+col*4,5+row*4,2,e.fieldStage==='growing'?2:3,e.fieldStage==='growing'?'#6d7845':'#a8b763');}}r(0,3,24,1,c.sand);r(0,4,1,19,c.sand);
- }else if(e.type==='factory'){
+ }else if(['factory','chemical'].includes(e.type)){
   panel(1,5,22,18);r(4,10,16,10,c.ink);r(6,12,12,6,c.steel);r(7,13,10,2,c.steelLight);r(10,16,3,4,c.pack);r(1,20,22,2,c.sand);r(4,1,5,8,c.steel);r(16,-2,5,11,c.steel);r(16,-3,5,2,c.sand);r(5,2,3,1,c.glow);r(17,11,3,2,c.hot);
- }else if(e.type==='weaponshop'){
-  panel(0,6,24,17);r(3,10,18,10,c.ink);r(4,11,16,4,c.steel);r(6,12,12,1,c.steelLight);r(9,15,5,7,c.pack);r(2,2,7,6,c.steel);r(3,1,5,2,c.sand);r(16,5,5,3,c.glow);r(16,18,6,2,c.hot);
+   if(e.type==='chemical'){r(5,11,4,8,resources.medicines);r(15,8,4,11,resources.gas);r(10,13,4,4,c.glow);}
+ }else if(['weaponshop','ammoshop','armorshop','explosiveshop','medicineshop'].includes(e.type)){
+  panel(0,6,24,17);r(3,10,18,10,c.ink);r(4,11,16,4,c.steel);r(6,12,12,1,c.steelLight);r(9,15,5,7,c.pack);r(2,2,7,6,c.steel);r(3,1,5,2,c.sand);r(16,5,5,3,c.glow);r(16,18,6,2,c.hot);const mark={weaponshop:'weapons',ammoshop:'ammo',armorshop:'armor',explosiveshop:'explosives',medicineshop:'medicines'}[e.type];r(5,16,5,4,resources[mark]);if(e.type==='medicineshop'){r(15,10,3,7,resources.medicines);r(13,12,7,3,resources.medicines);}
  }else if(e.type==='guild'){
   panel(1,6,22,17);panel(4,1,16,7);r(6,3,12,2,c.sand);r(10,8,5,14,c.ink);r(11,10,3,11,c.sand);r(3,12,5,6,c.steel);r(16,12,5,6,c.steel);r(4,13,3,2,c.glow);r(17,13,3,2,c.glow);r(2,20,20,2,c.pack);
  }else if(e.type==='barracks'){
@@ -146,7 +152,7 @@ function buildingSprite(ctx,e,x,y,time=0,state={}){
   poly([[1,10],[0,3],[3,5],[5,9]],trim);poly([[19,9],[23,3],[23,8],[22,12]],trim);if(['barracks','house'].includes(e.type))skull(10,6);r(2,s-3,2,1,c.hot);r(s-4,s-3,2,1,c.hot);
  }
 
- if(state.operating){const shift=Math.floor(time*4)%3;r(s-5,12+shift*2,1,1,signal);if(e.type==='gasstation'){r(5,7+shift*2,2,1,'#d3ebd0');r(17,11-shift*2,2,1,'#d3ebd0');}else if(e.type==='ironmine'){r(3,-2-Math.floor(time*2)%4,2,1,'#afa98b77');}else if(e.type==='quarry'){line(10,9+shift,13,11+shift,trim);}else if(e.type==='farm'){r(11,10+shift,2,1,c.cream);}else if(e.type==='sawmill'){r(5+shift*2,19,3,2,trim);}}
+ if(state.operating){const shift=Math.floor(time*4)%3;r(s-5,12+shift*2,1,1,signal);if(['gasstation','sulfurstation'].includes(e.type)){r(5,7+shift*2,2,1,'#d3ebd0');r(17,11-shift*2,2,1,'#d3ebd0');}else if(e.type==='ironmine'){r(3,-2-Math.floor(time*2)%4,2,1,'#afa98b77');}else if(e.type==='quarry'){line(10,9+shift,13,11+shift,trim);}else if(e.type==='farm'){r(11,10+shift,2,1,c.cream);}else if(e.type==='sawmill'){r(5+shift*2,19,3,2,trim);}}
 }
 function fallen(ctx,e,x,y,age){
  const c=palettes[e.team===1?1:0];

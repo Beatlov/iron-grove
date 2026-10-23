@@ -1,8 +1,8 @@
-/* HELIOS H7: independent planetary economies, campaign fleets and automatic battles. */
+/* HELIOS H8: independent planetary economies, campaign fleets and automatic battles. */
 (function(root){
 'use strict';
-const W=144,H=96,BW=48,BH=32,resources=['food','money','metal','crystals','gas','weapons'];
-const resourceTiers={metal:1,crystals:1,gas:1,weapons:2};
+const W=144,H=96,BW=48,BH=32,resources=['food','money','metal','crystals','gas','sulfur','weapons','ammo','armor','explosives','medicines'];
+const resourceTiers={metal:1,crystals:1,gas:1,sulfur:1,weapons:2,ammo:2,armor:2,explosives:2,medicines:2};
 const stats={
  worker:{hp:60,speed:2.1,size:1},
  soldier:{hp:140,speed:2.5,size:1,damage:18,range:5,armor:3,military:true,trainTime:10,food:1,money:1},
@@ -15,22 +15,28 @@ const stats={
  field:{hp:180,size:2,buildTime:8,cost:{metal:8,money:10}},
  ironmine:{hp:400,size:2,buildTime:18,cost:{metal:25,money:25},resource:'metal',slots:2,rate:1.4},
  goldmine:{hp:400,size:2,buildTime:18,cost:{metal:30,money:30},resource:'crystals',slots:2,rate:.9},
- gasstation:{hp:450,size:2,buildTime:20,cost:{metal:35,money:30},resource:'gas',slots:2},
+ gasstation:{hp:450,size:2,buildTime:20,cost:{metal:35,money:30},resource:'gas',slots:2,collector:true},
+ sulfurstation:{hp:450,size:2,buildTime:20,cost:{metal:35,money:30},resource:'sulfur',slots:2,collector:true},
+ chemical:{hp:550,size:4,capacity:240,buildTime:22,cost:{metal:50,money:40,crystals:10}},
  factory:{hp:550,size:4,capacity:240,buildTime:22,cost:{metal:50,money:40,crystals:10}},
- weaponshop:{hp:300,size:2,buildTime:12,cost:{metal:25,money:20},addon:'factory',resource:'weapons',slots:1},
+ weaponshop:{hp:300,size:2,buildTime:12,cost:{metal:25,money:20},addon:'factory',resource:'weapons',slots:1,recipe:{metal:8,gas:2},cycle:8},
+ ammoshop:{hp:300,size:2,buildTime:12,cost:{metal:25,money:20},addon:'factory',resource:'ammo',slots:1,recipe:{sulfur:3,metal:4},cycle:6},
+ armorshop:{hp:300,size:2,buildTime:12,cost:{metal:25,money:20},addon:'factory',resource:'armor',slots:1,recipe:{metal:6,crystals:3},cycle:8},
+ explosiveshop:{hp:300,size:2,buildTime:12,cost:{metal:25,money:20},addon:'factory',resource:'explosives',slots:1,recipe:{sulfur:3,gas:2,crystals:2},cycle:10},
+ medicineshop:{hp:300,size:2,buildTime:12,cost:{metal:25,money:20},addon:'chemical',resource:'medicines',slots:1,recipe:{crystals:3,gas:2},cycle:8},
  guild:{hp:450,size:3,buildTime:16,cost:{metal:30,money:45},resource:'money',slots:2,rate:.15},
  barracks:{hp:650,size:4,buildTime:22,cost:{metal:45,money:40}},
  tower:{hp:800,size:2,buildTime:24,cost:{metal:50,money:45},damage:24,range:7}
 };
-const unitCosts={soldier:{weapons:2,money:28},assault:{weapons:3,money:38},medic:{weapons:2,money:42},grenadier:{weapons:5,money:65}};
-const colonyCost={money:180,metal:80,crystals:15,food:30},workerCost={money:20},weaponRecipe={metal:8,crystals:3,gas:2},ROAD_SPEED=2,FIELD_YIELD=4,SOW_TIME=.6,GROW_TIME=6,HIRE_TIME=8,HARVEST_TIME=.6,FOOD_PROCESS_TIME=.4,GAS_RADIUS=9,GAS_LOAD=4,GAS_GATHER_TIME=3,GAS_PACK_TIME=2;
+const unitCosts={soldier:{weapons:2,ammo:1,armor:1,money:28},assault:{weapons:3,ammo:1,armor:2,money:38},medic:{medicines:2,armor:1,money:42},grenadier:{explosives:3,armor:2,money:65}};
+const colonyCost={money:180,metal:80,crystals:15,food:30},workerCost={money:20},weaponRecipe=stats.weaponshop.recipe,ROAD_SPEED=2,FIELD_YIELD=4,SOW_TIME=.6,GROW_TIME=6,HIRE_TIME=8,HARVEST_TIME=.6,FOOD_PROCESS_TIME=.4,GAS_RADIUS=9,GAS_LOAD=4,GAS_GATHER_TIME=3,GAS_PACK_TIME=2;
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),isMilitary=e=>!!stats[e?.type]?.military;
 const footprint=e=>{const w=e.width||e.size,h=e.height||e.size;return{x:Math.floor(e.x-w/2),y:Math.floor(e.y-h/2),w,h};};
 const placement=(type,x,y)=>{const s=stats[type],w=s.width||s.size,h=s.height||s.size;return{x:Math.round(x-w/2)+w/2,y:Math.round(y-h/2)+h/2};};
 class Game{
  constructor(seed=Math.floor(Math.random()*0xffffffff),options={}){
   this.seed=seed>>>0;this.rng=this.seed;this.aiEnabled=options.ai!==false;this.time=0;this.result=null;this.nextId=1;this.regions=[];this.maps={};this.military=[];this.missions=[];this.battles=[];this.history=[];this.effects=[];this.activePlanet=0;this.economyClock=0;this.aiClock=0;
-  this.teams=[0,1].map(()=>({stock:{food:200,money:220,metal:180,crystals:60,gas:0,weapons:8},pending:Object.fromEntries(resources.map(r=>[r,0])),hungry:false,unpaid:false,desertion:0}));
+  this.teams=[0,1].map(()=>({stock:{food:200,money:220,metal:180,crystals:60,gas:0,sulfur:0,weapons:8,ammo:8,armor:12,explosives:5,medicines:4},pending:Object.fromEntries(resources.map(r=>[r,0])),hungry:false,unpaid:false,desertion:0}));
   this.generateRegions();this.homeRegions=[0,11];
   for(const team of [0,1]){const id=this.homeRegions[team];this.regions[id].owner=team;const p=this.planet(id);const base=this.add('base',team,72,48,id);base.inventory={...this.teams[team].stock};for(let i=0;i<6;i++)this.add('worker',team,76.5,45.5+i,id);}
   for(const team of [0,1])for(const resource of resources)Object.defineProperty(this.teams[team].stock,resource,{enumerable:true,configurable:true,get:()=>this.available(resource,team),set:value=>{const delta=Math.max(0,value)-this.available(resource,team);if(delta>0)this.credit(resource,delta,team);else this.withdraw(resource,-delta,team);}});
@@ -81,33 +87,43 @@ class Game{
   // Guaranteed vents sit beyond the initial metal/crystal belt on every planet.
   for(const [dx,dy]of [[-18,-12],[18,12]]){const e=this.add('deposit',-1,72+dx,48+dy,id);e.resource='gas';e.amount=1800;}
   for(let i=0;i<3;i++){const angle=rand()*Math.PI*2,radius=26+rand()*12;const e=this.add('deposit',-1,Math.round(72+Math.cos(angle)*radius)+.5,Math.round(48+Math.sin(angle)*radius)+.5,id);e.resource='gas';e.amount=1800;}
+  for(const [dx,dy]of [[18,-17],[-22,15]]){const e=this.add('deposit',-1,72+dx,48+dy,id);e.resource='sulfur';e.amount=1800;}
+  for(let i=0;i<3;i++){const e=this.add('deposit',-1,10+Math.floor(rand()*(W-20)),10+Math.floor(rand()*(H-20)),id);e.resource='sulfur';e.amount=1600;}
   return p;
  }
  switchPlanet(id,team=0){if(this.regions[id]?.owner!==team)return false;this.planet(id);this.activePlanet=id;return true;}
  alive(id=this.activePlanet){return this.planet(id)?.entities.filter(e=>e.hp>0)||[];}
- visible(id=this.activePlanet){return this.alive(id).filter(e=>!e.inside);}
+ visible(id=this.activePlanet){const all=this.alive(id);return all.filter(e=>!e.inside&&!(e.type==='deposit'&&all.some(b=>['ironmine','goldmine'].includes(b.type)&&this.covers(b,e)&&stats[b.type].resource===e.resource)));}
+ covers(b,e){const f=footprint(b);return e.x>=f.x&&e.x<f.x+f.w&&e.y>=f.y&&e.y<f.y+f.h;}
+ hub(b){return ['factory','chemical'].includes(b?.type);}
+ requirements(type){return Object.entries(unitCosts[type]||{}).filter(([r])=>r!=='money');}
+ supplied(q){return this.requirements(q.type).every(([r,n])=>(q.deliveries[r]||0)>=n);}
+ supplyTotal(q){return Object.values(q.deliveries).reduce((n,v)=>n+v,0);}
+ supplyRequired(q){return this.requirements(q.type).reduce((n,[r,v])=>n+v,0);}
+ canSupply(type,team=0,planet=this.activePlanet){return this.requirements(type).every(([r,n])=>this.available(r,team,planet)>=n);}
  all(){return Object.values(this.maps).flatMap(p=>p.entities.filter(e=>e.hp>0));}
  get(id){if(id==null)return null;return this.all().find(e=>e.id===id)||null;}
  add(type,team,x,y,planet=this.activePlanet){if(type==='deposit'){x=Math.floor(x)+.5;y=Math.floor(y)+.5;}const s=stats[type]||{hp:1,size:1},e={id:this.nextId++,type,team,x,y,planet,hp:s.hp,maxHp:s.hp,size:s.size,path:[],job:null,building:null,inside:null,carry:null,buffer:0,node:null,construction:0,builder:null,repairer:null,queue:[],hireQueue:[],parent:null,onDemand:false,cool:0,walkDistance:0,moving:false,facingX:1,facingY:0,action:0,phase:null,crop:0,fieldStage:type==='field'?'sowing':null,fieldWork:0,grown:0,growth:0,capacity:s.capacity||0,inventory:s.capacity?Object.fromEntries(resources.map(r=>[r,0])):null,waitForRipe:type==='farm'};this.planet(planet).entities.push(e);return e;}
  storages(team=0,planet=null){return this.all().filter(b=>b.team===team&&b.capacity>0&&this.ready(b)&&(planet===null||b.planet===planet));}
  stored(b){return b?.inventory?resources.reduce((n,r)=>n+b.inventory[r],0):0;}
  room(b){return Math.max(0,b.capacity-this.stored(b));}
- reservedAt(b){return this.all().filter(e=>e.team===b.team&&e.type==='barracks').reduce((n,e)=>n+e.queue.reduce((v,q)=>v+(q.allocations||[]).filter(a=>a.store===b.id).reduce((t,a)=>t+a.amount,0),0),0);}
- available(resource,team=0,planet=null){return this.storages(team,planet).reduce((n,b)=>n+Math.max(0,b.inventory[resource]-(resource==='weapons'?this.reservedAt(b):0)),0);}
+ reservedAt(b,resource='weapons'){return this.all().filter(e=>e.team===b.team&&e.type==='barracks').reduce((n,e)=>n+e.queue.reduce((v,q)=>v+(q.allocations||[]).filter(a=>a.store===b.id&&a.resource===resource).reduce((t,a)=>t+a.amount,0),0),0);}
+ available(resource,team=0,planet=null){return this.storages(team,planet).reduce((n,b)=>n+Math.max(0,b.inventory[resource]-this.reservedAt(b,resource)),0);}
  deposit(b,resource,amount){if(!this.ready(b)||!b.inventory||!resources.includes(resource))return 0;const moved=Math.min(Math.max(0,amount),this.inputRoom(b,resource));b.inventory[resource]+=moved;return moved;}
  credit(resource,amount,team=0,planet=null){let remaining=amount;const stores=this.storages(team).sort((a,b)=>(a.planet!==planet)-(b.planet!==planet));for(const b of stores){remaining-=this.deposit(b,resource,remaining);if(remaining<1e-8)break;}return Math.max(0,remaining);}
  refund(resource,amount,team=0){this.teams[team].pending[resource]+=this.credit(resource,amount,team);}
- withdraw(resource,amount,team=0){let left=amount;for(const b of this.storages(team)){const moved=Math.min(left,Math.max(0,b.inventory[resource]-(resource==='weapons'?this.reservedAt(b):0)));b.inventory[resource]-=moved;left-=moved;if(left<1e-8)break;}return amount-left;}
- reserveWeapons(q,b,amount){for(const store of this.storages(b.team,b.planet)){const moved=Math.min(amount,Math.max(0,store.inventory.weapons-this.reservedAt(store)));if(moved>0){q.allocations.push({store:store.id,amount:moved});q.reserved+=moved;amount-=moved;}if(amount<1e-8)break;}}
+ withdraw(resource,amount,team=0){let left=amount;for(const b of this.storages(team)){const moved=Math.min(left,Math.max(0,b.inventory[resource]-this.reservedAt(b,resource)));b.inventory[resource]-=moved;left-=moved;if(left<1e-8)break;}return amount-left;}
+ reserveWeapons(q,b,amount){this.reserveMaterial(q,b,'weapons',amount);}
+ reserveMaterial(q,b,resource,amount){for(const store of this.storages(b.team,b.planet)){const moved=Math.min(amount,Math.max(0,store.inventory[resource]-this.reservedAt(store,resource)));if(moved>0){q.allocations.push({store:store.id,resource,amount:moved});if(resource==='weapons')q.reserved+=moved;amount-=moved;}if(amount<1e-8)break;}}
  addons(b){return this.alive(b.planet).filter(e=>e.parent===b.id&&e.team===b.team);}
- target(b){const r=stats[b.type]?.resource||'weapons';return r==='food'?Math.max(20,this.upkeep(b.team).food*3):({metal:80,crystals:30,gas:20,weapons:10,money:100}[r]||0);}
+ target(b){const r=stats[b.type]?.resource||'weapons';return r==='food'?Math.max(20,this.upkeep(b.team).food*3):({metal:80,crystals:30,gas:20,sulfur:20,weapons:10,ammo:10,armor:10,explosives:6,medicines:6,money:100}[r]||0);}
  productionNeeded(b){const parent=this.get(b.parent);return !(b.onDemand||parent?.onDemand)||this.available(stats[b.type]?.resource||'weapons',b.team,b.planet)<this.target(b);}
  setDemand(id,enabled,team=0){const b=this.get(id);if(this.result||b?.team!==team||!this.ready(b)||typeof enabled!=='boolean'||!this.isProducer(b))return false;b.onDemand=enabled;return true;}
- isProducer(b){return !!b&&(!!stats[b.type]?.resource||b.type==='factory');}
- inputRoom(b,r){if(b.type!=='factory')return this.room(b);if(r==='weapons')return this.room(b);if(!weaponRecipe[r])return 0;const active=this.addons(b).some(a=>this.operational(a)&&this.workers(a).length&&this.productionNeeded(a));return active?Math.max(0,Math.min(this.room(b),weaponRecipe[r]*2-b.inventory[r])):0;}
+ isProducer(b){return !!b&&(!!stats[b.type]?.resource||this.hub(b));}
+ inputRoom(b,r){if(!this.hub(b))return this.room(b);if(resourceTiers[r]===2)return this.room(b);const need=this.addons(b).filter(a=>this.operational(a)&&this.workers(a).length&&this.productionNeeded(a)).reduce((n,a)=>n+(stats[a.type].recipe?.[r]||0)*2,0);return Math.max(0,Math.min(this.room(b),need-b.inventory[r]));}
  claimed(u,key,id){return this.alive(u.planet).some(w=>w.type==='worker'&&w.id!==u.id&&w[key]===id&&(key!=='field'||!w.phase));}
- productionView(b){let progress=0;const ws=this.workers(b);if(b.construction>0)progress=1-b.construction/stats[b.type].buildTime;else if(b.type==='base'&&b.hireQueue.length)progress=1-b.hireQueue[0].left/HIRE_TIME;else if(b.type==='barracks'&&b.queue.length){const q=b.queue[0];progress=q.delivered>=unitCosts[q.type].weapons?1-q.left/stats[q.type].trainTime:0;}else if(b.type==='weaponshop')progress=b.batch?1-b.batch/8:0;else if(b.type==='factory')progress=Math.max(0,...this.addons(b).map(a=>a.batch?1-a.batch/8:0));else if(b.type==='field')progress=b.fieldStage==='growing'?b.growth/GROW_TIME:b.fieldStage==='harvest'?1:b.fieldWork/SOW_TIME;else if(b.type==='farm'||b.type==='gasstation')progress=Math.max(0,...ws.map(w=>w.phase==='process'?w.action/FOOD_PROCESS_TIME:w.phase==='gas-pack'?w.action/GAS_PACK_TIME:w.gasSource?w.action/GAS_GATHER_TIME:w.field?this.get(w.field)?.fieldStage==='sowing'?this.get(w.field).fieldWork/SOW_TIME:w.action/HARVEST_TIME:0));else if(stats[b.type]?.rate)progress=b.buffer%1;
-  const parent=this.get(b.parent),store=b.type==='weaponshop'?parent:b,used=store?.inventory?this.stored(store):b.type==='barracks'?b.queue.reduce((n,q)=>n+q.delivered,0):b.buffer,capacity=store?.inventory?store.capacity:b.type==='barracks'?15:stats[b.type]?.resource&&b.type!=='guild'?60:0;return{progress:Math.max(0,Math.min(1,progress)),used,capacity,slots:stats[b.type]?.slots||0,occupied:ws.length};}
+ productionView(b){let progress=0;const ws=this.workers(b);if(b.construction>0)progress=1-b.construction/stats[b.type].buildTime;else if(b.type==='base'&&b.hireQueue.length)progress=1-b.hireQueue[0].left/HIRE_TIME;else if(b.type==='barracks'&&b.queue.length){const q=b.queue[0];progress=this.supplied(q)?1-q.left/stats[q.type].trainTime:0;}else if(stats[b.type]?.recipe)progress=b.batch?1-b.batch/stats[b.type].cycle:0;else if(this.hub(b))progress=Math.max(0,...this.addons(b).map(a=>a.batch?1-a.batch/stats[a.type].cycle:0));else if(b.type==='field')progress=b.fieldStage==='growing'?b.growth/GROW_TIME:b.fieldStage==='harvest'?1:b.fieldWork/SOW_TIME;else if(b.type==='farm'||stats[b.type]?.collector)progress=Math.max(0,...ws.map(w=>w.phase==='process'?w.action/FOOD_PROCESS_TIME:w.phase==='gas-pack'?w.action/GAS_PACK_TIME:w.gasSource?w.action/GAS_GATHER_TIME:w.field?this.get(w.field)?.fieldStage==='sowing'?this.get(w.field).fieldWork/SOW_TIME:w.action/HARVEST_TIME:0));else if(stats[b.type]?.rate)progress=b.buffer%1;
+  const parent=this.get(b.parent),store=stats[b.type]?.recipe?parent:b,used=store?.inventory?this.stored(store):b.type==='barracks'?b.queue.reduce((n,q)=>n+this.supplyTotal(q),0):b.buffer,capacity=store?.inventory?store.capacity:b.type==='barracks'?30:stats[b.type]?.resource&&b.type!=='guild'?60:0;return{progress:Math.max(0,Math.min(1,progress)),used,capacity,slots:stats[b.type]?.slots||0,occupied:ws.length};}
  resetField(f){f.fieldStage='sowing';f.fieldWork=0;f.grown=0;f.growth=0;f.crop=0;}
  stock(team=0){return this.teams[team].stock;}
  affordable(cost,team=0){return !!cost&&Object.entries(cost).every(([r,n])=>Number.isFinite(n)&&n>=0&&this.stock(team)[r]>=n);}
@@ -126,7 +142,8 @@ class Game{
  path(sx,sy,tx,ty,id=this.activePlanet){
   sx=Math.floor(sx);sy=Math.floor(sy);tx=Math.floor(tx);ty=Math.floor(ty);if(sx<0||sy<0||sx>=W||sy>=H||this.cellBlocked(tx,ty,id))return[];
   const blocked=this.blockedGrid(id),roads=this.planet(id).roads,start=sy*W+sx,goal=ty*W+tx,prev=new Int32Array(W*H).fill(-1),cost=new Float64Array(W*H).fill(Infinity),offCost=new Float64Array(W*H).fill(Infinity),heap=[];
-  const compare=(a,b)=>a.off-b.off||a.f-b.f;
+  const offHeuristic=k=>roads.size?0:Math.hypot(tx-k%W,ty-Math.floor(k/W));
+  const compare=(a,b)=>(a.off+offHeuristic(a.k))-(b.off+offHeuristic(b.k))||a.f-b.f;
   const heuristic=(x,y)=>Math.hypot(tx-x,ty-y)/ROAD_SPEED;
   const push=n=>{let i=heap.length;heap.push(n);while(i){const p=(i-1)>>1;if(compare(heap[p],n)<=0)break;heap[i]=heap[p];i=p;}heap[i]=n;};
   const pop=()=>{const first=heap[0],last=heap.pop();if(heap.length){let i=0;while(i*2+1<heap.length){let c=i*2+1;if(c+1<heap.length&&compare(heap[c+1],heap[c])<0)c++;if(compare(heap[c],last)>=0)break;heap[i]=heap[c];i=c;}heap[i]=last;}return first;};
@@ -142,15 +159,16 @@ class Game{
  canBuild(type,x,y,team=0,id=this.activePlanet,parent=null){const s=stats[type];if(this.result||!s?.cost||type==='base'||this.regions[id]?.owner!==team||!this.alive(id).some(e=>e.type==='base'&&e.team===team&&this.ready(e))||!this.affordable(s.cost,team))return false;
   const host=this.get(parent);if(s.addon&&(!this.operational(host)||host.type!==s.addon||host.team!==team||host.planet!==id||this.addons(host).some(a=>a.type===type)))return false;
   const w=s.width||s.size,h=s.height||s.size;if(!Number.isInteger(x-w/2)||!Number.isInteger(y-h/2))return false;const f=footprint({x,y,size:s.size,width:w,height:h}),roads=this.planet(id).roads;
-  for(let cy=f.y;cy<f.y+h;cy++)for(let cx=f.x;cx<f.x+w;cx++)if(this.cellBlocked(cx,cy,id)||roads.has(cy*W+cx))return false;
+  const ore=['metal','crystals'].includes(s.resource),covered=this.alive(id).filter(e=>e.type==='deposit'&&e.resource===s.resource&&e.amount>0&&this.covers({x,y,size:s.size},e));if(ore&&!covered.length)return false;
+  for(let cy=f.y;cy<f.y+h;cy++)for(let cx=f.x;cx<f.x+w;cx++){if(cx<1||cy<1||cx>=W-1||cy>=H-1||this.planet(id).terrain[cy]?.[cx]===1||roads.has(cy*W+cx))return false;if(this.alive(id).some(e=>!stats[e.type]?.speed&&!(ore&&e.type==='deposit'&&e.resource===s.resource)&&this.covers(e,{x:cx+.5,y:cy+.5})))return false;}
   if(this.alive(id).some(e=>e.type==='worker'&&!e.inside&&e.x>=f.x&&e.x<f.x+w&&e.y>=f.y&&e.y<f.y+h))return false;
   if(s.addon){const h=footprint(host),edge=(f.x+w===h.x||h.x+h.w===f.x)&&f.y<h.y+h.h&&f.y+f.h>h.y||(f.y+f.h===h.y||h.y+h.h===f.y)&&f.x<h.x+h.w&&f.x+w>h.x;if(!edge)return false;}
   if(this.alive(id).some(e=>{if(stats[e.type]?.speed||e.team<0||e.id===parent)return false;const b=footprint(e);return f.x<b.x+b.w+1&&f.x+w+1>b.x&&f.y<b.y+b.h+1&&f.y+h+1>b.y;}))return false;
-  if(['metal','crystals','gas'].includes(s.resource)&&!this.alive(id).some(e=>e.type==='deposit'&&e.resource===s.resource&&e.amount>0&&dist(e,{x,y})<=(type==='gasstation'?GAS_RADIUS:6)))return false;return true;
+  if(s.collector&&this.alive(id).some(e=>e.type==='deposit'&&e.resource===s.resource&&dist(e,{x,y})<4))return false;return true;
  }
- build(type,x,y,team=0,id=this.activePlanet,parent=null){if(!this.canBuild(type,x,y,team,id,parent)){if(team===0)this.message='Нужно своё поселение, ресурсы, свободное место и проход между зданиями. Шахте нужна залежь в радиусе 6 клеток, газовой станции — источник в радиусе 9.';return false;}this.pay(stats[type].cost,team);const b=this.add(type,team,x,y,id);b.construction=stats[type].buildTime;b.parent=parent;if(['metal','crystals'].includes(stats[type].resource))b.node=this.alive(id).filter(e=>e.type==='deposit'&&e.resource===stats[type].resource&&e.amount>0).sort((a,c)=>dist(a,b)-dist(c,b))[0]?.id;this.message='Участок размещён. Свободный житель автоматически подойдёт и построит здание.';return b;}
- findAddonSite(parent,type='weaponshop',team=0){const b=this.get(parent);if(!b)return null;const f=footprint(b),size=stats[type].size;for(let y=f.y-size;y<=f.y+f.h;y++)for(let x=f.x-size;x<=f.x+f.w;x++){const pos={x:x+size/2,y:y+size/2};if(this.canBuild(type,pos.x,pos.y,team,b.planet,parent))return pos;}return null;}
- findSite(type,team=0,id=this.activePlanet){const base=this.alive(id).find(e=>e.type==='base'&&e.team===team);if(!base)return null;for(let r=4;r<60;r++)for(let y=Math.floor(base.y)-r;y<=Math.floor(base.y)+r;y++)for(let x=Math.floor(base.x)-r;x<=Math.floor(base.x)+r;x++){if(Math.abs(x-base.x)<r-1&&Math.abs(y-base.y)<r-1)continue;const pos=placement(type,x,y);if(this.canBuild(type,pos.x,pos.y,team,id))return pos;}return null;}
+ build(type,x,y,team=0,id=this.activePlanet,parent=null){if(!this.canBuild(type,x,y,team,id,parent)){if(team===0)this.message='Нужно своё поселение, ресурсы, свободное место и проход между зданиями. Шахта должна стоять на своей залежи. Сборный пункт — не ближе 4 клеток к своему источнику; пристройка — вплотную к заводу.';return false;}this.pay(stats[type].cost,team);const b=this.add(type,team,x,y,id);b.construction=stats[type].buildTime;b.parent=parent;if(['metal','crystals'].includes(stats[type].resource))b.node=this.alive(id).filter(e=>e.type==='deposit'&&e.resource===stats[type].resource&&e.amount>0).sort((a,c)=>dist(a,b)-dist(c,b))[0]?.id;this.message='Участок размещён. Свободный житель автоматически подойдёт и построит здание.';return b;}
+ findAddonSite(parent,type='weaponshop',team=0){const b=this.get(parent);if(!b||!this.affordable(stats[type]?.cost,team))return null;const f=footprint(b),size=stats[type].size;for(let y=f.y-size;y<=f.y+f.h;y++)for(let x=f.x-size;x<=f.x+f.w;x++){const pos={x:x+size/2,y:y+size/2};if(this.canBuild(type,pos.x,pos.y,team,b.planet,parent))return pos;}return null;}
+ findSite(type,team=0,id=this.activePlanet){if(!this.affordable(stats[type]?.cost,team))return null;const base=this.alive(id).find(e=>e.type==='base'&&e.team===team);if(!base)return null;for(let r=4;r<60;r++)for(let y=Math.floor(base.y)-r;y<=Math.floor(base.y)+r;y++)for(let x=Math.floor(base.x)-r;x<=Math.floor(base.x)+r;x++){if(Math.abs(x-base.x)<r-1&&Math.abs(y-base.y)<r-1)continue;const pos=placement(type,x,y);if(this.canBuild(type,pos.x,pos.y,team,id))return pos;}return null;}
  roadPlan(cells,team=0,id=this.activePlanet){const p=this.planet(id),unique=new Map();for(const c of cells||[])if(Number.isInteger(c.x)&&Number.isInteger(c.y))unique.set(c.y*W+c.x,{x:c.x,y:c.y});else return{cells:[],blocked:[],cost:{money:0,metal:0},valid:false};const fresh=[...unique.values()].filter(c=>!p.roads.has(c.y*W+c.x)),blocked=fresh.filter(c=>this.cellBlocked(c.x,c.y,id)),cost={money:fresh.length,metal:fresh.length};return{cells:fresh,blocked,cost,valid:!this.result&&this.regions[id]?.owner===team&&this.alive(id).some(b=>b.type==='base'&&b.team===team&&this.ready(b))&&!blocked.length&&this.affordable(cost,team)};}
  buildRoads(cells,team=0,id=this.activePlanet){const plan=this.roadPlan(cells,team,id);if(!plan.valid||!plan.cells.length||!this.pay(plan.cost,team))return false;const p=this.planet(id);for(const c of plan.cells)p.roads.add(c.y*W+c.x);for(const u of this.alive(id).filter(e=>e.type==='worker'))u.path=[];return true;}
  road(x,y,team=0,id=this.activePlanet){return this.buildRoads([{x,y}],team,id);}
@@ -170,23 +188,24 @@ class Game{
   if(b.type==='field'){if(b.fieldStage==='growing'){b.growth=Math.min(GROW_TIME,b.growth+dt);const grown=Math.min(FIELD_YIELD,Math.floor((b.growth+1e-8)/GROW_TIME*FIELD_YIELD));b.crop+=grown-b.grown;b.grown=grown;if(b.growth>=GROW_TIME-1e-8){b.growth=GROW_TIME;b.fieldStage='harvest';if(b.crop===0)this.resetField(b);}}return;}
   if(!b.batch&&this.isProducer(b)&&!this.productionNeeded(b))return;
   if(b.type==='guild'){this.credit('money',inside*s.rate*dt,b.team,b.planet);return;}
-  if(['metal','crystals'].includes(s.resource)&&inside){let node=this.get(b.node);if(!node||node.amount<=0){node=this.alive(b.planet).filter(e=>e.type==='deposit'&&e.resource===s.resource&&e.amount>0&&dist(e,b)<=6).sort((a,c)=>dist(a,b)-dist(c,b))[0];b.node=node?.id;}const amount=Math.min(60-b.buffer,inside*s.rate*dt,node?.amount||0);if(node)node.amount-=amount;b.buffer+=amount;}
-  if(b.type==='weaponshop'&&inside){const host=this.get(b.parent);if(!this.operational(host)||host.team!==b.team)return;if(!b.batch){if(!Object.entries(weaponRecipe).every(([r,n])=>host.inventory[r]>=n))return;for(const [r,n]of Object.entries(weaponRecipe))host.inventory[r]-=n;b.batch=8;}b.batch=Math.max(1e-9,b.batch-dt);if(b.batch<1e-8&&this.room(host)>=1){b.batch=0;host.inventory.weapons++;}}
+  if(['metal','crystals'].includes(s.resource)&&inside){let node=this.get(b.node);if(!node||node.amount<=0){node=this.alive(b.planet).filter(e=>e.type==='deposit'&&e.resource===s.resource&&e.amount>0&&this.covers(b,e)).sort((a,c)=>dist(a,b)-dist(c,b))[0];b.node=node?.id;}const amount=Math.min(60-b.buffer,inside*s.rate*dt,node?.amount||0);if(node)node.amount-=amount;b.buffer+=amount;}
+  if(s.recipe&&inside){const host=this.get(b.parent);if(!this.operational(host)||host.team!==b.team||host.type!==s.addon)return;if(!b.batch){if(!Object.entries(s.recipe).every(([r,n])=>host.inventory[r]>=n))return;for(const [r,n]of Object.entries(s.recipe))host.inventory[r]-=n;b.batch=s.cycle;}b.batch=Math.max(1e-9,b.batch-dt);if(b.batch<1e-8&&this.room(host)>=1){b.batch=0;host.inventory[s.resource]++;}}
 
-  if(b.type==='barracks'&&b.queue.length){const q=b.queue[0],u=this.military.find(u=>u.id===q.id&&u.hp>0);if(!u){this.cancelTraining(b,q);b.queue.shift();return;}if(q.delivered<unitCosts[q.type].weapons)return;q.left-=dt;if(q.left<=0){u.location='reserve';b.queue.shift();}}
+
+  if(b.type==='barracks'&&b.queue.length){const q=b.queue[0],u=this.military.find(u=>u.id===q.id&&u.hp>0);if(!u){this.cancelTraining(b,q);b.queue.shift();return;}if(!this.supplied(q))return;q.left-=dt;if(q.left<=0){u.location='reserve';b.queue.shift();}}
  }
  packGas(u,b,dt){if(!this.operational(b))return;if(this.walkTo(u,b,dt)){u.inside=b.id;u.phase='gas-pack';u.action=Math.min(GAS_PACK_TIME,u.action+dt);if(u.action>=GAS_PACK_TIME&&b.buffer+u.carry.amount<=60){b.buffer+=u.carry.amount;u.carry=null;u.inside=null;u.phase=null;u.action=0;u.path=[];}}}
  worker(u,dt){u.moving=false;if(u.building&&!this.get(u.building))this.release(u);if(u.job&&!this.get(u.job))this.release(u);
   if(u.building){const b=this.get(u.building);if(b.construction>0){this.walkTo(u,b,dt);return;}if(b.hp<b.maxHp&&b.team===u.team){if(this.walkTo(u,b,dt)){u.action+=dt;if(u.action>=1){u.action-=1;if(this.pay({metal:1},u.team))b.hp=Math.min(b.maxHp,b.hp+12);else{b.repairer=null;this.release(u);u.repairRetry=this.time+5;}}}return;}b.repairer=null;this.release(u);}
   // Raw gas must be sealed at a station before carriers can store it, even after unassignment.
-  if(u.carry?.raw){let station=this.get(u.carry.station);if(station?.team!==u.team||station.type!=='gasstation'){station=this.alive(u.planet).filter(e=>e.type==='gasstation'&&e.team===u.team&&this.ready(e)).sort((a,c)=>dist(a,u)-dist(c,u))[0];if(station){u.carry.station=station.id;u.path=[];u.inside=null;u.phase=null;u.action=0;}}if(station)this.packGas(u,station,dt);return;}
+  if(u.carry?.raw){let station=this.get(u.carry.station);if(station?.team!==u.team||stats[station.type]?.resource!==u.carry.resource){station=this.alive(u.planet).filter(e=>stats[e.type]?.collector&&stats[e.type].resource===u.carry.resource&&e.team===u.team&&this.ready(e)).sort((a,c)=>dist(a,u)-dist(c,u))[0];if(station){u.carry.station=station.id;u.path=[];u.inside=null;u.phase=null;u.action=0;}}if(station)this.packGas(u,station,dt);return;}
   if(u.job){const b=this.get(u.job);if(!this.ready(b)){this.release(u);return;}if(!this.operational(b))return;
-   if(b.type==='gasstation'){
+   if(stats[b.type]?.collector){
     if(b.buffer>60-GAS_LOAD||!this.productionNeeded(b)){u.gasSource=null;u.path=[];u.action=0;return;}
-    let source=this.get(u.gasSource);if(!source||source.type!=='deposit'||source.resource!=='gas'||source.amount<=0||dist(source,b)>GAS_RADIUS||this.claimed(u,'gasSource',source.id)){source=this.alive(u.planet).filter(e=>e.type==='deposit'&&e.resource==='gas'&&e.amount>0&&dist(e,b)<=GAS_RADIUS&&!this.claimed(u,'gasSource',e.id)).sort((a,c)=>dist(a,u)-dist(c,u))[0];if(u.gasSource!==source?.id){u.path=[];u.action=0;u.retry=0;}u.gasSource=source?.id;}
+    let source=this.get(u.gasSource);if(!source||source.type!=='deposit'||source.resource!==stats[b.type].resource||source.amount<=0||this.claimed(u,'gasSource',source.id)){source=this.alive(u.planet).filter(e=>e.type==='deposit'&&e.resource===stats[b.type].resource&&e.amount>0&&!this.claimed(u,'gasSource',e.id)).sort((a,c)=>dist(a,u)-dist(c,u))[0];if(u.gasSource!==source?.id){u.path=[];u.action=0;u.retry=0;}u.gasSource=source?.id;}
     const waiting=!source||b.buffer>60-GAS_LOAD;if(!!u.gasWaiting!==waiting){u.gasWaiting=waiting;u.path=[];u.retry=0;u.action=0;}
     if(waiting||!this.productionNeeded(b)){if(u.inside!==b.id&&this.walkTo(u,b,dt)){u.inside=b.id;u.path=[];}return;}
-    u.inside=null;if(this.walkTo(u,source,dt)){u.action+=dt;if(u.action>=GAS_GATHER_TIME){const amount=Math.min(GAS_LOAD,source.amount);source.amount-=amount;u.carry={resource:'gas',amount,raw:true,station:b.id};u.phase=null;u.action=0;u.path=[];u.gasSource=null;}}return;
+    u.inside=null;if(this.walkTo(u,source,dt)){u.action+=dt;if(u.action>=GAS_GATHER_TIME){const amount=Math.min(GAS_LOAD,source.amount);source.amount-=amount;u.carry={resource:stats[b.type].resource,amount,raw:true,station:b.id};u.phase=null;u.action=0;u.path=[];u.gasSource=null;}}return;
    }
    if(b.type==='farm'){
     if(u.phase==='process'){u.action+=dt;if(u.action>=FOOD_PROCESS_TIME&&b.buffer<=56){b.buffer+=4;u.phase=null;u.field=null;u.action=0;u.inside=null;}return;}
@@ -205,32 +224,32 @@ class Game{
    if(u.inside===b.id)return;if(this.walkTo(u,b,dt)){u.inside=b.id;u.path=[];}return;
   }
   if(u.inside)u.inside=null;
-  if(u.carry?.order){const b=this.get(u.carry.target),q=this.supplyOrder(b,u.carry.order,u.team);if(q){if(this.walkTo(u,b,dt)){q.delivered+=u.carry.amount;u.carry=null;u.path=[];}return;}delete u.carry.order;delete u.carry.target;u.path=[];}
+  if(u.carry?.order){const b=this.get(u.carry.target),q=this.supplyOrder(b,u.carry.order,u.team);if(q){if(this.walkTo(u,b,dt)){q.deliveries[u.carry.resource]=(q.deliveries[u.carry.resource]||0)+u.carry.amount;q.delivered=q.deliveries.weapons||0;u.carry=null;u.path=[];}return;}delete u.carry.order;delete u.carry.target;u.path=[];}
   if(u.carry?.to){const target=this.get(u.carry.to);if(target?.team===u.team&&this.ready(target)&&this.inputRoom(target,u.carry.resource)>0){if(this.walkTo(u,target,dt)){u.carry.amount-=this.deposit(target,u.carry.resource,u.carry.amount);if(u.carry.amount<1e-8)u.carry=null;u.path=[];}return;}delete u.carry.to;u.path=[];}
   if(u.carry){let store=this.get(u.dropoff);if(!store||store.team!==u.team||!this.ready(store)||this.inputRoom(store,u.carry.resource)<1e-8){store=this.storages(u.team,u.planet).filter(e=>this.inputRoom(e,u.carry.resource)>=1).sort((a,c)=>dist(a,u)-dist(c,u)).find(e=>this.adjacent(u,e)||this.nearPath(u,e).length);u.dropoff=store?.id;u.path=[];u.retry=0;}if(store&&this.walkTo(u,store,dt)){u.carry.amount-=this.deposit(store,u.carry.resource,u.carry.amount);if(u.carry.amount<1e-8)u.carry=null;u.dropoff=null;u.path=[];}return;}
   const broken=this.alive(u.planet).filter(b=>b.team===u.team&&this.ready(b)&&b.type!=='worker'&&b.hp<b.maxHp&&!b.repairer).sort((a,c)=>dist(a,u)-dist(c,u))[0];if(broken&&this.stock(u.team).metal>=1&&(u.repairRetry||0)<=this.time){this.release(u);u.building=broken.id;broken.repairer=u.id;return;}
-  // Reserved weapons occupy their actual store until a carrier collects them.
+  // Each reserved military material stays in its source inventory until pickup.
   for(const target of this.alive(u.planet).filter(e=>e.team===u.team&&e.type==='barracks'&&this.ready(e)))for(const order of target.queue){
-   if(!this.supplyOrder(target,order.id,u.team))continue;order.allocations=order.allocations.filter(a=>{const store=this.get(a.store);return store?.team===u.team&&this.ready(store);});order.reserved=order.allocations.reduce((n,a)=>n+a.amount,0);
-   const transit=this.alive(u.planet).filter(w=>w.carry?.order===order.id).reduce((n,w)=>n+w.carry.amount,0),missing=unitCosts[order.type].weapons-order.delivered-order.reserved-transit;if(missing>0)this.reserveWeapons(order,target,missing);
+   if(!this.supplyOrder(target,order.id,u.team))continue;order.allocations=order.allocations.filter(a=>{const store=this.get(a.store);return store?.team===u.team&&this.ready(store);});
+   for(const [r,n]of this.requirements(order.type)){const reserved=order.allocations.filter(a=>a.resource===r).reduce((v,a)=>v+a.amount,0),transit=this.alive(u.planet).filter(w=>w.carry?.order===order.id&&w.carry.resource===r).reduce((v,w)=>v+w.carry.amount,0),missing=n-(order.deliveries[r]||0)-reserved-transit;if(missing>0)this.reserveMaterial(order,target,r,missing);}order.reserved=order.allocations.filter(a=>a.resource==='weapons').reduce((n,a)=>n+a.amount,0);
   }
   let delivery=u.supply,b=delivery&&this.get(delivery.target),q=delivery&&this.supplyOrder(b,delivery.order,u.team);
   if(!q||!q.allocations.some(a=>a.store===delivery.store&&a.amount>0)){u.supply=null;delivery=null;}
-  if(!delivery){for(const target of this.alive(u.planet).filter(e=>e.team===u.team&&e.type==='barracks'&&this.ready(e))){for(const order of target.queue){if(!this.supplyOrder(target,order.id,u.team)||!order.reserved||this.alive(u.planet).some(w=>w.supply?.order===order.id))continue;
-    const store=order.allocations.map(a=>this.get(a.store)).filter(Boolean).sort((a,c)=>dist(a,u)-dist(c,u)).find(e=>this.adjacent(u,e)||this.nearPath(u,e).length);if(store){delivery=u.supply={target:target.id,order:order.id,store:store.id};b=target;q=order;u.path=[];u.pickup=null;break;}}
+  if(!delivery){for(const target of this.alive(u.planet).filter(e=>e.team===u.team&&e.type==='barracks'&&this.ready(e))){for(const order of target.queue){if(!this.supplyOrder(target,order.id,u.team)||!order.allocations.length||this.alive(u.planet).some(w=>w.supply?.order===order.id))continue;
+    const store=order.allocations.map(a=>this.get(a.store)).filter(Boolean).sort((a,c)=>dist(a,u)-dist(c,u)).find(e=>this.adjacent(u,e)||this.nearPath(u,e).length);if(store){delivery=u.supply={target:target.id,order:order.id,store:store.id};b=target;q=order;u.path=[];u.pickup=null;u.transfer=null;break;}}
    if(delivery)break;}}
-  if(delivery){const store=this.get(delivery.store);if(!store||store.team!==u.team||!this.ready(store)){u.supply=null;u.path=[];return;}if(this.walkTo(u,store,dt)){let left=20,amount=0;for(const allocation of q.allocations.filter(a=>a.store===store.id)){const moved=Math.min(left,allocation.amount);allocation.amount-=moved;left-=moved;amount+=moved;}q.allocations=q.allocations.filter(a=>a.amount>0);q.reserved-=amount;store.inventory.weapons-=amount;u.carry={resource:'weapons',amount,order:q.id,target:b.id};u.supply=null;u.path=[];}return;}
+  if(delivery){const store=this.get(delivery.store);if(!store||store.team!==u.team||!this.ready(store)){u.supply=null;u.path=[];return;}if(this.walkTo(u,store,dt)){const resource=q.allocations.find(a=>a.store===store.id).resource;let left=20,amount=0;for(const allocation of q.allocations.filter(a=>a.store===store.id&&a.resource===resource)){const moved=Math.min(left,allocation.amount);allocation.amount-=moved;left-=moved;amount+=moved;}q.allocations=q.allocations.filter(a=>a.amount>0);if(resource==='weapons')q.reserved-=amount;store.inventory[resource]-=amount;u.carry={resource,amount,order:q.id,target:b.id};u.supply=null;u.path=[];}return;}
   let transfer=u.transfer;if(transfer){const target=this.get(transfer.to),from=this.get(transfer.from);if(target?.team!==u.team||!this.ready(target)||from?.team!==u.team||!this.ready(from)||this.inputRoom(target,transfer.resource)<1||from.inventory[transfer.resource]<1){u.transfer=null;u.path=[];transfer=null;}}
-  if(!transfer){for(const target of this.storages(u.team,u.planet).filter(e=>e.type==='factory')){for(const r of Object.keys(weaponRecipe)){const key=target.id+':'+r;if(this.alive(u.planet).some(w=>w.transfer?.key===key||w.carry?.to===target.id&&w.carry.resource===r))continue;const need=this.inputRoom(target,r);if(need<1)continue;const from=this.storages(u.team,u.planet).filter(e=>e.type!=='factory'&&e.inventory[r]>=1).sort((a,b)=>dist(a,u)-dist(b,u))[0];if(from){transfer=u.transfer={key,from:from.id,to:target.id,resource:r};u.path=[];u.pickup=null;break;}}if(transfer)break;}}
+  if(!transfer){for(const target of this.storages(u.team,u.planet).filter(e=>this.hub(e))){for(const r of resources.filter(r=>resourceTiers[r]===1)){const key=target.id+':'+r;if(this.alive(u.planet).some(w=>w.transfer?.key===key||w.carry?.to===target.id&&w.carry.resource===r))continue;const need=this.inputRoom(target,r);if(need<1)continue;const from=this.storages(u.team,u.planet).filter(e=>!this.hub(e)&&e.inventory[r]>=1).sort((a,b)=>dist(a,u)-dist(b,u))[0];if(from){transfer=u.transfer={key,from:from.id,to:target.id,resource:r};u.path=[];u.pickup=null;break;}}if(transfer)break;}}
   if(transfer){const from=this.get(transfer.from),target=this.get(transfer.to);if(this.walkTo(u,from,dt)){const amount=Math.min(20,from.inventory[transfer.resource],this.inputRoom(target,transfer.resource));from.inventory[transfer.resource]-=amount;u.carry={resource:transfer.resource,amount,to:target.id};u.transfer=null;u.path=[];}return;}
   if(!this.storages(u.team,u.planet).some(e=>this.room(e)>=1))return;
   let source=this.get(u.pickup);if(!source||source.team!==u.team||source.buffer<1||this.claimed(u,'pickup',source.id)){source=this.alive(u.planet).filter(b=>b.team===u.team&&b.buffer>=1&&stats[b.type]?.resource!=='money'&&!this.claimed(u,'pickup',b.id)).sort((a,c)=>c.buffer/(dist(c,u)+1)-a.buffer/(dist(a,u)+1))[0];u.pickup=source?.id;u.path=[];}
   if(source&&this.walkTo(u,source,dt)){const amount=Math.min(20,Math.floor(source.buffer));source.buffer-=amount;u.carry={resource:stats[source.type].resource,amount};u.path=[];u.pickup=null;}
 
  }
- train(id,team=0,type='soldier'){const b=this.get(id),cost=unitCosts[type];if(this.result||!cost||!this.operational(b)||b.team!==team||b.type!=='barracks'||this.regions[b.planet].owner!==team||b.queue.length>=3||this.population(team).free<1||this.available('weapons',team,b.planet)<cost.weapons||!this.pay({money:cost.money},team))return false;const u={id:this.nextId++,type,team,planet:b.planet,location:'training',hp:stats[type].hp,maxHp:stats[type].hp};this.military.push(u);const q={id:u.id,type,left:stats[type].trainTime,reserved:0,delivered:0,allocations:[]};b.queue.push(q);this.reserveWeapons(q,b,cost.weapons);return true;}
+ train(id,team=0,type='soldier'){const b=this.get(id),cost=unitCosts[type];if(this.result||!cost||!this.operational(b)||b.team!==team||b.type!=='barracks'||this.regions[b.planet].owner!==team||b.queue.length>=3||this.population(team).free<1||!this.canSupply(type,team,b.planet)||!this.pay({money:cost.money},team))return false;const u={id:this.nextId++,type,team,planet:b.planet,location:'training',hp:stats[type].hp,maxHp:stats[type].hp};this.military.push(u);const q={id:u.id,type,left:stats[type].trainTime,reserved:0,delivered:0,deliveries:{},allocations:[]};b.queue.push(q);for(const [r,n]of this.requirements(type))this.reserveMaterial(q,b,r,n);return true;}
  supplyOrder(b,id,team){return b?.team===team&&this.ready(b)&&b.type==='barracks'&&this.military.some(u=>u.id===id&&u.hp>0&&u.team===team&&u.location==='training')?b.queue.find(q=>q.id===id):null;}
- cancelTraining(b,q){q.allocations=[];q.reserved=0;this.refund('weapons',q.delivered||0,b.team);q.delivered=0;const unit=this.military.find(u=>u.id===q.id);if(unit)unit.hp=0;}
+ cancelTraining(b,q){q.allocations=[];q.reserved=0;for(const [r,n]of Object.entries(q.deliveries))this.refund(r,n,b.team);q.deliveries={};q.delivered=0;const unit=this.military.find(u=>u.id===q.id);if(unit)unit.hp=0;}
  canCapture(id,team=0){const r=this.regions[id];return !!r&&r.owner!==team&&r.neighbors.some(n=>this.regions[n].owner===team);}
  sendArmy(from,to,counts,team=0){if(this.result||this.regions[from]?.owner!==team||!this.regions[to]||from===to||this.regions[to].owner!==team&&!this.canCapture(to,team))return false;const chosen=[];
   for(const [type,n]of Object.entries(counts||{})){if(!unitCosts[type]||!Number.isInteger(n)||n<0)return false;const pool=this.army(team,from).filter(u=>u.type===type);if(pool.length<n)return false;chosen.push(...pool.slice(0,n));}if(!chosen.length)return false;
@@ -275,12 +294,13 @@ class Game{
   }
  }
  ai(){const team=1;for(const r of this.regions.filter(r=>r.owner===team)){const id=r.id;this.aiDispatch(id);const all=this.alive(id),base=all.find(e=>e.type==='base'&&e.team===team);if(!base){if(!this.missions.some(m=>m.to===id&&m.kind==='colony')&&this.population(team).free>=6)this.colonize(id,team);continue;}
-   const buildOrder=['house','farm','field','ironmine','goldmine','gasstation','factory','guild','barracks'];for(const type of buildOrder)if(!all.some(e=>e.type===type&&e.team===team)){const site=this.findSite(type,team,id);if(site)this.build(type,site.x,site.y,team,id);break;}
-   if(this.population(team).free<3&&!all.some(e=>e.type==='house'&&e.construction>0)){const site=this.findSite('house',team,id);if(site)this.build('house',site.x,site.y,team,id);}
-   const farms=all.filter(e=>e.type==='farm'&&e.team===team).length,localWorkers=all.filter(e=>e.type==='worker'&&e.team===team);if(localWorkers.length<Math.min(18,8+farms*2)&&this.population(team).free>2&&this.stock(team).money>50)this.hire(base.id,team);
-   for(const b of all.filter(e=>this.ready(e)&&stats[e.type]?.slots)){const desired=['farm','guild','gasstation'].includes(b.type)?2:1;if(this.workers(b).length<desired&&localWorkers.filter(u=>!u.job&&!u.building&&!u.carry).length>2)this.assign(b.id,team);}
-   for(const factory of all.filter(e=>e.type==='factory'&&this.ready(e)&&!this.addons(e).length)){const site=this.findAddonSite(factory.id,'weaponshop',team);if(site)this.build('weaponshop',site.x,site.y,team,id,factory.id);}
+   const farms=all.filter(e=>e.type==='farm'&&e.team===team).length,localWorkers=all.filter(e=>e.type==='worker'&&e.team===team);if(localWorkers.length<Math.min(26,12+farms*3)&&this.population(team).free>2&&this.stock(team).money>50)this.hire(base.id,team);
    const barracks=all.find(e=>e.type==='barracks'&&this.ready(e));if(barracks&&this.population(team).free>0&&this.army(team,id).length<6&&this.stock(team).money>(this.regions.some(r=>r.owner===team&&!this.alive(r.id).some(e=>e.type==='base'))?240:35)){const order=['soldier','assault','medic','soldier','grenadier'];this.train(barracks.id,team,order[this.military.filter(e=>e.team===team).length%5]);}
+   const buildOrder=['house','farm','field','ironmine','goldmine','guild','barracks','gasstation','sulfurstation','factory','chemical'];for(const type of buildOrder)if(!all.some(e=>e.type===type&&e.team===team)){const site=this.findSite(type,team,id);if(site)this.build(type,site.x,site.y,team,id);break;}
+   if(this.population(team).free<3&&!all.some(e=>e.type==='house'&&e.construction>0)){const site=this.findSite('house',team,id);if(site)this.build('house',site.x,site.y,team,id);}
+   const guild=all.find(e=>e.type==='guild'&&this.operational(e));if(guild&&!this.workers(guild).length){const donor=localWorkers.find(u=>['ironmine','goldmine','gasstation','sulfurstation'].includes(this.get(u.job)?.type)&&!u.carry);if(donor){this.release(donor);this.assign(guild.id,team);}}
+   for(const b of all.filter(e=>this.ready(e)&&stats[e.type]?.slots)){const desired=['farm','guild','gasstation','sulfurstation'].includes(b.type)?2:1;if(this.workers(b).length<desired&&localWorkers.filter(u=>!u.job&&!u.building&&!u.carry).length>2)this.assign(b.id,team);}
+   for(const factory of all.filter(e=>this.hub(e)&&this.ready(e))){for(const type of Object.keys(stats).filter(t=>stats[t].addon===factory.type&&!this.addons(factory).some(a=>a.type===t))){const site=this.findAddonSite(factory.id,type,team);if(site){this.build(type,site.x,site.y,team,id,factory.id);break;}}}
    const neededFields=Math.max(2,Math.ceil((this.upkeep(team).food+5)/4));
    if(!all.some(e=>e.construction>0&&['farm','field'].includes(e.type))){const need=all.filter(e=>e.type==='field').length<neededFields?'field':farms<Math.ceil(neededFields/2)?'farm':null;if(need){const site=this.findSite(need,team,id);if(site)this.build(need,site.x,site.y,team,id);}}
 
