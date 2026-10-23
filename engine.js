@@ -1,4 +1,4 @@
-/* HELIOS H4.1: independent planetary economies, campaign fleets and automatic battles. */
+/* HELIOS H4.2: independent planetary economies, campaign fleets and automatic battles. */
 (function(root){
 'use strict';
 const W=144,H=96,BW=48,BH=32,resources=['food','money','metal','crystals','weapons'];
@@ -79,7 +79,7 @@ class Game{
  visible(id=this.activePlanet){return this.alive(id).filter(e=>!e.inside);}
  all(){return Object.values(this.maps).flatMap(p=>p.entities.filter(e=>e.hp>0));}
  get(id){if(id==null)return null;return this.all().find(e=>e.id===id)||null;}
- add(type,team,x,y,planet=this.activePlanet){const s=stats[type]||{hp:1,size:1},e={id:this.nextId++,type,team,x,y,planet,hp:s.hp,maxHp:s.hp,size:s.size,path:[],job:null,building:null,inside:null,carry:null,buffer:0,node:null,construction:0,builder:null,repairer:null,queue:[],cool:0,walkDistance:0,moving:false,facingX:1,facingY:0,action:0,phase:null,crop:type==='field'?12:0};this.planet(planet).entities.push(e);return e;}
+ add(type,team,x,y,planet=this.activePlanet){const s=stats[type]||{hp:1,size:1},e={id:this.nextId++,type,team,x,y,planet,hp:s.hp,maxHp:s.hp,size:s.size,path:[],job:null,building:null,inside:null,carry:null,buffer:0,node:null,construction:0,builder:null,repairer:null,queue:[],cool:0,walkDistance:0,moving:false,facingX:1,facingY:0,action:0,phase:null,crop:type==='field'?12:0,waitForRipe:type==='farm'};this.planet(planet).entities.push(e);return e;}
  stock(team=0){return this.teams[team].stock;}
  affordable(cost,team=0){return !!cost&&Object.entries(cost).every(([r,n])=>Number.isFinite(n)&&n>=0&&this.stock(team)[r]>=n);}
  pay(cost,team=0){if(!this.affordable(cost,team))return false;for(const [r,n]of Object.entries(cost))this.stock(team)[r]-=n;return true;}
@@ -119,6 +119,7 @@ class Game{
  workers(b){return this.alive(b.planet).filter(e=>e.type==='worker'&&e.job===b.id&&e.team===b.team);}
  release(u){const site=this.get(u.building);if(site?.builder===u.id)site.builder=null;if(site?.repairer===u.id)site.repairer=null;u.job=null;u.building=null;u.inside=null;u.path=[];u.phase=null;u.field=null;u.action=0;u.retry=0;u.pickup=null;u.supply=null;}
  assign(id,team=0){const b=this.get(id);if(this.result||!this.operational(b)||b.team!==team||this.regions[b.planet].owner!==team||!stats[b.type]?.slots||this.workers(b).length>=stats[b.type].slots)return false;const u=this.alive(b.planet).filter(e=>e.type==='worker'&&e.team===team&&!e.job&&!e.building&&!e.carry).sort((a,c)=>dist(a,b)-dist(c,b))[0];if(!u)return false;this.release(u);u.job=b.id;return true;}
+ setHarvestWaiting(id,wait,team=0){const b=this.get(id);if(this.result||b?.type!=='farm'||b.team!==team||!this.ready(b)||this.regions[b.planet].owner!==team||typeof wait!=='boolean')return false;b.waitForRipe=wait;for(const u of this.workers(b))if(!u.phase){u.field=null;u.path=[];u.action=0;u.retry=0;}return true;}
  unassign(id,team=0){const b=this.get(id),u=b&&b.team===team&&this.workers(b).at(-1);if(!u||this.result)return false;this.release(u);return true;}
  construction(p,dt){const worked=new Set();for(const b of p.entities)if(b.repairer&&!this.get(b.repairer))b.repairer=null;const free=()=>p.entities.filter(e=>e.hp>0&&e.type==='worker'&&!e.job&&!e.building&&!e.carry&&!worked.has(e.id));
   for(const b of p.entities.filter(e=>e.hp>0&&e.construction>0)){let u=this.get(b.builder);if(!u||u.building!==b.id){b.builder=null;u=null;}if(!u){if((b.retry||0)>this.time)continue;for(const candidate of free().filter(e=>e.team===b.team).sort((a,c)=>dist(a,b)-dist(c,b))){const path=this.adjacent(candidate,b)?[]:this.nearPath(candidate,b);if(path.length||this.adjacent(candidate,b)){u=candidate;u.path=path;u.building=b.id;b.builder=u.id;break;}}if(!u){b.retry=this.time+2;continue;}}
@@ -139,8 +140,11 @@ class Game{
     if(u.phase==='process'){u.action+=dt;if(u.action>=1.5){b.buffer=Math.min(60,b.buffer+4);u.phase=null;u.field=null;u.action=0;u.inside=null;}return;}
     if(u.phase==='return'){if(this.walkTo(u,b,dt)){u.phase='process';u.inside=b.id;u.action=0;u.path=[];}return;}
     if(b.buffer>=56)return;
-    let f=this.get(u.field);if(!f||f.crop<4){f=this.alive(u.planet).filter(e=>e.type==='field'&&e.team===u.team&&this.ready(e)&&e.crop>=4&&dist(e,b)<=9).sort((a,c)=>dist(a,b)-dist(c,b))[0];u.field=f?.id;u.path=[];}
-    if(f&&this.walkTo(u,f,dt)){u.action+=dt;if(u.action>=3&&f.crop>=4){f.crop-=4;u.action=0;u.phase='return';u.path=[];}}return;
+    const threshold=b.waitForRipe?16:4;
+    let f=this.get(u.field);if(!f||f.team!==u.team||!this.ready(f)||f.crop<threshold){f=this.alive(u.planet).filter(e=>e.type==='field'&&e.team===u.team&&this.ready(e)&&e.crop>=threshold&&dist(e,b)<=9).sort((a,c)=>dist(a,b)-dist(c,b))[0];if(u.field!==f?.id){u.path=[];u.retry=0;}u.field=f?.id;u.action=0;}
+    if(!f){if(u.inside!==b.id&&this.walkTo(u,b,dt)){u.inside=b.id;u.path=[];}return;}
+    u.inside=null;
+    if(this.walkTo(u,f,dt)){u.action+=dt;if(u.action>=3&&f.crop>=threshold){f.crop-=4;u.action=0;u.phase='return';u.path=[];}}return;
    }
    if(u.inside===b.id)return;if(this.walkTo(u,b,dt)){u.inside=b.id;u.path=[];}return;
   }
