@@ -13,6 +13,12 @@ function painter(ctx,ox,oy,scale=1){
  const plate=(x,y,w,h,c,edge='#171b1c')=>{r(x+1,y,w-2,h,edge);r(x,y+1,w,h-2,edge);r(x+1,y+1,w-2,h-2,c);};
  return{r,line,poly,plate};
 }
+function road(ctx,x,y,size=24){
+ const {r}=painter(ctx,x,y,size/24);
+ r(0,0,24,24,'#383f39');
+ // A directionless, repeating surface: no borders or lane markings at tile joins.
+ for(let row=0;row<4;row++)for(let col=0;col<4;col++)r(2+col*6,2+row*6,2,2,(row+col)%2?'#3e453d':'#323b35');
+}
 function unit(ctx,e,x,y,time=0,state={}){
  const team=e.team===1?1:0,c=palettes[team],demon=team===1,worker=e.type==='worker',phase=Math.floor((e.walkDistance||0)*5)%4,step=e.moving?[0,2,0,-2][phase]:0;
  // An identical foot anchor is used by walking, idle and action frames.
@@ -147,5 +153,5 @@ function menuScene(ctx,width,height){
  for(const [i,type]of ['soldier','assault','grenadier'].entries())unit(ctx,{type,team:1,id:i,facingX:-1},width-160+i*35,204+i%2*14,0);
  const q=painter(ctx,width-145,height-65,2);q.plate(0,0,42,17,'#3b4735');q.r(3,3,36,2,'#69724e');for(let i=0;i<5;i++)q.r(4+i*7,8,3,5,'#28392e');
 }
-const api={palettes,resources,painter,unit,building,deposit,fallen,menuScene};if(typeof module!=='undefined')module.exports=api;else root.RTSArt=api;
+const api={palettes,resources,painter,road,unit,building,deposit,fallen,menuScene};if(typeof module!=='undefined')module.exports=api;else root.RTSArt=api;
 })(typeof window!=='undefined'?window:globalThis);
