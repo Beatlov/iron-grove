@@ -1,259 +1,97 @@
 'use strict';
-const {Game,stats,W,H,dist,resources,unitCosts,isMilitary}=RTS;
-const $=s=>document.querySelector(s),canvas=$('#game'),initialContext=canvas.getContext('2d'),T=24;
-let ctx=initialContext;
-let VW=42,VH=26,commandMode=null,helpOpen=false,hoveredCommand=null,buildUIKey='',orderUIKey='';
-ctx.imageSmoothingEnabled=false;
-const minimap=$('#minimap'),mini=minimap.getContext('2d'),camera={x:0,y:H/2-VH/2},keys=new Set(),cursor={x:0,y:0};
-const worldCanvas=$('#worldmap'),worldContext=worldCanvas.getContext('2d');
-let gameSpeed=.6,inMenu=true,started=false,worldOpen=false,selectedRegion=0,pings=[],visualTime=0;
-let visualGame=null,lastVisualUnits=new Map(),fallen=[];
-const sectorNames=['Док «Гелиос»','Заводской периметр','Сухие верфи','Сектор печей','Ржавые карьеры','Грузовой узел','Остывший реактор','Разбитая магистраль','Северные цеха','Пепельный терминал','Последний рубеж','Цитадель легиона'];
-const sectorTitle=r=>r?sectorNames[r.id]:'';
-const names={worker:'Автономный дрон',soldier:'Десантник',assault:'Штурмовик',medic:'Медик',grenadier:'Гранатомётчик',base:'Командное ядро',house:'Станция сборки',warehouse:'Грузовой терминал',sawmill:'Переработчик',quarry:'Экстрактор реголита',farm:'Биореактор',ironmine:'Титановый бур',goldmine:'Кристальный резонатор',barracks:'Десантный комплекс',tower:'Рельсовая турель',outpost:'Ретранслятор'};
-const resourceNames={wood:'Композит',stone:'Реголит',food:'Биогель',iron:'Титан',gold:'Ксенокристаллы'},colors=RTSArt.resources;
-const artIconCache=new Map();
-const roles={soldier:'Бронепехота · винтовка · дальность 5',assault:'Тяжёлая броня · космо-меч · ближний бой',medic:'Поддержка · лечение 16 HP/с в радиусе 5 · не атакует',grenadier:'Осадный боец · 90 урона зданиям / 2 с · дальность 6,5'};
-const labels={base:'Р',house:'Д',warehouse:'С',sawmill:'Л',quarry:'К',farm:'Ф',ironmine:'Ж',goldmine:'З',barracks:'Б',tower:'Т',outpost:'Ф'};
-let game=new Game(),selected=[],placing=null,paused=false,mouse={x:0,y:0},drag=null,last=null,uiTimer=0;
-const costText=c=>Object.entries(c).map(([r,n])=>`${n} ${resourceNames[r].toLowerCase()}`).join(', ');
-const clock=t=>`${Math.floor(t/60).toString().padStart(2,'0')}:${Math.floor(t%60).toString().padStart(2,'0')}`;
-function action(parent,text,fn,disabled=false){const b=document.createElement('button');b.textContent=text;b.disabled=disabled;b.onclick=()=>{fn();updateUI();};parent.append(b);return b;}
-function commandButton(parent,label,type,fn,disabled,detail){
- const b=action(parent,label,fn,disabled);b.className='command-button'+(commandMode===type?' active':'');b.title=detail;b.ariaLabel=detail;
- b.replaceChildren();const icon=document.createElement('canvas');icon.width=32;icon.height=32;icon.className='command-icon';drawCommandIcon(icon,type);const name=document.createElement('span');name.className='command-name';name.textContent=label;b.append(icon);b.append(name);
- b.onmouseenter=b.onfocus=()=>{hoveredCommand=detail;$('#command-hint').textContent=detail;};b.onmouseleave=b.onblur=()=>{hoveredCommand=null;};return b;
-}
-function drawCommandIcon(canvas,type){
- const c=canvas.getContext('2d');c.imageSmoothingEnabled=false;const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
- if(stats[type]){drawAssetIcon(c,type,32);return;}
- if(type==='assign'){drawAssetIcon(c,'worker',32);r(24,3,3,11,'#d4dfad');r(20,7,11,3,'#d4dfad');return;}
- if(type==='move'){r(4,14,22,4,'#c7d891');r(20,8,4,16,'#c7d891');r(25,12,4,8,'#efe3b3');return;}
- if(type==='attack'){r(5,5,7,2,'#dfa07b');r(5,5,2,7,'#dfa07b');r(21,5,7,2,'#dfa07b');r(26,5,2,7,'#dfa07b');r(5,26,7,2,'#dfa07b');r(5,21,2,7,'#dfa07b');r(21,26,7,2,'#dfa07b');r(26,21,2,7,'#dfa07b');r(13,13,7,7,'#efc8a1');return;}
- if(type==='stop'){r(6,6,21,21,'#c8caa1');r(9,9,15,15,'#34452f');r(14,12,5,9,'#eee5c2');return;}
- if(type==='map'){r(3,4,26,24,'#2b4230');for(let i=7;i<29;i+=7){r(i,5,1,22,'#6b8050');r(4,i,24,1,'#6b8050');}r(8,17,4,4,'#d0e69a');r(22,8,4,4,'#e5a676');return;}
-}
-function spriteIcon(type,team=0,resource){
- const key=[type,team,resource].join(':');if(artIconCache.has(key))return artIconCache.get(key);
- const sprite=document.createElement('canvas'),unit=!!stats[type]?.speed;
- sprite.width=unit?40:type==='base'?80:resource?32:56;sprite.height=unit?40:type==='base'?96:resource?40:64;
- const c=sprite.getContext('2d');c.imageSmoothingEnabled=false;
- if(resource)RTSArt.deposit(c,{resource,amount:1},16,24);
- else if(unit)RTSArt.unit(c,{type,team,id:0,facingX:1},16,28,0);
- else RTSArt.building(c,{type,team,size:stats[type].size},sprite.width/2,sprite.height*.6,0);
- artIconCache.set(key,sprite);return sprite;
-}
-function fitIcon(c,sprite,size){c.imageSmoothingEnabled=false;const scale=Math.min(size/sprite.width,size/sprite.height),w=Math.round(sprite.width*scale),h=Math.round(sprite.height*scale);c.drawImage(sprite,Math.floor((size-w)/2),Math.floor((size-h)/2),w,h);}
-function drawResourceIcon(canvas,resource){fitIcon(canvas.getContext('2d'),spriteIcon('deposit',0,resource),32);}
-function drawAssetIcon(context,type,size,team=0){fitIcon(context,spriteIcon(type,team),size);}
-function canCommandSelection(){return selected.some(id=>{const u=game.get(id);return u&&stats[u.type]?.speed&&!u.training&&!u.inside;});}
-function setCommandMode(mode){if(paused||inMenu||game.result||helpOpen||!canCommandSelection())return;commandMode=mode;placing=null;hoveredCommand=null;updateUI();}
-function stopSelected(){if(paused||inMenu||game.result)return;for(const id of selected){const u=game.get(id);if(u&&stats[u.type]?.speed&&!u.inside)game.release(u);}commandMode=null;placing=null;game.message='Приказ прекращён. Свободные дроны вернутся к перевозке.';updateUI();}
-function resizeViewport(){const r=$('#battlefield').getBoundingClientRect();if(!r.width||!r.height)return;VW=Math.min(W,Math.max(12,r.width/T));VH=Math.min(H,Math.max(8,r.height/T));canvas.width=Math.round(VW*T);canvas.height=Math.round(VH*T);ctx.imageSmoothingEnabled=false;clampCamera();}
-function toggleHelp(show){helpOpen=show;$('#help').hidden=!show;keys.clear();drag=null;}
-$('#help-open').onclick=()=>toggleHelp(true);$('#help-close').onclick=()=>toggleHelp(false);
-window.addEventListener('resize',resizeViewport);
-
+const {Game,stats,W,H,BW,BH,resources,unitCosts,colonyCost,workerCost,weaponRecipe,dist}=RTS;
+const $=s=>document.querySelector(s),canvas=$('#game'),ctx=canvas.getContext('2d'),mini=$('#minimap').getContext('2d'),wc=$('#worldmap').getContext('2d'),bc=$('#battle-canvas').getContext('2d'),T=24;
+const names={worker:'Житель',soldier:'Десантник',assault:'Штурмовик',medic:'Медик',grenadier:'Гранатомётчик',base:'Командное ядро',house:'Жилой модуль',warehouse:'Грузовой терминал',farm:'Биореактор',field:'Поле',ironmine:'Металлический бур',goldmine:'Кристальная шахта',factory:'Оружейный завод',guild:'Гильдия торговцев',barracks:'Десантный комплекс',tower:'Рельсовая турель'};
+const resourceNames={food:'Еда',money:'Деньги',metal:'Металл',crystals:'Кристаллы',weapons:'Оружие'},colors=RTSArt.resources,types=Object.keys(stats).filter(t=>stats[t].cost&&t!=='base');
+let game=new Game(),selected=null,placing=null,roadDrag=null,paused=false,inMenu=true,started=false,modalName=null,inspected=0,shownBattle=null,last=null,uiClock=0,speed=.6,viewW=42,viewH=26,mouse={x:0,y:0},pings=[],visualTime=0,buildKey='',actionsKey='',planetKey='',viewedPlanet=0;
+const camera={x:0,y:0},keys=new Set(),icons=new Map();ctx.imageSmoothingEnabled=false;mini.imageSmoothingEnabled=false;bc.imageSmoothingEnabled=false;
+const costText=cost=>Object.entries(cost).map(([r,n])=>`${n} ${resourceNames[r].toLowerCase()}`).join(', '),clock=t=>`${Math.floor(t/60).toString().padStart(2,'0')}:${Math.floor(t%60).toString().padStart(2,'0')}`;
+function button(parent,label,fn,disabled=false,title=label){const b=document.createElement('button');b.textContent=label;b.disabled=disabled;b.title=title;b.ariaLabel=title;b.onclick=()=>{fn();updateUI();};parent.append(b);return b;}
+function icon(c,type,team=0){const key=type+team;let s=icons.get(key);if(!s){s=document.createElement('canvas');const unit=!!stats[type]?.speed,res=resources.includes(type),road=type==='road';s.width=unit?40:res||road?32:type==='base'?80:56;s.height=unit?40:res?40:road?32:type==='base'?96:64;const p=s.getContext('2d');p.imageSmoothingEnabled=false;if(road){const q=RTSArt.painter(p,2,7);q.r(0,0,28,20,'#4c5547');q.r(0,1,28,1,'#b1ac83');q.r(0,18,28,1,'#b1ac83');for(let i=0;i<4;i++)q.r(2+i*7,9,3,1,'#b3ad7b');}else if(res)RTSArt.deposit(p,{resource:type,amount:1},16,24);else if(unit)RTSArt.unit(p,{type,team,facingX:1},16,28,0);else RTSArt.building(p,{type,team,size:stats[type]?.size||2,crop:12},s.width/2,s.height*.6,0);icons.set(key,s);}const w=c.canvas?.width||32,h=c.canvas?.height||32,scale=Math.min(w/s.width,h/s.height),dw=Math.round(s.width*scale),dh=Math.round(s.height*scale);c.imageSmoothingEnabled=false;c.drawImage(s,Math.floor((w-dw)/2),Math.floor((h-dh)/2),dw,dh);}
+function command(parent,label,type,fn,disabled=false,title=label){const b=button(parent,label,fn,disabled,title);b.className='command-button'+(placing===type?' active':'');b.replaceChildren();const i=document.createElement('canvas');i.width=32;i.height=32;i.className='command-icon';icon(i.getContext('2d'),type);const n=document.createElement('span');n.className='command-name';n.textContent=label;b.append(i);b.append(n);return b;}
+function freeWorkers(id=game.activePlanet){return game.alive(id).filter(e=>e.team===0&&e.type==='worker'&&!e.job&&!e.building&&!e.carry).length;}
+function ownedOptions(select,value){select.replaceChildren();for(const r of game.regions.filter(r=>r.owner===0)){const o=document.createElement('option');o.value=r.id;o.textContent=r.name;select.append(o);}select.value=String(value);}
+function resize(){const r=$('#battlefield').getBoundingClientRect();viewW=Math.min(W,r.width/T||42);viewH=Math.min(H,r.height/T||26);canvas.width=Math.round(viewW*T);canvas.height=Math.round(viewH*T);ctx.imageSmoothingEnabled=false;clamp();}
+function clamp(){camera.x=Math.round(Math.max(0,Math.min(W-viewW,camera.x))*T)/T;camera.y=Math.round(Math.max(0,Math.min(H-viewH,camera.y))*T)/T;}
+function home(){const b=game.alive().find(e=>e.type==='base'&&e.team===0);camera.x=(b?.x||72)-viewW/2;camera.y=(b?.y||48)-viewH/2;clamp();}
+function switchPlanet(id){if(game.switchPlanet(Number(id))){selected=null;placing=null;planetKey='';actionsKey='';home();updateUI();}}
+function showModal(name){for(const id of ['world','army','battle','help'])$('#'+id).hidden=id!==name;modalName=name;keys.clear();roadDrag=null;if(name==='world')regionPanel();if(name==='army'){ownedOptions($('#army-source'),game.activePlanet);$('#army-target').value=String(inspected);armyUI();}updateUI();}
+function closeModal(){showModal(null);}
+function pause(){if(inMenu||game.result)return;paused=!paused;updateUI();}
+function setSpeed(value){speed=value;paused=false;updateUI();}
+function start(){const raw=$('#seed').value.trim();game=new Game(raw?Number(raw)>>>0:undefined,{ai:$('#ai').checked});selected=null;placing=null;paused=false;started=true;inspected=0;shownBattle=null;pings=[];buildKey='';actionsKey='';planetKey='';speed=Number($('#menu-speed').value)||.6;resume();home();}
+function resume(){inMenu=false;$('#menu').hidden=true;$('#app').hidden=false;closeModal();resize();last=null;updateUI();}
+function menu(){inMenu=true;closeModal();$('#menu').hidden=false;$('#app').hidden=true;$('#resume').hidden=!started;$('#start').textContent=started?'Новая кампания':'Начать кампанию';}
+$('#start').onclick=start;$('#resume').onclick=resume;$('#menu-open').onclick=menu;$('#restart').onclick=start;$('#pause').onclick=pause;
+for(const [id,v]of [['speed-slow',.4],['speed-normal',.6],['speed-fast',1]])$('#'+id).onclick=()=>setSpeed(v);
+$('#planet-select').onchange=e=>switchPlanet(e.target.value);$('#home').onclick=home;
+$('#world-bottom').onclick=()=>showModal('world');$('#world-close').onclick=closeModal;$('#army-open').onclick=()=>showModal('army');$('#army-close').onclick=closeModal;$('#help-open').onclick=()=>showModal('help');$('#help-close').onclick=closeModal;$('#battle-close').onclick=closeModal;
+$('#battle-open').onclick=()=>openBattle(game.battles.find(b=>!b.done)?.id||game.battles.at(-1)?.id);
+$('#army-source').onchange=armyUI;$('#army-target').onchange=armyUI;
+function openBattle(id){shownBattle=game.battles.find(b=>b.id===id);if(shownBattle)showModal('battle');}
 function updateUI(){
- selected=selected.filter(id=>game.get(id)&&!game.get(id).inside);
- const p=game.population(),stock=game.stock(),units=selected.map(id=>game.get(id)),e=units[0];
- const resourceBar=$('#resources');resourceBar.replaceChildren();
- for(const r of resources){const item=document.createElement('span');item.className='resource';item.style.color=colors[r];const icon=document.createElement('canvas');icon.width=32;icon.height=32;icon.className='resource-icon';drawResourceIcon(icon,r);const data=document.createElement('span'),label=document.createElement('span'),value=document.createElement('strong');label.className='resource-label';label.textContent=resourceNames[r];value.className='resource-value';value.textContent=Math.floor(stock[r]);data.append(label);data.append(value);item.append(icon);item.append(data);resourceBar.append(item);}
- const carriers=game.alive().filter(u=>u.team===0&&u.type==='worker'&&!u.job&&!u.training&&!u.building).length;
- $('#population').textContent=`Лимит: ${p.total}/${p.capacity}`;
- $('#population').title=`Дроны: ${p.workers} · Бойцы: ${p.soldiers} · Перевозчики: ${carriers}. За 5 с: ${p.total} биогеля, ${p.soldiers*.5} ксенокристаллов.`;
- $('#economy-info').textContent=`Дроны ${p.workers} · Бойцы ${p.soldiers} · Перевозчики ${carriers}`;
- $('#clock').textContent=clock(game.time);
- const message=commandMode?(commandMode==='move'?'Идти: укажите место левой кнопкой. Esc — отмена.':'Атака: укажите противника левой кнопкой. Esc — отмена.'):placing?`Строительство: ${names[placing]}. ЛКМ по зелёному месту; Esc — отмена.`:game.teams[0].hungry?'Не хватает биогеля! Назначьте дронов на биореактор и оставьте перевозчиков.':game.teams[0].unpaid?'Не хватает ксенокристаллов! Боевые модули теряют здоровье.':game.message;
- const displayMessage=game.regions.reduce((m,r)=>m.replaceAll(r.name,sectorTitle(r)),message);$('#message').textContent=displayMessage;$('#message').title=displayMessage;
- const types=Object.keys(labels).filter(t=>t!=='base'&&t!=='outpost');
- const buildKey=JSON.stringify([placing,paused,!!game.result,types.map(t=>game.affordable(stats[t].cost))]);
- if(buildKey!==buildUIKey){buildUIKey=buildKey;const builds=$('#buildings');builds.replaceChildren();
-  for(const type of types){const detail=`${names[type]} — ${costText(stats[type].cost)} · ${stats[type].buildTime} игровых с`;
-   const b=commandButton(builds,names[type],type,()=>{if(!paused&&!game.result&&!inMenu){commandMode=null;placing=placing===type?null:type;}},paused||!game.affordable(stats[type].cost)||!!game.result,detail);if(placing===type)b.className+=' active';}
- }
- $('#selection').textContent=units.length>1?`Отряд · ${units.length}`:e?names[e.type]||resourceNames[e.resource]:'Нет выбранного объекта';
- let details='Выберите юнита или здание на карте.\nПриказы — справа, постройки — в ряду над панелью.';
- if(e&&units.length===1){details=`Здоровье: ${Math.ceil(e.hp)} / ${e.maxHp}`;
-  if(stats[e.type]?.resource){details+=`\nДроны: ${game.workers(e).length}/2 · продукция: ${Math.floor(e.buffer)}/60`;if(e.node)details+=`\nОстаток залежи: ${Math.floor(game.get(e.node)?.amount||0)}`;}
-  if(e.type==='worker')details+=`\n${e.training?'Переоборудование в комплексе':e.building?'Строитель':e.job?'Работает: '+names[game.get(e.job)?.type]:'Перевозчик'}${e.carry?' · несёт '+e.carry.amount+' '+resourceNames[e.carry.resource]:''}`;
-  if(isMilitary(e))details+='\n'+roles[e.type]+(stats[e.type].armor?' · броня '+stats[e.type].armor:'')+'\nСодержание: 1 биогель и 0,5 ксенокристалла / 5 с';
-  if(e.type==='house')details+='\n+4 места · дрон каждые 20 с за 8 биогеля';
-  if(e.type==='deposit')details=`${resourceNames[e.resource]}: ${Math.floor(e.amount)}`;
-  if(e.type==='outpost'){const r=game.regions[e.region];details=sectorTitle(r)+'\n'+(r.owner===0?'Ваша территория':r.owner===1?'Вражеская территория':'Нейтральная территория')+'\nЗахват: '+Math.floor(r.progress/12*100)+'% · 12 с у ретранслятора';}
-  if(e.construction>0){const builder=game.get(e.builder);details+=`\nГотовность: ${Math.round((1-e.construction/stats[e.type].buildTime)*100)}% · ${Math.ceil(e.construction)} с работы\n${builder?(game.adjacent(builder,e)?'Дрон строит':'Строитель в пути'):'Ожидает свободного дрона'}`;}
-  if(e.type==='barracks')details+=`\nОчередь: ${e.queue.length}/3${e.queue.length?' · '+names[e.queue[0].type||'soldier']+' · '+Math.ceil(e.queue[0].left)+' с после прибытия':''}`;
- }else if(units.length>1){const workers=units.filter(u=>u.type==='worker').length,soldiers=units.filter(u=>isMilitary(u)).length;details=`Дроны: ${workers} · Бойцы: ${soldiers}\nКлик по карточке — выбрать одного. Shift — добавить к выбору.`;}
- selectionCards(units);$('#details').textContent=details;const health=$('#portrait-health');health.hidden=units.length!==1||!Number.isFinite(e?.maxHp);if(!health.hidden){$('#health-fill').style.width=Math.max(0,e.hp/e.maxHp*100)+'%';health.ariaValueNow=String(Math.ceil(e.hp));health.ariaValueMin='0';health.ariaValueMax=String(e.maxHp);}
- const orderKey=JSON.stringify([selected,paused,!!game.result,commandMode,game.ready(e),Object.values(unitCosts).map(c=>game.affordable(c)),e?.queue.map(q=>q.type),units.map(u=>[u.training,u.building]),e?game.workers(e).length:0]);
- if(orderKey!==orderUIKey){orderUIKey=orderKey;const actions=$('#actions');actions.replaceChildren();const canAct=units.some(u=>stats[u.type]?.speed&&!u.training),blocked=paused||!!game.result;
-  if(canAct){commandButton(actions,'Идти','move',()=>setCommandMode('move'),blocked,'Идти · G. Укажите место левой кнопкой.');commandButton(actions,'Атака','attack',()=>setCommandMode('attack'),blocked,'Атаковать · F. Укажите противника левой кнопкой.');commandButton(actions,'Стоп','stop',stopSelected,blocked,'Прекратить приказ · X. Дроны вернутся к перевозке.');}
-  if(e?.type==='barracks')for(const type of Object.keys(unitCosts))commandButton(actions,names[type],type,()=>{if(!game.train(e.id,0,type))game.message='Нужен дрон без груза, ресурсы и место в очереди (до 3).';},blocked||!game.ready(e)||e.queue.length>=3||!game.affordable(unitCosts[type]),names[type]+' — '+costText(unitCosts[type])+' · '+stats[type].trainTime+' с · '+roles[type]);
-  if(e?.type==='outpost')commandButton(actions,'Секторы','map',()=>{selectedRegion=e.region;toggleWorld(true);},false,'Открыть ретранслятор на глобальной карте.');
-  if(units.some(u=>u.type==='worker'))commandButton(actions,'Перевозка','worker',()=>{for(const u of units)if(u.type==='worker')game.release(u);},blocked,'Освободить дронов → перевозчики');
-  if(units.some(u=>isMilitary(u)))commandButton(actions,'В дроны','worker',()=>game.demobilize(selected),blocked,'Вернуть бойцов в дроны без возврата цены.');
-  if(e&&stats[e.type]?.slots)commandButton(actions,'Назначить','assign',()=>{const u=game.alive().find(u=>u.team===0&&u.type==='worker'&&!u.job&&!u.training&&!u.building&&!u.carry);if(!u||!game.assign([u.id],e.id))game.message='Нет свободного дрона или все места заняты.';},blocked||!game.ready(e),'Назначить свободного дрона');
-  if(e&&stats[e.type]?.slots&&game.workers(e).length)commandButton(actions,'Снять дронов','worker',()=>{for(const u of game.workers(e))game.release(u);},blocked,'Освободить дронов из здания');
-  while(actions.children.length<9){const slot=document.createElement('span');slot.className='empty-slot';actions.append(slot);}
- }
- $('#command-hint').textContent=hoveredCommand||(canCommandSelection()?'G — идти · F — атака · X — стоп':'Постройки — в ряду слева. Наведите на иконку, чтобы узнать цену.');
- const owned=game.regions.filter(r=>r.owner===0).length,enemy=game.regions.filter(r=>r.owner===1).length;
- $('#territory-score').textContent=`Секторы: ${owned} / 12 · Враг: ${enemy}`;$('#territory-label').textContent=sectorTitle(game.regionAt(camera.x+VW/2,camera.y+VH/2))||'Рубежи';if(worldOpen)updateRegionPanel();
- $('#overlay').hidden=!paused&&!game.result;$('#endtitle').textContent=game.result==='victory'?'Победа! Командное ядро демонов уничтожено':game.result==='defeat'?'Поражение: командное ядро уничтожено':'Пауза';$('#pause').className='speed-button'+(paused?' active':'');$('#pause').ariaPressed=String(paused);$('#pause').title=paused?'Продолжить · пробел':'Пауза · пробел';for(const [id,speed]of [['speed-slow',.4],['speed-normal',.6],['speed-fast',1]]){$('#'+id).className='speed-button'+(!paused&&gameSpeed===speed?' active':'');$('#'+id).ariaPressed=String(!paused&&gameSpeed===speed);}
+ if(viewedPlanet!==game.activePlanet){viewedPlanet=game.activePlanet;selected=null;placing=null;home();}
+ if(selected){const e=game.get(selected);if(!e||e.planet!==game.activePlanet||e.team!==0&&e.type!=='deposit')selected=null;}
+ const pop=game.population(),stock=game.stock(),r=game.regions[game.activePlanet],up=game.upkeep();$('#resources').replaceChildren();
+ for(const res of resources){const item=document.createElement('span');item.className='resource';const c=document.createElement('canvas');c.width=32;c.height=32;c.className='resource-icon';icon(c.getContext('2d'),res);const data=document.createElement('span'),label=document.createElement('span'),value=document.createElement('strong');label.className='resource-label';label.textContent=resourceNames[res];value.className='resource-value';value.textContent=Math.floor(stock[res]);data.append(label);data.append(value);item.append(c);item.append(data);$('#resources').append(item);}
+ $('#population').textContent=`Лимит: ${pop.total}/${pop.capacity}`;$('#population').title=`Жители ${pop.workers}, армия и обучение ${pop.soldiers}, строители в пути ${pop.reserved}. Общий лимит всех планет.`;
+ $('#clock').textContent=clock(game.time);$('#army-open').textContent=`Армия · ${pop.soldiers}`;
+ const live=game.battles.filter(b=>!b.done);$('#battle-open').hidden=!game.battles.length;$('#battle-open').textContent=live.length?`Бои · ${live.length}`:'Итоги боя';
+ $('#territory-label').textContent=r.name+' / '+(game.alive().some(e=>e.type==='base')?'Поселение':'Планета без поселения');$('#territory-score').textContent=`Планеты ${game.regions.filter(r=>r.owner===0).length}/12 · Столица врага: Инферна`;
+ $('#economy-info').textContent=`Налог +${game.income().toFixed(0)} денег/20 с · Содержание ${up.food} еды, ${up.money} денег/10 с`;
+ $('#message').textContent=placing==='road'?'Дорога: проведите ЛКМ. 1 металл + 1 деньги за клетку. ПКМ / Esc — отмена.':placing?`Стройка: ${names[placing]} · ЛКМ — участок; Esc — отмена.`:game.teams[0].hungry&&game.teams[0].unpaid?'Нет еды и денег: армия теряет бойца раз в 15 с.':game.teams[0].hungry?'Не хватает еды. Нужны биореактор, поля и перевозчики.':game.teams[0].unpaid?'Не хватает денег на армию. Нужны гильдии или новые планеты.':game.message;
+ const pk=game.regions.filter(r=>r.owner===0).map(r=>r.id).join(',')+':'+game.activePlanet;if(pk!==planetKey){planetKey=pk;ownedOptions($('#planet-select'),game.activePlanet);if(modalName==='army')ownedOptions($('#army-source'),game.activePlanet);}
+ const bk=JSON.stringify([placing,paused,!!game.result,types.map(t=>game.affordable(stats[t].cost)),game.affordable({money:1,metal:1}),game.alive().some(e=>e.type==='base')]);if(bk!==buildKey){buildKey=bk;$('#buildings').replaceChildren();for(const type of types)command($('#buildings'),names[type],type,()=>placing=placing===type?null:type,paused||!!game.result||!game.affordable(stats[type].cost),`${names[type]} — ${costText(stats[type].cost)} · ${stats[type].buildTime} с работы жителя`);command($('#buildings'),'Дорога','road',()=>placing=placing==='road'?null:'road',paused||!!game.result||!game.affordable({money:1,metal:1}),'Дорога — 1 металл + 1 деньги за клетку. Скорость жителей ×1,7.');}
+ const e=game.get(selected);$('#selection').textContent=e?(names[e.type]||resourceNames[e.resource]):'Поселение: '+r.name;
+ let details=e?`Прочность ${Math.ceil(e.hp)}/${e.maxHp}`:`Свободных жителей здесь: ${freeWorkers()}\nВыберите здание, чтобы нанять жителей, заполнить места или обучить бойцов.`;
+ if(e?.type==='deposit')details=`${resourceNames[e.resource]}: ${Math.floor(e.amount)}\nШахту можно построить в 6 клетках.`;
+ else if(e){if(e.construction>0)details+=`\nСтроительство: ${Math.round((1-e.construction/stats[e.type].buildTime)*100)}% · ${e.builder?'житель назначен':'ожидает свободного жителя'}`;else if(!game.operational(e))details+='\nПовреждено: производство остановлено до 65% прочности.';if(e.repairer)details+='\nИдёт автоматический ремонт.';if(stats[e.type]?.slots)details+=`\nРабочие места: ${game.workers(e).length}/${stats[e.type].slots}`;if(stats[e.type]?.resource&&e.type!=='guild')details+=` · Продукция ${Math.floor(e.buffer)}/${e.type==='factory'?20:60}`;if(e.type==='field')details+=`\nУрожай: ${Math.floor(e.crop)}/16 · биореактор в радиусе 9 клеток`;if(e.type==='farm')details+='\nЖители собирают урожай на полях и приносят еду.';if(e.type==='factory')details+=`\n8 металла + 3 кристалла → 1 оружие / 8 с${e.batch?' · осталось '+Math.ceil(e.batch)+' с':''}`;if(e.type==='guild')details+='\n+3 денег / 20 с за занятое место';if(e.type==='barracks')details+=`\nОбучение: ${e.queue.length}/3${e.queue[0]?' · '+names[e.queue[0].type]+' '+Math.ceil(e.queue[0].left)+' с':''}`;}
+ $('#details').textContent=details;const portrait=$('#portrait').getContext('2d');portrait.fillStyle='#202a22';portrait.fillRect(0,0,64,64);if(e)icon(portrait,e.type==='deposit'?e.resource:e.type,e.team);
+ $('#portrait-health').hidden=!e||!Number.isFinite(e.maxHp);if(e&&Number.isFinite(e.maxHp))$('#health-fill').style.width=Math.max(0,e.hp/e.maxHp*100)+'%';
+ const ak=JSON.stringify([selected,paused,game.result,stock.money>=20,pop.free,e?.construction>0,e?game.operational(e):null,e?game.workers(e).length:0,e?.queue.length,freeWorkers(),Object.values(unitCosts).map(c=>game.affordable(c))]);if(ak!==actionsKey){actionsKey=ak;$('#actions').replaceChildren();const blocked=paused||!!game.result;if(e?.type==='base')command($('#actions'),'Нанять жителя','worker',()=>{if(!game.hire(e.id))game.message='Нужны 20 денег, свободное место и командное ядро.';},blocked||!game.ready(e)||pop.free<1||!game.affordable(workerCost),'Нанять жителя — 20 денег, 1 место. Содержание: 1 еда / 10 с.');if(e&&stats[e.type]?.slots){command($('#actions'),'Занять место','worker',()=>{if(!game.assign(e.id))game.message='Нужен свободный житель на этой планете.';},blocked||!game.operational(e)||!freeWorkers()||game.workers(e).length>=stats[e.type].slots,'Занять одно рабочее место свободным жителем');command($('#actions'),'Снять работника','worker',()=>game.unassign(e.id),blocked||!game.workers(e).length,'Освободить одно рабочее место');}
+ if(e?.type==='barracks')for(const type of Object.keys(unitCosts))command($('#actions'),names[type],type,()=>{if(!game.train(e.id,0,type))game.message='Нужны оружие, деньги, место в очереди и свободный лимит.';},blocked||!game.operational(e)||e.queue.length>=3||pop.free<1||!game.affordable(unitCosts[type]),`${names[type]} — ${costText(unitCosts[type])}, ${stats[type].trainTime} с. Содержание ${stats[type].food} еда + ${stats[type].money} денег / 10 с`);
+ while($('#actions').children.length<9){const slot=document.createElement('span');slot.className='empty-slot';$('#actions').append(slot);}}
+ $('#command-hint').textContent=e?.type==='barracks'?'Бойцы попадают в гарнизон. Отправка — через панель «Армия».':'Жители работают автоматически. Производство пополняет запас только после доставки.';
+ $('#overlay').hidden=!paused&&!game.result;$('#endtitle').textContent=game.result==='victory'?'Победа! Столица демонов захвачена':game.result==='defeat'?'Поражение: столица потеряна':'Пауза';
+ for(const [id,v]of [['pause',0],['speed-slow',.4],['speed-normal',.6],['speed-fast',1]]){$('#'+id).className='speed-button'+((v===0?paused:!paused&&speed===v)?' active':'');$('#'+id).ariaPressed=String(v===0?paused:!paused&&speed===v);}
+ if(modalName==='world')regionPanel();if(modalName==='army')armyUI();if(modalName==='battle')battleUI();
 }
-
-function point(ev){const r=canvas.getBoundingClientRect();cursor.x=(ev.clientX-r.left)*VW/r.width;cursor.y=(ev.clientY-r.top)*VH/r.height;return{x:camera.x+cursor.x,y:camera.y+cursor.y};}
-function hit(p){return game.visible().filter(e=>stats[e.type]?.speed?Math.abs(e.x-p.x)<.7&&p.y>=e.y-1.2&&p.y<=e.y+.6:Math.abs(e.x-p.x)<e.size/2+.15&&Math.abs(e.y-p.y)<e.size/2+.15).sort((a,b)=>a.size-b.size)[0];}
-canvas.addEventListener('contextmenu',e=>e.preventDefault());
-canvas.addEventListener('pointerdown',e=>{if(paused||game.result||inMenu||worldOpen||helpOpen)return;mouse=point(e);const target=hit(mouse);pings.push({...mouse,age:0,kind:commandMode==='move'?'move':(e.button===2||commandMode==='attack')?(target?.type==='outpost'?'capture':target?.team===1?'attack':'move'):'select'});if(e.button===2){commandMode=null;placing=null;game.command(selected,mouse.x,mouse.y,hit(mouse)?.id);updateUI();return;}if(e.button!==0)return;if(commandMode){if(commandMode==='attack'&&target?.team!==1&&target?.type!=='outpost'){game.message='Укажите противника для атаки.';updateUI();return;}game.command(selected,mouse.x,mouse.y,commandMode==='attack'?target?.id:undefined);commandMode=null;updateUI();return;}if(placing){if(game.build(placing,Math.round(mouse.x),Math.round(mouse.y))){placing=null;}updateUI();return;}drag={start:mouse,end:mouse,shift:e.shiftKey};canvas.setPointerCapture(e.pointerId);});
-canvas.addEventListener('pointermove',e=>{mouse=point(e);if(drag)drag.end=mouse;});
-canvas.addEventListener('pointerup',e=>{if(!drag)return;const a=drag.start,b=point(e);let ids=[];if(dist(a,b)<.3){const unit=hit(b);if(unit&&(unit.team===0||unit.type==='deposit'||unit.type==='outpost'))ids=[unit.id];}else ids=game.visible().filter(u=>u.team===0&&stats[u.type]?.speed&&u.x>=Math.min(a.x,b.x)&&u.x<=Math.max(a.x,b.x)&&u.y>=Math.min(a.y,b.y)&&u.y<=Math.max(a.y,b.y)).map(u=>u.id);selected=drag.shift?[...new Set([...selected,...ids])]:ids;drag=null;commandMode=null;hoveredCommand=null;updateUI();});
-canvas.addEventListener('pointercancel',()=>drag=null);
-function pause(){if(!game.result&&!inMenu){paused=!paused;drag=null;commandMode=null;updateUI();}}
-function restart(fresh){game=new Game(fresh?undefined:game.seed,{ai:game.aiEnabled});commandMode=null;buildUIKey='';orderUIKey='';pings=[];selectedRegion=game.homeRegions[0];selected=[];placing=null;paused=false;drag=null;home();updateUI();}
-$('#pause').onclick=pause;$('#restart').onclick=()=>restart(false);
-function clampCamera(){camera.x=Math.round(Math.max(0,Math.min(W-VW,camera.x))*T)/T;camera.y=Math.round(Math.max(0,Math.min(H-VH,camera.y))*T)/T;}
-function home(){const b=game.alive().find(e=>e.team===0&&e.type==='base');camera.x=b?b.x-VW/2:0;camera.y=b?b.y-VH/2:0;clampCamera();}
-$('#home').onclick=home;
-function setSpeed(speed){gameSpeed=speed;paused=false;$('#menu-speed').value=String(speed);updateUI();}
-$('#speed-slow').onclick=()=>setSpeed(.4);$('#speed-normal').onclick=()=>setSpeed(.6);$('#speed-fast').onclick=()=>setSpeed(1);
-minimap.addEventListener('pointerdown',e=>{const r=minimap.getBoundingClientRect();camera.x=(e.clientX-r.left)/r.width*W-VW/2;camera.y=(e.clientY-r.top)/r.height*H-VH/2;clampCamera();});
-window.addEventListener('keydown',e=>{
- if(inMenu)return;
- if(helpOpen){if(e.code==='Escape')toggleHelp(false);return;}
- if(e.code==='KeyM'){toggleWorld();return;}
- if(['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName))return;
- if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','KeyW','KeyA','KeyS','KeyD'].includes(e.code)){e.preventDefault();keys.add(e.code);}
- if(!worldOpen&&e.code==='KeyG')setCommandMode('move');
- if(!worldOpen&&e.code==='KeyF')setCommandMode('attack');
- if(!worldOpen&&e.code==='KeyX')stopSelected();
- if(e.code==='Home'){e.preventDefault();home();}
- if(e.code==='Escape'){if(worldOpen)toggleWorld(false);else if(commandMode){commandMode=null;}else if(placing){placing=null;drag=null;}else showMenu();updateUI();}
- if(e.code==='Space'&&e.target.tagName!=='BUTTON'){e.preventDefault();pause();}
-});
-window.addEventListener('keyup',e=>keys.delete(e.code));
-window.addEventListener('blur',()=>{keys.clear();if(!game.result){paused=true;drag=null;updateUI();}});
-function rect(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(x,y,w,h);}
-function line(x1,y1,x2,y2,color,width=1){RTSArt.painter(ctx,0,0).line(x1,y1,x2,y2,color,width);}
-function drawDeposit(e,x,y){RTSArt.deposit(ctx,e,x,y);}
-function drawUnit(e,x,y){const site=game.get(e.building);RTSArt.unit(ctx,e,x,y,game.time,{working:site&&game.adjacent(e,site)});}
-function drawBuilding(e,x,y){
- const builder=game.get(e.builder),occupants=game.workers(e).filter(u=>u.inside===e.id).length,working=builder&&game.adjacent(builder,e),resource=stats[e.type].resource;
- RTSArt.building(ctx,e,x,y,game.time,{working,progress:e.construction>0?1-e.construction/stats[e.type].buildTime:1,occupants,operating:occupants>0&&e.buffer<60&&(!e.node||(game.get(e.node)?.amount||0)>0)});
- const w=e.size*T,l=x-w/2,bottom=y+w/2;
- if(e.construction>0){rect(l,bottom+3,w,4,'#22291f');rect(l,bottom+3,Math.round(w*(1-e.construction/stats[e.type].buildTime)),4,working?'#c8ce87':'#8c8d6f');ctx.font='9px monospace';ctx.fillStyle='#eee2bc';ctx.fillText(builder?(working?Math.ceil(e.construction)+'с':'в пути'):'ждёт',x-12,y-w/2-6);}
- else if(resource){rect(l,bottom+3,w,3,'#282c26');rect(l,bottom+3,Math.floor(w*e.buffer/60),3,colors[resource]);ctx.font='9px monospace';ctx.fillStyle='#d0d4af';ctx.fillText(`${game.workers(e).length}/2`,x-8,bottom+14);}
+function regionPanel(){const r=game.regions[inspected];if(!r)return;const own=r.owner===0,base=game.alive(r.id).some(e=>e.type==='base'),battle=game.battles.find(b=>!b.done&&b.planet===r.id),garrison=r.owner>=0?game.army(r.owner,r.id).length:0;$('#region-name').textContent=r.name+(game.homeRegions.includes(r.id)?' · Столица':'');$('#region-details').textContent=(own?'Ваша планета':r.owner===1?'Демонический легион':'Нейтральная планета')+` · доход 12 денег / 20 с\nГарнизон: ${garrison} · ${base?'есть поселение':'без поселения'}${battle?' · идёт бой':''}\n`+(own?'Можно открыть поселение.':game.canCapture(r.id)?'Соседняя планета: можно отправить отряд.':'Сначала захватите соседние планеты.');$('#region-actions').replaceChildren();
+ if(own){button($('#region-actions'),'Открыть планету',()=>{switchPlanet(r.id);closeModal();});if(!base)button($('#region-actions'),'Отправить 6 строителей',()=>{if(!game.colonize(r.id))game.message='Нужно 6 свободных мест, ресурсы или дождитесь текущих строителей.';},paused||!!game.result||game.population().free<6||!game.affordable(colonyCost)||game.missions.some(m=>m.to===r.id&&m.kind==='colony'),'Заселение: '+costText(colonyCost)+' и 6 свободных мест');}
+ button($('#region-actions'),own?'Перебросить отряд':'Отправить отряд',()=>showModal('army'),paused||!!game.result||!own&&!game.canCapture(r.id));if(battle)button($('#region-actions'),'Наблюдать бой',()=>openBattle(battle.id));
 }
-function surfaceHash(x,y){let n=Math.imul(x+113,374761393)^Math.imul(y+71,668265263)^game.seed;n=Math.imul(n^(n>>>13),1274126177);return(n^(n>>>16))>>>0;}
-function drawSurface(){
- for(let y=Math.floor(camera.y);y<Math.min(H,Math.ceil(camera.y+VH));y++)for(let x=Math.floor(camera.x);x<Math.min(W,Math.ceil(camera.x+VW));x++){
-  const px=x*T,py=y*T,n=surfaceHash(x,y),block=surfaceHash(Math.floor(x/5),Math.floor(y/5)),palette=[['#4c4f47','#4e5048'],['#504e45','#514f46'],['#484e48','#4a504a']][block%3];
-  rect(px,py,T,T,game.terrain[y][x]?'#2c3431':palette[n%2]);
-  if(n%7===0)rect(px+4+n%12,py+5+(n>>>8)%11,3,2,'#75756655');
-  if(n%23===0){rect(px+6,py+15,7,2,'#333b35');rect(px+12,py+10,2,6,'#333b35');}
-  // Abandoned paved corridors and old inset rails are traversable scenery.
-  if(block%7===0){rect(px,py,T,T,'#414943');if(x%5===0)rect(px,py,1,T,'#333c36');if(y%5===0)rect(px,py,T,1,'#333c36');if(y%5===2&&x%2===0)rect(px+4,py+9,8,2,'#88816a44');}
- }
- for(let gy=Math.floor(camera.y/12)-1;gy<=Math.ceil((camera.y+VH)/12);gy++)for(let gx=Math.floor(camera.x/12)-1;gx<=Math.ceil((camera.x+VW)/12);gx++){
-  if(gx<0||gy<0)continue;const n=surfaceHash(gx+500,gy+500),x=(gx*12+3+n%6)*T,y=(gy*12+3+(n>>>6)%6)*T,p=RTSArt.painter(ctx,Math.round(x),Math.round(y),2),{r,poly,line,plate}=p;
-  if(n%4===0){
-   // Collapsed wall segments, exposed rebar, rusted support beams.
-   plate(-19,-7,33,12,'#626355','#343d35');r(-18,-6,30,2,'#82836c');r(-15,-3,5,5,'#414d40');r(-5,-3,8,5,'#414d40');r(7,-3,4,5,'#414d40');r(-7,-7,5,8,'#4d5448');line(15,-1,20,-6,'#7d6951');line(17,1,22,-1,'#7d6951');r(-19,6,8,3,'#5f6253');r(10,7,7,2,'#656759');
-  }else if(n%4===1){
-   poly([[-16,-5],[-9,-11],[10,-9],[17,-3],[13,6],[2,10],[-13,6]],'#676b5b');poly([[-14,-4],[-8,-9],[9,-7],[14,-2],[11,5],[1,7],[-11,5]],'#303a33');r(-7,-2,6,2,'#424d40');r(4,3,4,1,'#60644f');r(-13,6,10,1,'#82816a');
-  }else if(n%4===2){
-   r(-18,-10,3,25,'#313b34');r(-14,-10,1,25,'#697063');r(-19,-5,12,2,'#6c6251');r(-19,6,12,2,'#6c6251');r(-19,13,12,2,'#6c6251');plate(2,-4,13,9,'#505a4c');r(3,-3,11,2,'#787665');r(4,1,2,2,'#333f36');r(9,1,2,2,'#333f36');
-  }else{
-   poly([[-11,8],[-7,-8],[-1,-12],[3,4],[12,10]],'#333e35');line(-7,-8,3,4,'#777b69',2);line(-7,-8,-10,6,'#989179');r(-3,6,9,2,'#72725e');r(13,9,5,2,'#636650');
-  }
- }
- // Ownership remains a thin tactical boundary; it never recolors the ground.
- for(let y=Math.floor(camera.y);y<Math.min(H,Math.ceil(camera.y+VH));y++)for(let x=Math.floor(camera.x);x<Math.min(W,Math.ceil(camera.x+VW));x++){
-  const r=game.regionAt(x,y),px=x*T,py=y*T,color=r.owner===0?'#bfce8b77':r.owner===1?'#c3795977':'#a8a17b55';
-  if(game.regionGrid[y]?.[x+1]!==r.id)rect(px+T-1,py+2,1,T-4,color);if(game.regionGrid[y+1]?.[x]!==r.id)rect(px+2,py+T-1,T-4,1,color);
- }
+for(const type of Object.keys(unitCosts)){const card=document.createElement('div');card.className='army-unit-card';const c=document.createElement('canvas');c.width=64;c.height=64;icon(c.getContext('2d'),type);const title=document.createElement('strong');title.textContent=names[type];const info=document.createElement('p');info.id='roster-'+type;const input=document.createElement('input');input.type='number';input.id='count-'+type;input.min='0';input.value='0';input.ariaLabel='Отправить: '+names[type];input.oninput=armyUI;const label=document.createElement('label');label.textContent='В отряд ';label.append(input);card.append(c);card.append(title);card.append(info);card.append(label);$('#army-roster').append(card);}
+for(const r of game.regions){const o=document.createElement('option');o.value=r.id;o.textContent=r.name;$('#army-target').append(o);}
+function armyUI(){const source=Number($('#army-source').value),target=Number($('#army-target').value),up=game.upkeep();$('#army-summary').textContent=`Всего ${game.population().soldiers} бойцов и обучающихся. Содержание армии и жителей: ${up.food} еды + ${up.money} денег / 10 с. Доход +${game.income().toFixed(0)} денег / 20 с.`;let count=0;for(const type of Object.keys(unitCosts)){const reserve=game.army(0,source).filter(u=>u.type===type).length,training=game.military.filter(u=>u.team===0&&u.planet===source&&u.type===type&&u.location==='training').length;$('#roster-'+type).textContent=`В гарнизоне: ${reserve} · обучение: ${training}\nСодержание ${stats[type].food} еды + ${stats[type].money} денег / 10 с`;$('#count-'+type).max=reserve;count+=Math.max(0,Number($('#count-'+type).value)||0);}
+ const valid=source!==target&&game.regions[source]?.owner===0&&(game.regions[target]?.owner===0||game.canCapture(target));$('#dispatch').disabled=paused||!!game.result||!valid||count===0;$('#dispatch-hint').textContent=valid?`В отряде ${count}. Перелёт 20 с. `+(game.regions[target].owner===0?'Подкрепление пополнит гарнизон.':'Пустая планета будет захвачена; гарнизон вызовет автоматический бой.'):'Выберите другую свою или доступную соседнюю планету.';
+ $('#mission-list').replaceChildren();for(const m of game.missions.filter(m=>m.team===0)){const item=document.createElement('p');item.textContent=`${m.kind==='colony'?'6 строителей':m.units.filter(id=>game.military.some(u=>u.id===id)).length+' бойцов'} → ${game.regions[m.to].name} · ${Math.ceil(m.left)} с`;$('#mission-list').append(item);}for(const b of game.battles.slice(-8).reverse())button($('#mission-list'),`${game.regions[b.planet].name}: ${b.done?(b.winner===0?'победа':'поражение'):'идёт бой'}`,()=>openBattle(b.id));if(!$('#mission-list').children.length)$('#mission-list').textContent='Активных экспедиций нет.';$('#history-list').textContent=game.history.slice(0,8).map(e=>clock(e.time)+' · '+e.text).join('\n')||'Кампания только начинается.';
 }
-function visualDeaths(){
- if(visualGame!==game){visualGame=game;lastVisualUnits.clear();fallen=[];}
- for(const [id,u]of lastVisualUnits)if(!game.get(id))fallen.push({...u,born:game.time});
- lastVisualUnits=new Map(game.visible().filter(e=>stats[e.type]?.speed).map(e=>[e.id,{id:e.id,type:e.type,team:e.team,x:e.x,y:e.y,facingX:e.facingX}]));
- fallen=fallen.filter(e=>game.time-e.born<8).slice(-48);
- for(const e of fallen)RTSArt.fallen(ctx,e,Math.round(e.x*T),Math.round(e.y*T),game.time-e.born);
+$('#dispatch').onclick=()=>{const counts={};for(const type of Object.keys(unitCosts))counts[type]=Number($('#count-'+type).value)||0;if(game.sendArmy(Number($('#army-source').value),Number($('#army-target').value),counts)){for(const type of Object.keys(unitCosts))$('#count-'+type).value='0';}else game.message='Не удалось отправить отряд: проверьте гарнизон, цель и целые количества.';updateUI();};
+function battleUI(){if(!shownBattle)return;const b=shownBattle;$('#battle-title').textContent=game.regions[b.planet].name;const left=b.units.filter(u=>u.hp>0&&u.team===0).length,right=b.units.filter(u=>u.hp>0&&u.team===1).length;$('#battle-status').textContent=`${clock(b.time)} · Люди: ${left} · Демоны: ${right} · `+(b.done?(b.winner===0?'Победа':'Поражение'):'Бой продолжается');$('#battle-report').textContent=b.done?'Выжившие вернулись в гарнизон. '+(b.winner===b.attacker?'Планета, повреждённые здания и часть жителей перешли победителю.':'Защитники удержали планету.'):'Исход определяется составом, дистанцией, лечением и турелями. Управление отрядом недоступно.';}
+function point(e){const r=canvas.getBoundingClientRect();return{x:camera.x+(e.clientX-r.left)*viewW/r.width,y:camera.y+(e.clientY-r.top)*viewH/r.height};}
+function roadLine(a,b){let x=Math.floor(a.x),y=Math.floor(a.y),tx=Math.floor(b.x),ty=Math.floor(b.y),dx=Math.abs(tx-x),dy=-Math.abs(ty-y),sx=x<tx?1:-1,sy=y<ty?1:-1,err=dx+dy;for(;;){game.road(x,y);if(x===tx&&y===ty)break;const n=2*err;if(n>=dy){err+=dy;x+=sx;}if(n<=dx){err+=dx;y+=sy;}}}
+canvas.addEventListener('contextmenu',e=>e.preventDefault());canvas.addEventListener('pointerdown',e=>{if(paused||inMenu||modalName||game.result)return;mouse=point(e);if(e.button===2){placing=null;roadDrag=null;updateUI();return;}if(e.button!==0)return;if(placing==='road'){roadDrag=mouse;roadLine(mouse,mouse);canvas.setPointerCapture(e.pointerId);}else if(placing){if(game.build(placing,Math.round(mouse.x),Math.round(mouse.y)))placing=null;}else selected=game.visible().filter(u=>!stats[u.type]?.speed&&Math.abs(u.x-mouse.x)<u.size/2+.2&&Math.abs(u.y-mouse.y)<u.size/2+.2).sort((a,b)=>a.size-b.size)[0]?.id||null;pings.push({...mouse,age:0});updateUI();});
+canvas.addEventListener('pointermove',e=>{mouse=point(e);if(roadDrag&&placing==='road'&&!paused){roadLine(roadDrag,mouse);roadDrag=mouse;}});canvas.addEventListener('pointerup',()=>{roadDrag=null;updateUI();});canvas.addEventListener('pointercancel',()=>roadDrag=null);
+$('#minimap').addEventListener('pointerdown',e=>{const r=e.target.getBoundingClientRect();camera.x=(e.clientX-r.left)/r.width*W-viewW/2;camera.y=(e.clientY-r.top)/r.height*H-viewH/2;clamp();});
+$('#worldmap').addEventListener('pointerdown',e=>{const r=e.target.getBoundingClientRect(),sector=game.regionAt((e.clientX-r.left)/r.width*W,(e.clientY-r.top)/r.height*H);if(sector){inspected=sector.id;regionPanel();}});
+window.addEventListener('resize',resize);window.addEventListener('keydown',e=>{if(inMenu)return;if(['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName))return;if(e.code==='Escape'){if(modalName)closeModal();else if(placing){placing=null;roadDrag=null;}else menu();updateUI();return;}if(e.code==='KeyM'){showModal(modalName==='world'?null:'world');return;}if(e.code==='Tab'){e.preventDefault();showModal(modalName==='army'?null:'army');return;}if(e.code==='Space'&&e.target.tagName!=='BUTTON'){e.preventDefault();pause();}if(e.code==='Home'){e.preventDefault();home();}if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)){e.preventDefault();keys.add(e.code);}});
+window.addEventListener('keyup',e=>keys.delete(e.code));window.addEventListener('blur',()=>{keys.clear();roadDrag=null;if(started){paused=true;updateUI();}});
+function rect(c,x,y,w,h,color){c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),Math.ceil(w),Math.ceil(h));}
+function hash(x,y,seed){let n=Math.imul(x+113,374761393)^Math.imul(y+71,668265263)^seed;n=Math.imul(n^(n>>>13),1274126177);return(n^(n>>>16))>>>0;}
+function ground(c,width,height,cam,seed){for(let y=Math.floor(cam.y);y<Math.min(height,Math.ceil(cam.y+viewH));y++)for(let x=Math.floor(cam.x);x<Math.min(width,Math.ceil(cam.x+viewW));x++){const n=hash(x,y,seed);rect(c,x*T,y*T,T,T,n%3?'#4a4f46':'#4d5046');if(n%17===0)rect(c,x*T+5,y*T+11,5,2,'#343e34');if(n%29===0)rect(c,x*T+13,y*T+7,3,2,'#737565');}for(let gy=Math.floor(cam.y/12);gy<=Math.ceil((cam.y+viewH)/12);gy++)for(let gx=Math.floor(cam.x/12);gx<=Math.ceil((cam.x+viewW)/12);gx++){const n=hash(gx+500,gy+500,seed),x=(gx*12+3+n%6)*T,y=(gy*12+3+(n>>>6)%6)*T,p=RTSArt.painter(c,x,y,2);if(n%2){p.plate(-15,-4,29,9,'#626655','#323d32');p.r(-12,-2,5,4,'#404c3e');p.r(-3,-2,7,4,'#404c3e');p.r(8,-2,3,4,'#404c3e');}else{p.poly([[-13,-3],[-6,-9],[9,-7],[15,-1],[10,6],[-6,8],[-13,3]],'#656c56');p.poly([[-11,-2],[-5,-7],[8,-5],[12,-1],[8,4],[-5,6],[-11,2]],'#354034');}}}
+function render(){ctx.save();ctx.translate(-camera.x*T,-camera.y*T);const p=game.planet();ground(ctx,W,H,camera,p.seed);
+ for(const k of p.roads){const x=k%W,y=Math.floor(k/W);if(x<camera.x-1||y<camera.y-1||x>camera.x+viewW+1||y>camera.y+viewH+1)continue;rect(ctx,x*T,y*T,T,T,'#383f39');rect(ctx,x*T+2,y*T+2,20,1,'#77755e');rect(ctx,x*T+2,y*T+21,20,1,'#77755e');}
+ for(const e of game.visible().sort((a,b)=>a.y-b.y)){if(e.x<camera.x-4||e.y<camera.y-4||e.x>camera.x+viewW+4||e.y>camera.y+viewH+4)continue;const x=Math.round(e.x*T),y=Math.round(e.y*T),s=e.size*T;if(e.type==='deposit')RTSArt.deposit(ctx,e,x,y);else if(e.type==='worker'){const b=game.get(e.building);RTSArt.unit(ctx,e.phase==='return'?{...e,carry:{resource:'food',amount:4}}:e,x,y,game.time,{working:b&&game.adjacent(e,b)||e.field&&e.action>0});}else{RTSArt.building(ctx,e,x,y,game.time,{progress:e.construction>0?1-e.construction/stats[e.type].buildTime:1,working:!!e.builder&&game.adjacent(game.get(e.builder)||{},e),occupants:game.workers(e).length,operating:game.operational(e)&&game.workers(e).length>0});if(e.hp<e.maxHp&&!e.construction){rect(ctx,x-7,y+2,4,2,'#30382c');rect(ctx,x+5,y-3,5,2,'#30382c');}if(stats[e.type].resource&&e.type!=='guild'){rect(ctx,x-s/2,y+s/2+3,s,3,'#293024');rect(ctx,x-s/2,y+s/2+3,s*e.buffer/(e.type==='factory'?20:60),3,colors[stats[e.type].resource]);}if(e.construction>0){rect(ctx,x-s/2,y+s/2+3,s,3,'#242e21');rect(ctx,x-s/2,y+s/2+3,s*(1-e.construction/stats[e.type].buildTime),3,'#d1c384');}}
+ if(selected===e.id){ctx.strokeStyle='#dfd09c';ctx.lineWidth=1;ctx.strokeRect(x-s/2-3,y-s/2-3,s+6,s+6);}if(e.hp<e.maxHp&&Number.isFinite(e.maxHp)){rect(ctx,x-s/2,y-s/2-10,s,3,'#222b20');rect(ctx,x-s/2,y-s/2-10,s*e.hp/e.maxHp,3,'#b3cc7b');}}
+ if(placing&&placing!=='road'){const x=Math.round(mouse.x),y=Math.round(mouse.y);rect(ctx,(x-1)*T,(y-1)*T,48,48,game.canBuild(placing,x,y)?'#a5dd7755':'#e48d6955');}
+ for(const ping of pings){ctx.strokeStyle='#d5dfa3';ctx.globalAlpha=1-ping.age/.5;const r=4+ping.age*20;ctx.strokeRect(ping.x*T-r,ping.y*T-r,r*2,r*2);ctx.globalAlpha=1;}ctx.restore();
+ rect(mini,0,0,288,192,'#3c4a37');for(const e of game.visible()){if(e.type==='deposit')rect(mini,e.x*2,e.y*2,2,2,colors[e.resource]);else rect(mini,e.x*2,e.y*2,e.type==='worker'?1:4,e.type==='worker'?1:4,'#bed38b');}mini.strokeStyle='#e4d4a1';mini.strokeRect(camera.x*2,camera.y*2,viewW*2,viewH*2);
+ if(modalName==='world')drawWorld();if(modalName==='battle'&&shownBattle)drawBattle(shownBattle);
 }
-function selectionMark(e,x,y){
- const color=e.team===1?'#ecb28a':'#d0de9d';
- if(stats[e.type]?.speed){const points=[[x-13,y+6],[x,y+11],[x+13,y+6],[x,y+2],[x-13,y+6]];for(let i=1;i<points.length;i++)line(...points[i-1],...points[i],color);}
- else{const r=e.size*T/2+3;for(const sx of [-1,1])for(const sy of [-1,1]){line(x+sx*r,y+sy*r,x+sx*(r-8),y+sy*r,color,2);line(x+sx*r,y+sy*r,x+sx*r,y+sy*(r-8),color,2);}}
-}
-function render(){
- ctx.save();ctx.translate(-camera.x*T,-camera.y*T);
- drawSurface();visualDeaths();
- for(const e of game.visible().sort((a,b)=>a.y-b.y)){
-  if(e.x<camera.x-3||e.y<camera.y-3||e.x>camera.x+VW+3||e.y>camera.y+VH+3)continue;
-  const x=Math.round(e.x*T),y=Math.round(e.y*T),s=e.size*T;
-  if(e.type==='deposit'){drawDeposit(e,x,y);continue;}
-  if(stats[e.type]?.speed)drawUnit(e,x,y);else drawBuilding(e,x,y);
-  if(selected.includes(e.id))selectionMark(e,x,y);
-  if(e.type==='outpost'){const r=game.regions[e.region];if(r.progress){rect(x-24,y-35,48,4,'#26372f');rect(x-24,y-35,48*r.progress/12,4,'#e2d295');}}
-  if(Number.isFinite(e.maxHp)&&(e.hp<e.maxHp||selected.includes(e.id))){const hy=stats[e.type]?.speed?y-31:y-s/2-14;rect(x-s/2,hy,s,3,'#232b20');rect(x-s/2,hy,Math.ceil(s*e.hp/e.maxHp),3,e.team===1?'#d38d65':'#b9d37c');}
- }
- if(drag){const a=drag.start,b=drag.end;ctx.strokeStyle='#fff2a3';ctx.strokeRect(Math.min(a.x,b.x)*T,Math.min(a.y,b.y)*T,Math.abs(a.x-b.x)*T,Math.abs(a.y-b.y)*T);}
- if(placing){const x=Math.round(mouse.x),y=Math.round(mouse.y);rect((x-1)*T,(y-1)*T,48,48,game.canBuild(placing,x,y)?'#b4ff8b99':'#ff685b99');}
- for(const f of game.effects){const x=Math.round(f.x*T),y=Math.round(f.y*T),tx=Math.round(f.tx*T),ty=Math.round(f.ty*T),p=RTSArt.painter(ctx,0,0);
-  if(f.kind==='heal'){line(x,y-6,tx,ty-7,'#b5de7377');rect(tx-1,ty-18,3,9,'#b9f175');rect(tx-4,ty-15,9,3,'#b9f175');}
-  else if(f.kind==='slash'){line(tx-8,ty+4,tx+9,ty-16,'#e0deac',2);rect(tx+6,ty-16,2,3,'#f3efce');}
-  else if(f.kind==='grenade'){const r=Math.round(3+(1-f.left/.3)*11);p.poly([[tx-r,ty],[tx-3,ty-3],[tx,ty-r],[tx+3,ty-3],[tx+r,ty],[tx+3,ty+3],[tx,ty+r],[tx-3,ty+3]],'#c58646');rect(tx-3,ty-3,7,7,'#f0c476');rect(tx-1,ty-2,3,5,'#f6e8b0');}
-  else{const face=tx>=x?1:-1;line(x+12*face,y-7,tx,ty-5,'#dfc67a88');rect(x+15*face-2,y-9,4,5,'#f5d58a');rect(tx-1,ty-6,3,3,'#dec98f');}
- }
- for(const p of pings){const x=Math.round(p.x*T),y=Math.round(p.y*T),r=Math.round(5+p.age*18),color=p.kind==='attack'?'#efb28b':p.kind==='capture'?'#e4cc8e':'#c6df99';ctx.globalAlpha=1-p.age/.6;for(const sx of [-1,1])for(const sy of [-1,1]){line(x+sx*r,y+sy*Math.round(r*.55),x+sx*(r-4),y+sy*Math.round(r*.55),color);line(x+sx*r,y+sy*Math.round(r*.55),x+sx*r,y+sy*Math.round(r*.55)-sy*3,color);}if(p.kind!=='select'){line(x-3,y,x+3,y,color);line(x,y-3,x,y+3,color);}ctx.globalAlpha=1;}
- ctx.restore();
- drawRegionMap(mini,288,192);
- for(const e of game.visible()){if(e.type==='deposit'||e.type==='outpost')continue;mini.fillStyle=e.team===0?'#c5df85':'#ec9263';const size=stats[e.type]?.speed?2:e.size*2;mini.fillRect(e.x*2-size/2,e.y*2-size/2,size,size);}
- mini.strokeStyle='#fff2bb';mini.lineWidth=1;mini.strokeRect(camera.x*2,camera.y*2,VW*2,VH*2);
- if(worldOpen)drawRegionMap(worldContext,864,576,true);
-}
-
-function frame(now){
- const dt=last===null?0:Math.min((now-last)/1000,.1);last=now;
- if(started&&!inMenu&&!worldOpen&&!helpOpen&&!drag){const dx=Number(keys.has('ArrowRight')||keys.has('KeyD'))-Number(keys.has('ArrowLeft')||keys.has('KeyA')),dy=Number(keys.has('ArrowDown')||keys.has('KeyS'))-Number(keys.has('ArrowUp')||keys.has('KeyW'));camera.x+=dx*18*dt;camera.y+=dy*18*dt;clampCamera();}
- mouse={x:camera.x+cursor.x,y:camera.y+cursor.y};visualTime+=dt;pings=pings.filter(p=>(p.age+=dt)<.6);if(started&&!inMenu&&!paused&&!helpOpen)game.tick(dt*gameSpeed);if(started&&!inMenu)render();uiTimer+=dt;if(uiTimer>.2){updateUI();uiTimer=0;}requestAnimationFrame(frame);
-}
-function drawRegionMap(context,width,height,full=false){
- const sx=width/W,sy=height/H;context.fillStyle='#252e25';context.fillRect(0,0,width,height);
- for(const r of game.regions){const p=r.displayOutline;if(!p.length)continue;context.beginPath();context.moveTo(p[0].x*sx,p[0].y*sy);for(const a of p.slice(1))context.lineTo(a.x*sx,a.y*sy);
-  context.closePath();context.fillStyle=r.owner===0?'#465438':r.owner===1?'#644238':['#424a3c','#484c40','#4d4e3f'][r.id%3];context.fill();
-  context.fillStyle=r.owner===0?'#d5e6a2':r.owner===1?'#efac7b':'#e2d6ad';context.fillRect(r.x*sx-3,r.y*sy-3,6,6);
-  if(full){context.font='12px Arial';context.textAlign='center';context.fillText(sectorTitle(r),r.x*sx,r.y*sy+23);if(game.homeRegions.includes(r.id)){context.font='10px Arial';context.fillText(r.id===game.homeRegions[0]?'Ваш плацдарм':'Плацдарм демонов',r.x*sx,r.y*sy+37);}if(r.progress){context.fillStyle='#182a22';context.fillRect(r.x*sx-30,r.y*sy+3,60,4);context.fillStyle='#e3d49c';context.fillRect(r.x*sx-30,r.y*sy+3,60*r.progress/12,4);}}
- }
- for(const r of game.regions)for(const run of r.borderRuns){if(run.neighbor<0||run.neighbor<r.id)continue;const p=run.points;context.beginPath();context.moveTo(p[0].x*sx,p[0].y*sy);
-  for(let i=1;i<p.length-1;i++){const a=p[i],before=p[i-1],after=p[i+1],r1=Math.min(.25,1/dist(a,before)),r2=Math.min(.25,1/dist(a,after));context.lineTo((a.x+(before.x-a.x)*r1)*sx,(a.y+(before.y-a.y)*r1)*sy);context.quadraticCurveTo(a.x*sx,a.y*sy,(a.x+(after.x-a.x)*r2)*sx,(a.y+(after.y-a.y)*r2)*sy);}
-  context.lineTo(p.at(-1).x*sx,p.at(-1).y*sy);const active=full&&(r.id===selectedRegion||run.neighbor===selectedRegion);context.strokeStyle=active?'#fae6aa':'#9b9b78';context.lineWidth=active?2.5:full?1.3:.6;context.stroke();
- }
- context.strokeStyle='#9b9b78';context.lineWidth=1;context.strokeRect(0,0,width,height);context.textAlign='start';
-}
-function updateRegionPanel(){
- const r=game.regions[selectedRegion];if(!r)return;
- $('#region-name').textContent=sectorTitle(r);const owner=r.owner===0?'Ваши секторы':r.owner===1?'Секторы противника':'Нейтральный сектор';
- $('#region-details').textContent=owner+' · '+r.cells.length+' клеток\n'+(r.owner===0?'Здесь можно строить.':game.canCapture(r.id)?'Соседняя территория: доступна для захвата.':'Сначала захватите соседние с ней земли.')+(r.progress?'\nЗахват: '+Math.floor(r.progress/12*100)+'%':'');
- const actions=$('#region-actions');actions.replaceChildren();
- action(actions,'Отправить выбранных бойцов',()=>{game.capture(selected,r.id);},paused||!!game.result||!game.canCapture(r.id)||!selected.some(id=>isMilitary(game.get(id))&&game.get(id)?.team===0));
- action(actions,'Показать территорию',()=>{camera.x=r.x-VW/2;camera.y=r.y-VH/2;clampCamera();toggleWorld(false);});
-}
-function toggleWorld(show=!worldOpen){if(inMenu||!started)return;worldOpen=show;$('#world').hidden=!worldOpen;drag=null;keys.clear();updateRegionPanel();}
-function showMenu(){inMenu=true;toggleHelp(false);commandMode=null;worldOpen=false;keys.clear();drag=null;$('#world').hidden=true;$('#menu').hidden=false;$('#app').hidden=true;$('#resume').hidden=!started;$('#menu-speed').value=String(gameSpeed);$('#start').textContent=started?'Начать новую игру':'Начать игру';}
-function resume(){if(!started)return;inMenu=false;$('#menu').hidden=true;$('#app').hidden=false;resizeViewport();last=null;updateUI();}
-function startMatch(){const value=($('#seed').value||'').trim(),seed=value===''?undefined:Number(value)>>>0;gameSpeed=Number($('#menu-speed').value)||.6;game=new Game(seed,{ai:$('#ai').checked});commandMode=null;buildUIKey='';orderUIKey='';selected=[];placing=null;paused=false;drag=null;pings=[];selectedRegion=game.homeRegions[0];started=true;resume();home();}
-$('#start').onclick=startMatch;$('#resume').onclick=resume;$('#menu-open').onclick=showMenu;
-$('#menu-speed').onchange=e=>{gameSpeed=Number(e.target.value);};
-$('#world-bottom').onclick=()=>toggleWorld();$('#world-close').onclick=()=>toggleWorld(false);
-worldCanvas.addEventListener('pointerdown',e=>{const b=worldCanvas.getBoundingClientRect(),r=game.regionAt((e.clientX-b.left)/b.width*W,(e.clientY-b.top)/b.height*H);if(r){selectedRegion=r.id;updateRegionPanel();}});
-function portrait(e){const c=$('#portrait').getContext('2d');c.imageSmoothingEnabled=false;c.fillStyle='#202a22';c.fillRect(0,0,64,64);for(let y=0;y<64;y+=8){c.fillStyle='#2c372a';c.fillRect(0,y,64,1);}if(e&&stats[e.type])drawAssetIcon(c,e.type,64,e.team);else if(e?.type==='deposit')fitIcon(c,spriteIcon('deposit',0,e.resource),64);}
-function selectionCards(units){
- const cards=$('#selection-cards');cards.replaceChildren();cards.hidden=units.length<2;portrait(units[0]);
- for(const e of units){const b=action(cards,'',()=>{selected=[e.id];commandMode=null;});b.className='unit-card';const title=document.createElement('strong');title.textContent=names[e.type]||resourceNames[e.resource];b.append(title);const status=document.createElement('small');status.textContent=e.type==='outpost'?'Контроль территории':Math.ceil(e.hp)+' / '+e.maxHp;b.append(status);
-  if(Number.isFinite(e.maxHp)){const bar=document.createElement('span');bar.className='hp-track';const fill=document.createElement('span');fill.style.width=Math.max(0,e.hp/e.maxHp*100)+'%';bar.append(fill);b.append(bar);}
- }
-}
-
-RTSArt.menuScene($('#menu-art').getContext('2d'),640,320);
-home();updateUI();showMenu();requestAnimationFrame(frame);
+function drawWorld(){rect(wc,0,0,864,576,'#111b1b');for(let i=0;i<160;i++){const n=hash(i,4,game.seed);rect(wc,n%864,(n>>>10)%576,1,1,i%4?'#63715b':'#bdc7a5');}
+ const sx=864/W,sy=576/H;for(const r of game.regions){const points=r.displayOutline;if(!points.length)continue;wc.beginPath();wc.moveTo(points[0].x*sx,points[0].y*sy);for(const p of points.slice(1))wc.lineTo(p.x*sx,p.y*sy);wc.closePath();wc.fillStyle=r.owner===0?'#8eae6a20':r.owner===1?'#a9654a26':'#5a67541a';wc.fill();}
+ for(const r of game.regions)for(const run of r.borderRuns){if(run.neighbor<0||run.neighbor<r.id)continue;const p=run.points;wc.beginPath();wc.moveTo(p[0].x*sx,p[0].y*sy);for(let i=1;i<p.length-1;i++){const a=p[i],before=p[i-1],after=p[i+1],r1=Math.min(.3,1.5/dist(a,before)),r2=Math.min(.3,1.5/dist(a,after));wc.lineTo((a.x+(before.x-a.x)*r1)*sx,(a.y+(before.y-a.y)*r1)*sy);wc.quadraticCurveTo(a.x*sx,a.y*sy,(a.x+(after.x-a.x)*r2)*sx,(a.y+(after.y-a.y)*r2)*sy);}wc.lineTo(p.at(-1).x*sx,p.at(-1).y*sy);const active=r.id===inspected||run.neighbor===inspected;wc.strokeStyle=active?'#d4cc9b':'#77846c77';wc.lineWidth=active?2:1;wc.stroke();}
+ for(const r of game.regions){const x=r.x*sx,y=r.y*sy,size=17+r.id%4*2,c=r.owner===0?'#9dbe78':r.owner===1?'#b67b60':'#7b8c7a';wc.fillStyle='#0d1614';wc.beginPath();wc.arc(x+2,y+3,size+3,0,Math.PI*2);wc.fill();wc.fillStyle=c;wc.beginPath();wc.arc(x,y,size,0,Math.PI*2);wc.fill();rect(wc,x-size*.6,y-size*.4,size*.9,4,'#c4c79966');rect(wc,x-size*.2,y+2,size,4,'#3b4e4455');wc.font='11px monospace';wc.textAlign='center';wc.fillStyle='#e1dab9';wc.fillText(r.name,x,y+size+16);if(game.battles.some(b=>b.planet===r.id&&!b.done)){wc.fillStyle='#ffc07c';wc.fillText('БОЙ',x,y-size-8);}}wc.textAlign='start';}
+function drawBattle(b){rect(bc,0,0,1152,768,'#444e43');for(let i=0;i<28;i++){const n=hash(i,6,b.seed),x=48+n%1056,y=48+(n>>>10)%672;rect(bc,x,y,12+n%17,4,'#364034');if(i%4===0)rect(bc,x+4,y-5,13,6,'#626554');}for(const u of b.units.filter(u=>u.hp>0).sort((a,b)=>a.y-b.y)){if(u.type==='tower')RTSArt.building(bc,u,u.x*T,u.y*T,b.time);else RTSArt.unit(bc,u,u.x*T,u.y*T,b.time);rect(bc,u.x*T-11,u.y*T-31,22,3,'#263022');rect(bc,u.x*T-11,u.y*T-31,22*u.hp/u.maxHp,3,u.team===0?'#bfd78c':'#dc9971');}for(const e of b.effects){const x=e.x*T,y=e.y*T,tx=e.tx*T,ty=e.ty*T,p=RTSArt.painter(bc,0,0);if(e.kind==='heal'){p.line(x,y-5,tx,ty-5,'#b5db8577');rect(bc,tx-1,ty-17,3,9,'#b9e786');rect(bc,tx-4,ty-14,9,3,'#b9e786');}else if(e.kind==='grenade'){p.poly([[tx-9,ty],[tx,ty-9],[tx+9,ty],[tx,ty+9]],'#d9a86a');rect(bc,tx-2,ty-2,5,5,'#efdfab');}else p.line(x,y-5,tx,ty-6,e.kind==='slash'?'#eee4b0':'#d7b879',e.kind==='slash'?2:1);}}
+function frame(now){const dt=last===null?0:Math.min(.1,(now-last)/1000);last=now;visualTime+=dt;pings=pings.filter(p=>(p.age+=dt)<.5);if(started&&!inMenu){if(!paused&&modalName!=='help')game.tick(dt*speed);if(!modalName){camera.x+=(Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('ArrowLeft')))*18*dt;camera.y+=(Number(keys.has('KeyS')||keys.has('ArrowDown'))-Number(keys.has('KeyW')||keys.has('ArrowUp')))*18*dt;clamp();}render();}uiClock+=dt;if(uiClock>.25){uiClock=0;updateUI();}requestAnimationFrame(frame);}
+RTSArt.menuScene($('#menu-art').getContext('2d'),640,320);home();updateUI();menu();requestAnimationFrame(frame);

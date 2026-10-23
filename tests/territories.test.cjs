@@ -1,47 +1,12 @@
-const {test}=require('node:test'),assert=require('node:assert/strict');
-const {Game,W,H}=require('../engine.js');
-const make=()=>new Game(42,{ai:false}),advance=(g,t)=>{for(let i=0;i<Math.ceil(t*10);i++)g.tick(.1);};
-const supply=g=>{for(const t of g.teams){t.stock.food=10000;t.stock.gold=10000;}};
-test('12 large, connected territories cover the world and neighbor graph is symmetric',()=>{
- const g=make();assert.equal(g.regions.length,12);assert.equal(g.regions.reduce((sum,r)=>sum+r.cells.length,0),W*H);
- for(const r of g.regions){assert.ok(r.cells.length>600);assert.ok(r.outline.length>20);for(const id of r.neighbors)assert.ok(g.regions[id].neighbors.includes(r.id));
-  const seen=new Set(),q=[r.cells[0]];seen.add(q[0].y*W+q[0].x);for(let i=0;i<q.length;i++){const c=q[i];for(const [dx,dy]of [[1,0],[-1,0],[0,1],[0,-1]]){const x=c.x+dx,y=c.y+dy,k=y*W+x;if(g.regionAt(x,y)?.id===r.id&&!seen.has(k)){seen.add(k);q.push({x,y});}}}assert.equal(seen.size,r.cells.length);
- }
- assert.equal(g.regions.filter(r=>r.owner===0).length,1);assert.equal(g.regions.filter(r=>r.owner===1).length,1);assert.ok(!g.canCapture(g.homeRegions[1]));
- for(const team of [0,1]){const b=g.alive().find(e=>e.type==='base'&&e.team===team);assert.equal(g.regionAt(b.x,b.y).id,g.homeRegions[team]);}
-});
-test('only soldiers can capture an adjacent tower; distant regions reject capture',()=>{
- const g=make(),r=g.regions[g.regions[0].neighbors[0]],tower=g.get(r.towerId),worker=g.alive().find(e=>e.type==='worker');worker.x=tower.x+2;worker.y=tower.y;
- assert.equal(g.capture([worker.id],r.id),false);advance(g,13);assert.equal(r.owner,-1);
- const soldier=g.add('soldier',0,tower.x+2,tower.y);assert.equal(g.capture([soldier.id],11),false);assert.equal(g.capture([soldier.id],r.id),true);advance(g,11);assert.equal(r.owner,-1);assert.ok(r.progress>10);advance(g,1.2);assert.equal(r.owner,0);assert.equal(tower.team,0);assert.equal(tower.hp,Infinity);assert.ok(r.neighbors.some(id=>g.canCapture(id)));
-});
-test('contested capture pauses and abandoned progress decays; recapture requires adjacency',()=>{
- const g=make(),r=g.regions[g.regions[0].neighbors[0]],tower=g.get(r.towerId);const u=g.add('soldier',0,tower.x+3,tower.y);advance(g,4);const progress=r.progress;
- const enemy=g.add('soldier',1,tower.x-3,tower.y);g.updateCaptures(1);assert.equal(r.progress,progress);enemy.hp=0;u.x=tower.x+10;g.updateCaptures(1);assert.ok(r.progress<progress);u.x=tower.x+3;advance(g,12);assert.equal(r.owner,0);
- assert.equal(g.canCapture(r.id,1),r.neighbors.some(id=>g.regions[id].owner===1));
-});
-test('construction is restricted to owned territory and unlocked by capture',()=>{
- const g=make(),r=g.regions[g.regions[0].neighbors[0]];let site;
- for(const c of r.cells){r.owner=0;const valid=g.canBuild('house',c.x,c.y);r.owner=-1;if(valid){site=c;break;}}
- assert.ok(site);assert.equal(g.build('house',site.x,site.y),false);const tower=g.get(r.towerId);g.add('soldier',0,tower.x+2,tower.y);advance(g,12.2);assert.ok(g.build('house',site.x,site.y));
-});
-test('enemy hall is protected before taking its home territory, then normal combat wins',()=>{
- const g=make();supply(g);const hall=g.alive().find(e=>e.type==='base'&&e.team===1),r=g.regions[g.homeRegions[1]],ids=[];
- for(let i=0;i<12;i++)ids.push(g.add('soldier',0,hall.x+3,hall.y-2+i%4).id);g.command(ids,hall.x,hall.y,hall.id);advance(g,10);assert.equal(hall.hp,hall.maxHp);assert.equal(g.result,null);
- // Model a campaign which has reached the last frontier; perform the final capture normally.
- for(const id of r.neighbors)g.regions[id].owner=0;const tower=g.get(r.towerId);const u=g.get(ids[0]);u.x=tower.x+2;u.y=tower.y;u.order={type:'capture',id:tower.id};u.path=[];advance(g,13);assert.equal(r.owner,0);
- g.command(ids,hall.x,hall.y,hall.id);advance(g,30);assert.equal(g.result,'victory');
-});
-test('eight-way paths use diagonals without cutting blocked corners; groups get distinct destinations',()=>{
- const g=make(),p=g.path(65.5,40.5,70.5,45.5);assert.equal(p.length,5);assert.ok(p.every((c,i)=>!i||c.x!==p[i-1].x&&c.y!==p[i-1].y));
- g.terrain[40][66]=1;g.terrain[41][65]=1;const detour=g.path(65.5,40.5,67.5,42.5);assert.ok(detour.length>2);assert.notDeepEqual(detour[0],{x:66.5,y:41.5});
- const ids=[g.add('soldier',0,60.5,40.5).id,g.add('soldier',0,61.5,40.5).id];g.command(ids,70,50);assert.notDeepEqual(g.get(ids[0]).path.at(-1),g.get(ids[1]).path.at(-1));
-});
-test('a real army can capture a continuous chain from home to enemy land and win',()=>{
- const g=make();supply(g);const start=g.regions[g.homeRegions[0]],goal=g.homeRegions[1],prev=new Map([[start.id,null]]),q=[start.id];
- for(let i=0;i<q.length;i++)for(const n of g.regions[q[i]].neighbors)if(!prev.has(n)){prev.set(n,q[i]);q.push(n);}
- const chain=[];for(let n=goal;n!==start.id;n=prev.get(n))chain.push(n);chain.reverse();
- const ids=[];for(let i=0;i<8;i++)ids.push(g.add('soldier',0,start.x+2,start.y).id);
- for(const id of chain){assert.ok(g.capture(ids,id));for(let i=0;i<1100&&g.regions[id].owner!==0;i++)g.tick(.1);assert.equal(g.regions[id].owner,0);}
- const hall=g.alive().find(e=>e.type==='base'&&e.team===1);g.command(ids,hall.x,hall.y,hall.id);advance(g,35);assert.equal(g.result,'victory');
-});
+const {test}=require('node:test');const assert=require('node:assert/strict');const {Game,W,H,colonyCost,stats}=require('../engine');
+const create=()=>new Game(42,{ai:false}),advance=(g,s)=>{for(let i=0;i<Math.ceil(s*10);i++)g.tick(.1);};
+const army=(g,type='soldier',planet=0,team=0)=>{const u={id:g.nextId++,type,team,planet,location:'reserve',hp:stats[type].hp,maxHp:stats[type].hp};g.military.push(u);return u;};
+test('12 seeded space sectors cover a connected galaxy and maps are independent full-size planets',()=>{const g=create(),same=create();assert.equal(g.regions.length,12);assert.equal(g.regions.reduce((n,r)=>n+r.cells.length,0),W*H);assert.deepEqual(g.regionGrid,same.regionGrid);for(const r of g.regions)for(const n of r.neighbors)assert.ok(g.regions[n].neighbors.includes(r.id));const a=g.planet(0),b=g.planet(1);assert.equal(a.terrain.length,96);assert.equal(a.terrain[0].length,144);assert.notEqual(a,b);assert.notEqual(a.seed,b.seed);assert.ok(a.entities.some(e=>e.resource==='metal'));assert.ok(b.entities.some(e=>e.resource==='crystals'));});
+test('foreign or neutral surfaces cannot be opened; an owned map retains its buildings and roads',()=>{const g=create();assert.equal(g.switchPlanet(1),false);assert.equal(g.switchPlanet(11),false);g.road(25,25);g.regions[1].owner=0;assert.ok(g.switchPlanet(1));assert.equal(g.planet().roads.size,0);assert.ok(g.switchPlanet(0));assert.ok(g.planet().roads.has(25*W+25));assert.ok(g.alive().some(e=>e.type==='base'));});
+test('sending validates whole available counts, adjacency and reserves units for the trip',()=>{const g=create(),u=army(g),to=g.regions[0].neighbors[0];assert.equal(g.sendArmy(0,11,{soldier:1}),false);assert.equal(g.sendArmy(0,to,{soldier:-1}),false);assert.equal(g.sendArmy(0,to,{soldier:.5}),false);assert.equal(g.sendArmy(0,to,{soldier:2}),false);assert.equal(g.sendArmy(0,to,{unknown:1}),false);const pop=g.population().total;assert.ok(g.sendArmy(0,to,{soldier:1}));assert.equal(g.army().length,0);assert.equal(u.location,'mission');assert.equal(g.population().total,pop);advance(g,19);assert.equal(g.regions[to].owner,-1);advance(g,1.2);assert.equal(g.regions[to].owner,0);assert.equal(g.army(0,to)[0].id,u.id);assert.equal(g.alive(to).some(e=>e.type==='base'),false);});
+test('six builders reserve shared slots and resources then establish a real settlement',()=>{const g=create();g.regions[1].owner=0;for(let i=0;i<3;i++)g.add('house',0,20+i*4,20);const before={...g.stock()};assert.ok(g.colonize(1));assert.equal(g.population().reserved,6);assert.equal(g.colonize(1),false);for(const [r,n]of Object.entries(colonyCost))assert.equal(g.stock()[r],before[r]-n);advance(g,19);assert.equal(g.alive(1).filter(e=>e.type==='worker').length,0);advance(g,1.2);assert.equal(g.alive(1).filter(e=>e.type==='worker').length,6);assert.equal(g.alive(1).filter(e=>e.type==='base').length,1);assert.equal(g.population().reserved,0);assert.equal(g.population().workers,12);});
+test('settlers require population headroom and return reserved resources if control was lost',()=>{const g=create();g.regions[1].owner=0;assert.equal(g.colonize(1),false);g.add('house',0,20,20);g.add('house',0,24,20);const before=g.stock().metal;assert.ok(g.colonize(1));g.regions[1].owner=1;advance(g,20.2);assert.equal(g.stock().metal,before);assert.equal(g.population().reserved,0);assert.equal(g.alive(1).some(e=>e.type==='base'),false);});
+test('capture transfers damaged buildings and a seeded portion of residents including indoor workers',()=>{const g=create();g.regions[1].owner=1;const b=g.add('guild',1,72,48,1);for(let i=0;i<10;i++){const u=g.add('worker',1,75,46+i,1);if(i<2){u.job=b.id;u.inside=b.id;}}g.capturePlanet(1,0);assert.equal(b.team,0);assert.ok(b.hp<b.maxHp*.65);assert.equal(g.operational(b),false);const workers=g.alive(1).filter(e=>e.type==='worker');assert.ok(workers.length>0&&workers.length<10);assert.ok(workers.every(u=>u.team===0));assert.ok(workers.some(u=>u.job===b.id&&u.inside===b.id));});
+test('homeworld capture resolves the campaign victory condition',()=>{const g=create();g.capturePlanet(11,0);assert.equal(g.result,'victory');const time=g.time;g.tick(.1);assert.equal(g.time,time);const other=create();other.capturePlanet(0,1);assert.equal(other.result,'defeat');});
+test('a colony charter is refunded instead of creating a second base if a settlement appeared during travel',()=>{const g=create();g.regions[1].owner=0;g.add('house',0,20,20);g.add('house',0,24,20);const metal=g.stock().metal;assert.ok(g.colonize(1));g.add('base',0,72,48,1);advance(g,20.2);assert.equal(g.alive(1).filter(e=>e.type==='base').length,1);assert.equal(g.population().reserved,0);assert.equal(g.stock().metal,metal);});
+test('capture clears former owner training and late garrison recruits without deleting an outgoing fleet',()=>{const g=create();g.regions[1].owner=1;const reserve=army(g,'soldier',1,1),outgoing=army(g,'soldier',1,1),training=army(g,'medic',1,1);outgoing.location='mission';training.location='training';g.capturePlanet(1,0);assert.equal(reserve.hp,0);assert.equal(training.hp,0);assert.ok(outgoing.hp>0);assert.equal(g.army(1,1).length,0);});

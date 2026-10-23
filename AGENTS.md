@@ -1,25 +1,14 @@
 # Project instructions
 
-This is a desktop-mouse, single-player pixel RTS prototype. User-facing text is Russian.
+Desktop-mouse, single-player military space pixel strategy. User-facing text is Russian. Humans versus technological demons in space armor, on ruined industrial planets. Keep the H3 olive/sand humans, graphite/red demons, bone trim, green/amber indicators and coarse native pixel clusters.
 
-- Run locally by opening index.html; preserve file:// support and offline operation.
-- No build tools, remote assets, telemetry, dependencies or external fonts.
-- Keep simulation in engine.js independent of DOM and rendering, export to both window.RTS and CommonJS.
-- Keep controls and the scene in game.js; native pixel sprite drawing belongs in art.js. art.js must never mutate entities or advance gameplay.
-- World coordinates use tiles; rendering uses 24 pixels/tile. World grid: 144×96, partitioned into 12 seeded territories; viewport adapts to the available battlefield area at 24 pixels per tile, with a scrollable camera and minimap.
-- Use fixed/delta simulation time rather than wall-clock timers for gameplay.
-- Validate changes with `node --test tests/*.test.cjs`.
-- Review gameplay and layout in a desktop browser after UI changes.
-- Keep README.md honest about implemented features and limitations.
-- Do not migrate engines or add multiplayer without an explicit project decision.
-
-- Keep menu/selection/global-map UI in game.js. Territory ownership and capture rules belong in engine.js.
-- Captures require military units (isMilitary) at an adjacent territory outpost. Outposts are invulnerable, non-shooting control points; command cores take damage only after their territory is captured.
-
-- Construction advances only with its reserved worker adjacent to the site; queued sites wait for an idle carrier and never steal production workers.
-- Workers inside workplaces stay in population/upkeep but are excluded from rendering, picking, selection and combat targets. Release them through the building or when it is destroyed.
-
-- Setting: Russian-language military space RTS «Неоновый предел / Протокол Гелиос», humans in space armor with support drones versus technological demons in space armor; a ruined industrial planet. Display composite, regolith, biogel, titanium, xenocrystals; keep stable internal resource/entity keys. Workers are autonomous drones. Use the compact player reference: olive/sand humans, green visors, coarse pixel clusters and dark outlines. Demons use graphite/red metal armor, bone trim and amber instruments, not organic insect buildings.
-- Military classes are soldier (ranged marine), assault (armored melee), medic (healing only), grenadier (siege). Use isMilitary() across population, upkeep, capture, AI and UI; unitCosts defines class-specific prices. Medics must never deal damage. Both factions obey the same economic rules.
-
-- For an HTTP preview use `python3 serve.py 8000`: it serves this checkout regardless of cwd and disables caching. Update the HTML asset version and visible HELIOS version stamp together when shipping visual changes.
+- Offline operation and file:// support; no build tools, dependencies, remote assets/fonts or telemetry. Preview: `python3 serve.py 8000` from any cwd. Keep HTML asset query versions and visible HELIOS build stamp in sync.
+- Simulation in engine.js is DOM-independent, exported through window.RTS and CommonJS. art.js must never mutate simulation. UI and scenes belong in game.js.
+- H4 has 12 space regions, each a separate planet surface of 144×96 tiles. Local maps have no regional subdivision or capture outposts. Only owned surfaces may be opened; foreign planets expose status and expedition targets.
+- Food, money, metal, crystals and weapons are shared by each team across its planets. Population is global: residents + military/training + six reserved places per colony mission. Do not duplicate counts when units travel or enter battle.
+- Residents are humans, never manually commanded, automatically build/repair/transport. Hire them for money at a base. Staffing is controlled by building cards. Stationary workers hide indoors; farmers actually harvest fields and return food. No automatic births or converting residents into soldiers.
+- Military units exist in campaign rosters, not settlement entity lists. Train new units using weapons/money and capacity. Fleets carry chosen counts. Battles have independent 48×32 fields, automatic attacks/healing/kiting, no manual orders. Supply shortages slowly remove individual military units.
+- Empty worlds are captured after travel. Colonization costs resources and six free slots, then creates a base and six new residents. Enemy victory transfers damaged buildings and part of the civilian population, preserving surviving workplace assignments. Residents repair automatically for metal.
+- Use delta simulation time, never wall-clock gameplay timers. All colonies and battles tick independently of the visible screen. Roads change both movement speed and A* travel costs; no corner cutting.
+- Run `node --test tests/*.test.cjs`, then validate UI in a real desktop browser. Tests should cover campaign invariants and user flows rather than obsolete manual RTS commands.
+- Keep README.md honest about balance and limitations. No engine migration, multiplayer or unrequested features.

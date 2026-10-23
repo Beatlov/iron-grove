@@ -1,58 +1,13 @@
-const {test}=require('node:test');
-const assert=require('node:assert/strict');
-const {Game,stats,unitCosts,isMilitary}=require('../engine.js');
-const create=()=>new Game(42,{ai:false});
-const advance=(g,t)=>{for(let i=0;i<Math.ceil(t*10);i++)g.tick(.1);};
-test('all four chassis train from existing drones, charge their own prices and preserve population',()=>{
- const g=create(),b=g.add('barracks',0,40,40);
- for(const r of Object.keys(g.stock()))g.stock()[r]=10000;
- const original=g.population().total;
- for(const type of Object.keys(unitCosts)){
-  const before={...g.stock()};assert.ok(g.train(b.id,0,type));const q=b.queue[0],u=g.get(q.id);
-  assert.equal(q.type,type);assert.equal(q.left,stats[type].trainTime);
-  for(const [r,n]of Object.entries(unitCosts[type]))assert.equal(g.stock()[r],before[r]-n);
-  u.x=41.5;u.y=40;advance(g,stats[type].trainTime+.2);
-  assert.equal(u.type,type);assert.equal(u.hp,stats[type].hp);assert.equal(u.training,null);assert.equal(g.population().total,original);
-  assert.ok(isMilitary(u));
- }
- assert.equal(g.population().soldiers,4);assert.equal(g.population().workers,2);
- const before={...g.stock()};assert.equal(g.train(b.id,0,'invalid'),false);assert.deepEqual(g.stock(),before);
-});
-test('mixed training queue limits capacity and preserves chosen class order',()=>{
- const g=create(),b=g.add('barracks',0,40,40);for(const r of Object.keys(g.stock()))g.stock()[r]=10000;
- for(const type of ['medic','assault','grenadier'])assert.ok(g.train(b.id,0,type));
- assert.equal(g.train(b.id,0,'soldier'),false);assert.deepEqual(b.queue.map(q=>q.type),['medic','assault','grenadier']);
- const drones=b.queue.map(q=>g.get(q.id));for(const u of drones){u.x=41.5;u.y=40;}
- advance(g,29);assert.deepEqual(drones.map(u=>u.type),['medic','assault','grenadier']);
-});
-test('marine fires at range, assault needs contact and armor absorbs incoming damage',()=>{
- const g=create(),marine=g.add('soldier',0,50,40),target=g.add('assault',1,54,40);
- g.combat(marine,.1);assert.equal(target.hp,stats.assault.hp-(stats.soldier.damage-stats.assault.armor));
- const hp=marine.hp;g.combat(target,.1);assert.equal(marine.hp,hp);
- target.x=51;g.combat(target,.1);assert.equal(marine.hp,hp-(stats.assault.damage-stats.soldier.armor));
- assert.ok(g.effects.some(e=>e.kind==='shot'));assert.ok(g.effects.some(e=>e.kind==='slash'));
-});
-test('medic heals nearest wounded ally without overheal or enemy attacks, including explicit orders',()=>{
- const g=create(),medic=g.add('medic',0,50,40),near=g.add('soldier',0,52,40),far=g.add('assault',0,54,40),foe=g.add('worker',1,51,40);
- near.hp=near.maxHp-5;far.hp=10;
- g.combat(medic,.1);assert.equal(near.hp,near.maxHp);assert.equal(far.hp,10);assert.equal(foe.hp,foe.maxHp);
- g.command([medic.id],foe.x,foe.y,foe.id);g.combat(medic,1);assert.equal(foe.hp,foe.maxHp);assert.equal(medic.order,null);
- assert.equal(far.hp,26);assert.ok(g.effects.some(e=>e.kind==='heal'));
- far.x=56;g.combat(medic,1);assert.equal(far.hp,26);
-});
-test('grenadier prioritizes structures and deals siege damage, but cannot bypass home sector protection',()=>{
- const g=create(),u=g.add('grenadier',0,50,40),building=g.add('house',1,55,40),enemy=g.add('worker',1,52,40);
- g.combat(u,.1);assert.equal(building.hp,stats.house.hp-90);assert.equal(enemy.hp,enemy.maxHp);
- g.combat(u,1);assert.equal(building.hp,stats.house.hp-90);g.combat(u,1);assert.equal(building.hp,stats.house.hp-180);
- const base=g.alive().find(e=>e.team===1&&e.type==='base');u.x=base.x-4;u.y=base.y;const hp=base.hp;
- g.combat(u,2);assert.equal(base.hp,hp);g.regions[g.homeRegions[1]].owner=0;
- g.command([u.id],base.x,base.y,base.id);g.combat(u,2);assert.equal(base.hp,hp-90);
-});
-test('every new class captures sectors, pays military upkeep and demobilizes to a drone',()=>{
- for(const type of ['assault','medic','grenadier']){
-  const g=create(),r=g.regions.find(r=>g.canCapture(r.id)),tower=g.get(r.towerId),u=g.add(type,0,tower.x+1.5,tower.y);
-  assert.ok(g.capture([u.id],r.id));advance(g,12.2);assert.equal(r.owner,0,type);
-  g.stock().gold=0;g.economyClock=4.99;const hp=u.hp;g.tick(.1);assert.equal(u.hp,hp-8);assert.equal(g.population().soldiers,1);
-  g.demobilize([u.id]);assert.equal(u.type,'worker');assert.equal(g.population().soldiers,0);assert.ok(u.hp<=stats.worker.hp);
- }
-});
+const {test}=require('node:test');const assert=require('node:assert/strict');const {Game,stats,unitCosts}=require('../engine');
+const create=()=>new Game(42,{ai:false}),advance=(g,s)=>{for(let i=0;i<Math.ceil(s*10);i++)g.tick(.1);};
+const add=(g,type,planet=0,team=0)=>{const u={id:g.nextId++,type,team,planet,location:'reserve',hp:stats[type].hp,maxHp:stats[type].hp};g.military.push(u);return u;};
+test('barracks creates new units without consuming residents; queue and all military stages use global slots',()=>{const g=create(),b=g.add('barracks',0,40,40);g.add('house',0,45,40);for(const r in g.stock())g.stock()[r]=10000;const before={...g.stock()},workers=g.population().workers;for(const type of ['soldier','medic','grenadier'])assert.ok(g.train(b.id,0,type));assert.equal(g.train(b.id,0,'assault'),false);assert.equal(g.population().workers,workers);assert.equal(g.population().soldiers,3);assert.equal(g.stock().weapons,before.weapons-9);assert.equal(g.stock().money,before.money-135);advance(g,45);assert.equal(g.army().length,3);assert.equal(b.queue.length,0);assert.ok(!g.alive().some(e=>stats[e.type]?.military));});
+test('unaffordable training, invalid classes and a full population do not spend anything',()=>{const g=create(),b=g.add('barracks',0,40,40),before={...g.stock()};assert.equal(g.train(b.id),false);g.add('house',0,45,40);assert.equal(g.train(b.id,0,'invalid'),false);g.stock().weapons=0;assert.equal(g.train(b.id),false);assert.equal(g.stock().money,before.money);});
+test('arrival starts a separate automatic battle and winning armies occupy the planet',()=>{const g=create(),target=g.regions[0].neighbors[0];g.regions[target].owner=1;for(let i=0;i<5;i++)add(g,'soldier');add(g,'soldier',target,1);assert.ok(g.sendArmy(0,target,{soldier:5}));advance(g,20.2);const b=g.battles[0];assert.ok(b&&!b.done);assert.equal(b.planet,target);assert.ok(b.units.every(u=>u.x>=0&&u.x<=48&&u.y>=0&&u.y<=32));advance(g,80);assert.ok(b.done);assert.equal(b.winner,0);assert.equal(g.regions[target].owner,0);assert.ok(g.army(0,target).length>=3);});
+test('medics heal nearby allies without dealing damage and ranged infantry retreats from melee',()=>{const g=create();g.regions[1].owner=1;const a=add(g,'soldier'),m=add(g,'medic'),foe=add(g,'assault',1,1);g.startBattle(1,0,[a,m],[foe]);const b=g.battles[0],marine=b.units[0],medic=b.units[1],enemy=b.units[2];marine.x=20;marine.y=15;marine.hp=80;medic.x=18;medic.y=15;enemy.x=21.5;enemy.y=15;const ex=enemy.hp,ox=marine.x;g.battleTick(b,.1);assert.ok(marine.x<ox);assert.ok(marine.hp>80);assert.equal(enemy.hp,ex-(18-5));assert.ok(b.effects.some(e=>e.kind==='heal'));assert.ok(b.effects.some(e=>e.kind==='shot'));});
+test('automatic siege units target defensive towers and defenders win a medic-only stalemate',()=>{const g=create();g.regions[1].owner=1;const a=add(g,'grenadier'),d=add(g,'medic',1,1),tower=g.add('tower',1,72,48,1);g.startBattle(1,0,[a],[d],[tower]);const b=g.battles[0],siege=b.units[0],t=b.units.find(u=>u.type==='tower');siege.x=t.x-5;siege.y=t.y;g.battleTick(b,.1);assert.equal(t.hp,160);const h=create();h.regions[1].owner=1;h.startBattle(1,0,[add(h,'medic')],[add(h,'medic',1,1)]);h.battleTick(h.battles[0],.1);assert.ok(h.battles[0].done);assert.equal(h.battles[0].winner,1);});
+test('persistent army food shortage removes one soldier every 30 seconds after the deficit starts',()=>{const g=create();for(let i=0;i<10;i++)add(g,'soldier');g.stock().food=0;g.stock().money=10000;advance(g,38);assert.equal(g.military.length,10);advance(g,3);assert.equal(g.military.length,9);advance(g,30);assert.equal(g.military.length,8);});
+test('missing both supplies doubles desertion while healthy supply never removes soldiers',()=>{const g=create();for(let i=0;i<12;i++)add(g,'grenadier');g.stock().food=0;g.stock().money=0;advance(g,24);assert.equal(g.military.length,12);advance(g,2);assert.equal(g.military.length,11);const healthy=create();add(healthy,'soldier');advance(healthy,60);assert.equal(healthy.military.length,1);});
+test('AI runs the same economy and develops fields, weapons production and paid armies',()=>{const g=new Game(7);advance(g,550);const all=g.all().filter(e=>e.team===1);for(const t of ['house','farm','field','ironmine','goldmine','factory','guild','barracks'])assert.ok(all.some(e=>e.type===t),t);assert.ok(g.military.some(u=>u.team===1)||g.history.some(e=>e.text.includes('захватили')));});
+test('reinforcements wait outside a running battle without duplicating soldiers or population',()=>{const g=create(),target=g.regions[0].neighbors[0];g.regions[target].owner=1;const a=add(g,'soldier'),d=add(g,'soldier',target,1);a.hp=a.maxHp=10000;d.hp=d.maxHp=10000;g.startBattle(target,0,[a],[d]);const reinforcement=add(g,'soldier'),pop=g.population().total;assert.ok(g.sendArmy(0,target,{soldier:1}));advance(g,21);assert.equal(g.battles.length,1);assert.equal(g.missions.length,1);assert.equal(reinforcement.location,'mission');assert.equal(g.population().total,pop);assert.equal(g.battles[0].units.filter(u=>u.id===reinforcement.id).length,0);});
+test('a defended planet retains its owner but damaged battle turrets require real repairs',()=>{const g=create();g.regions[1].owner=1;const t=g.add('tower',1,72,48,1),a=add(g,'soldier'),d=add(g,'soldier',1,1);g.startBattle(1,0,[a],[d],[t]);const b=g.battles[0];b.units.find(u=>u.id===a.id).hp=0;b.units.find(u=>u.type==='tower').hp=100;g.battleTick(b,.1);assert.equal(b.winner,1);assert.equal(g.regions[1].owner,1);assert.equal(t.hp,320);assert.equal(g.operational(t),false);});

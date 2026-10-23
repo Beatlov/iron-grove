@@ -1,7 +1,7 @@
 /* HELIOS H3. Native pixel artwork only; this module never advances simulation. */
 (function(root){
 'use strict';
-const resources={wood:'#bd9461',stone:'#a69d8b',food:'#9bd34f',iron:'#8daab8',gold:'#c48bcc'};
+const resources={food:'#9bd34f',money:'#ddc779',metal:'#8daab8',crystals:'#c48bcc',weapons:'#c7a376'};
 const palettes=[
  {ink:'#171b1c',dark:'#303a2c',shade:'#465733',armor:'#718846',light:'#94a760',sand:'#ddc79b',cream:'#f0dcad',steel:'#626a70',steelLight:'#9ca3a0',pack:'#8e6643',glow:'#9ded32',hot:'#dcb76d'},
  {ink:'#1b191d',dark:'#332b30',shade:'#57343a',armor:'#8b4444',light:'#b55b4c',sand:'#b9a080',cream:'#ddc5a0',steel:'#565361',steelLight:'#8e8690',pack:'#695049',glow:'#ffb34c',hot:'#ef7644'}
@@ -19,16 +19,14 @@ function unit(ctx,e,x,y,time=0,state={}){
  const p=painter(ctx,Math.round(x)-15,Math.round(y)-25),{r,line,poly,plate}=p;
  r(5,30,22,3,'#14171477');
  if(worker){
-  const h=Math.round(Math.sin(time*3+(e.id||0))*.8),dr=painter(ctx,Math.round(x)-12,Math.round(y)-14-h),{r,poly,plate,line}=dr;
-  for(const side of [0,16]){plate(side,2,9,9,c.sand,c.ink);r(side+2,4,5,4,c.ink);r(side+3,4,3,2,c.steel);r(side+3,8,3,1,c.light);}
-  r(7,5,11,4,c.ink);plate(8,4,9,12,c.armor,c.ink);r(10,5,5,3,c.light);r(10,9,5,2,c.glow);r(11,13,3,4,c.pack);r(12,17,1,3,c.steelLight);
-  r(11,0,3,4,c.ink);r(12,0,1,2,c.glow);
-  const fx=e.facingX||0,fy=e.facingY||0;r(11+Math.round(fx*2),7+Math.round(fy*2),2,2,c.cream);
-  const spin=Math.floor(time*12)%2;for(const dx of [0,16]){if(spin)r(dx+2,6,5,1,c.steelLight);else{r(dx+4,4,1,4,c.steelLight);}}
-  if(demon){poly([[0,3],[-2,0],[5,2]],c.steelLight);poly([[19,2],[27,0],[24,5]],c.steelLight);r(11,5,3,2,c.hot);}
-  if(state.working){line(13,14,17,18,c.sand);r(16,17,4,3,c.steel);r(19,18,2,2,c.hot);if(Math.floor(time*9)%2){r(22,16,1,2,c.cream);r(21,21,2,1,c.hot);}}
-  else if(e.carry){plate(9,15,8,6,c.pack);r(11,16,4,2,resources[e.carry.resource]||c.sand);}
-  else{r(10,16,1,3,c.sand);r(14,16,1,3,c.sand);r(10,18,2,1,c.sand);r(13,18,2,1,c.sand);}
+  const face=e.facingX<-.15?-1:1,step=e.moving?[0,2,0,-2][phase]:0,wp=painter(ctx,Math.round(x)-12,Math.round(y)-23),{r,line,plate,poly}=wp;
+  for(const [dx,shift]of [[6,step],[15,-step]]){plate(dx,16+Math.max(0,shift),5,11-Math.abs(shift),c.dark);r(dx+1,17+Math.max(0,shift),3,5,'#6c7772');r(dx-1,26+Math.max(0,shift),7,3,c.ink);r(dx,26+Math.max(0,shift),5,1,c.sand);}
+  plate(5,6,16,13,c.pack);r(7,7,12,4,c.sand);r(7,11,12,6,demon?c.shade:'#667c68');r(8,12,2,5,c.sand);r(16,12,2,5,c.sand);r(9,17,8,2,c.dark);
+  plate(9,1,10,9,c.sand);r(8,1,12,3,c.armor);r(9,0,10,2,c.light);r(10,5,8,2,c.ink);r(11,5,6,1,c.glow);r(11,8,6,2,c.sand);
+  if(demon){poly([[9,3],[6,-1],[9,0],[11,3]],c.cream);poly([[17,3],[21,-1],[20,3],[19,5]],c.cream);}
+  if(state.working){line(18,13,23,8,c.steelLight,2);r(22,6,4,3,c.sand);if(Math.floor(time*7)%2){r(25,6,2,1,c.hot);r(25,10,1,2,c.cream);}}
+  else if(e.carry){plate(4,13,19,10,c.pack);r(5,14,17,2,c.sand);r(10,16,7,4,resources[e.carry.resource]||c.light);r(7,16,1,5,c.cream);}
+  else{r(3,10,4,8,c.sand);r(19,10,4,8,c.sand);r(4,16,3,3,c.pack);r(19,16,3,3,c.pack);}
   return;
  }
  const medic=e.type==='medic',assault=e.type==='assault',grenade=e.type==='grenadier',front=e.facingY<-.45,face=e.facingX<-.15?-1:1;
@@ -66,15 +64,15 @@ function unit(ctx,e,x,y,time=0,state={}){
 function deposit(ctx,e,x,y){
  const {r,plate,poly,line}=painter(ctx,Math.round(x)-12,Math.round(y)-14),c=resources[e.resource];r(1,20,23,3,'#191c1d88');
  if(e.amount<=0){r(4,17,17,3,'#747063');r(6,17,4,1,'#aaa18e');return;}
- if(e.resource==='wood'){
+ if(e.resource==='scrap'){
   poly([[1,18],[4,7],[9,5],[10,1],[16,6],[20,9],[23,20]],'#242b2b');r(5,7,5,10,'#7c8177');r(6,8,2,7,'#bac0a1');line(11,5,20,16,'#b98b58',3);r(11,11,7,6,'#455944');r(12,12,5,2,'#889d6d');r(2,18,8,3,'#9f764c');r(17,17,6,3,'#59616a');
- }else if(e.resource==='stone'){
+ }else if(e.resource==='regolith'){
   poly([[0,20],[2,12],[7,11],[8,4],[16,3],[19,10],[23,14],[24,21]],'#444844');poly([[2,19],[3,13],[9,13],[10,6],[16,5],[18,12],[22,15],[22,19]],'#969386');r(10,6,6,2,'#c3bca5');r(4,14,5,2,'#bcb6a0');r(12,14,6,5,'#757569');r(2,20,21,2,'#555c54');
- }else if(e.resource==='iron'){
+ }else if(e.resource==='metal'){
   poly([[1,19],[4,9],[7,8],[9,0],[16,3],[19,11],[23,16],[22,21]],'#303b3d');poly([[4,18],[6,10],[9,9],[11,3],[16,5],[17,13],[21,17],[20,19]],'#687f88');line(11,4,13,13,'#c6cbbc',2);r(6,12,3,3,'#abc4c8');r(15,14,4,2,'#9cb1b4');r(3,20,17,2,'#414f54');
  }else if(e.resource==='food'){
   plate(6,4,14,18,'#75846b');r(8,7,10,11,'#aad06d');r(9,8,2,8,'#e3e9a4');r(7,3,12,4,'#c2c2a8');r(8,18,10,3,'#495945');
- }else{
+ }else if(e.resource==='money'){plate(3,7,20,14,'#827447');r(5,9,16,8,'#d8c478');r(10,10,6,6,'#7e8050');r(12,9,2,8,'#f0df98');}else if(e.resource==='weapons'){plate(2,11,22,6,c||'#6d7472');r(4,12,15,2,'#b3bab0');r(10,16,4,5,'#343b39');r(20,12,6,4,'#303735');r(6,13,2,2,'#b3cb80');}else{
   r(2,19,21,3,'#52465c');for(const [dx,dy,h]of [[3,19,12],[14,19,17],[8,17,23]]){poly([[dx,dy],[dx-1,dy-h+5],[dx+2,dy-h],[dx+5,dy-h+5],[dx+4,dy]],'#594967');poly([[dx+1,dy-1],[dx+1,dy-h+5],[dx+2,dy-h+2],[dx+4,dy-h+5],[dx+3,dy]],c);line(dx+2,dy-h+5,dx+2,dy-3,'#e3b5dc');}
  }
 }
@@ -104,13 +102,19 @@ function building(ctx,e,x,y,time=0,state={}){
  }else if(e.type==='sawmill'){
   panel(1,5,15,15);r(3,8,11,9,edge);vents(4,9,3);r(16,10,7,11,steel);r(17,12,5,3,trim);r(1,20,22,3,edge);for(let i=0;i<6;i++)r(2+i*3,20,1,2,c.steelLight);r(4,16,6,3,c.pack);r(6,16,1,3,trim);r(16,6,5,3,signal);
  }else if(e.type==='quarry'){
-  plate(2,13,20,10,c.shade);r(5,16,14,6,edge);line(3,4,3,20,c.steelLight,2);line(19,4,19,20,c.steelLight,2);r(2,3,20,3,trim);r(10,6,4,13,steel);for(let i=0;i<4;i++)line(9,8+i*3,14,10+i*3,c.steelLight);r(4,19,5,3,resources.stone);r(16,7,3,2,signal);
+  plate(2,13,20,10,c.shade);r(5,16,14,6,edge);line(3,4,3,20,c.steelLight,2);line(19,4,19,20,c.steelLight,2);r(2,3,20,3,trim);r(10,6,4,13,steel);for(let i=0;i<4;i++)line(9,8+i*3,14,10+i*3,c.steelLight);r(4,19,5,3,'#a69d8b');r(16,7,3,2,signal);
  }else if(e.type==='farm'){
   for(const [dx,dy]of [[1,7],[9,3],[17,7]]){plate(dx,dy,7,14,steel);r(dx+1,dy+2,5,9,c.shade);r(dx+2,dy+3,3,7,resources.food);r(dx+2,dy+3,1,6,c.cream);r(dx,dy,7,2,trim);r(dx+1,dy+11,5,2,c.steelLight);}r(1,22,22,1,c.pack);
  }else if(e.type==='ironmine'){
-  panel(5,8,18,15);plate(9,12,10,11,edge);r(11,14,6,8,'#af6c3d');r(12,17,4,5,'#efb465');r(13,19,2,3,c.cream);for(const [dx,dy]of [[1,2],[17,-1]]){r(dx,dy,5,12,edge);r(dx+1,dy+1,3,10,steel);r(dx,dy-1,5,2,trim);}r(1,19,6,3,resources.iron);
+  panel(5,8,18,15);plate(9,12,10,11,edge);r(11,14,6,8,'#af6c3d');r(12,17,4,5,'#efb465');r(13,19,2,3,c.cream);for(const [dx,dy]of [[1,2],[17,-1]]){r(dx,dy,5,12,edge);r(dx+1,dy+1,3,10,steel);r(dx,dy-1,5,2,trim);}r(1,19,6,3,resources.metal);
  }else if(e.type==='goldmine'){
-  panel(2,16,20,7);for(const side of [-1,1]){line(12+side*8,17,12+side*6,4,steel,2);r(12+side*6,5,2,4,resources.gold);}poly([[10,14],[9,6],[12,0],[15,6],[14,14]],edge);poly([[11,12],[10,6],[12,2],[14,6],[13,12]],resources.gold);r(11,5,1,6,'#e4c5e3');r(9,19,6,1,resources.gold);
+  panel(2,16,20,7);for(const side of [-1,1]){line(12+side*8,17,12+side*6,4,steel,2);r(12+side*6,5,2,4,resources.crystals);}poly([[10,14],[9,6],[12,0],[15,6],[14,14]],edge);poly([[11,12],[10,6],[12,2],[14,6],[13,12]],resources.crystals);r(11,5,1,6,'#e4c5e3');r(9,19,6,1,resources.crystals);
+ }else if(e.type==='field'){
+  r(0,3,24,21,'#524d35');r(1,4,22,19,'#726243');for(let row=0;row<4;row++){r(2,6+row*4,20,2,'#3e4931');for(let col=0;col<5;col++){r(3+col*4,5+row*4,2,3,(e.crop||0)>=4?'#a8b763':'#6d7845');}}r(0,3,24,1,c.sand);r(0,4,1,19,c.sand);
+ }else if(e.type==='factory'){
+  panel(1,5,22,18);r(4,10,16,10,c.ink);r(6,12,12,6,c.steel);r(7,13,10,2,c.steelLight);r(10,16,3,4,c.pack);r(1,20,22,2,c.sand);r(4,1,5,8,c.steel);r(16,-2,5,11,c.steel);r(16,-3,5,2,c.sand);r(5,2,3,1,c.glow);r(17,11,3,2,c.hot);
+ }else if(e.type==='guild'){
+  panel(1,6,22,17);panel(4,1,16,7);r(6,3,12,2,c.sand);r(10,8,5,14,c.ink);r(11,10,3,11,c.sand);r(3,12,5,6,c.steel);r(16,12,5,6,c.steel);r(4,13,3,2,c.glow);r(17,13,3,2,c.glow);r(2,20,20,2,c.pack);
  }else if(e.type==='barracks'){
   panel(0,8,24,14);plate(4,11,16,12,edge);r(6,12,12,9,c.steel);for(let i=0;i<4;i++)r(6,13+i*2,12,1,c.shade);r(3,21,18,2,trim);r(10,21,4,2,c.hot);panel(3,2,18,7);r(5,4,14,2,edge);r(7,4,10,1,signal);r(1,11,2,9,c.sand);r(21,11,2,9,c.sand);
  }else if(e.type==='tower'){
