@@ -1,4 +1,4 @@
-/* HELIOS H4: independent planetary economies, campaign fleets and automatic battles. */
+/* HELIOS H4.1: independent planetary economies, campaign fleets and automatic battles. */
 (function(root){
 'use strict';
 const W=144,H=96,BW=48,BH=32,resources=['food','money','metal','crystals','weapons'];
@@ -117,7 +117,7 @@ class Game{
  findSite(type,team=0,id=this.activePlanet){const base=this.alive(id).find(e=>e.type==='base'&&e.team===team);if(!base)return null;for(let r=4;r<60;r++)for(let y=Math.floor(base.y)-r;y<=Math.floor(base.y)+r;y++)for(let x=Math.floor(base.x)-r;x<=Math.floor(base.x)+r;x++){if(Math.abs(x-base.x)<r-1&&Math.abs(y-base.y)<r-1)continue;if(this.canBuild(type,x,y,team,id))return{x,y};}return null;}
  road(x,y,team=0,id=this.activePlanet){const p=this.planet(id),key=y*W+x;if(this.result||!Number.isInteger(x)||!Number.isInteger(y)||this.regions[id].owner!==team||!this.alive(id).some(b=>b.type==='base'&&b.team===team&&this.ready(b))||p.roads.has(key)||this.cellBlocked(x,y,id)||!this.pay({money:1,metal:1},team))return false;p.roads.add(key);for(const u of this.alive(id).filter(e=>e.type==='worker'))u.path=[];return true;}
  workers(b){return this.alive(b.planet).filter(e=>e.type==='worker'&&e.job===b.id&&e.team===b.team);}
- release(u){const site=this.get(u.building);if(site?.builder===u.id)site.builder=null;if(site?.repairer===u.id)site.repairer=null;u.job=null;u.building=null;u.inside=null;u.path=[];u.phase=null;u.field=null;u.action=0;u.retry=0;u.pickup=null;}
+ release(u){const site=this.get(u.building);if(site?.builder===u.id)site.builder=null;if(site?.repairer===u.id)site.repairer=null;u.job=null;u.building=null;u.inside=null;u.path=[];u.phase=null;u.field=null;u.action=0;u.retry=0;u.pickup=null;u.supply=null;}
  assign(id,team=0){const b=this.get(id);if(this.result||!this.operational(b)||b.team!==team||this.regions[b.planet].owner!==team||!stats[b.type]?.slots||this.workers(b).length>=stats[b.type].slots)return false;const u=this.alive(b.planet).filter(e=>e.type==='worker'&&e.team===team&&!e.job&&!e.building&&!e.carry).sort((a,c)=>dist(a,b)-dist(c,b))[0];if(!u)return false;this.release(u);u.job=b.id;return true;}
  unassign(id,team=0){const b=this.get(id),u=b&&b.team===team&&this.workers(b).at(-1);if(!u||this.result)return false;this.release(u);return true;}
  construction(p,dt){const worked=new Set();for(const b of p.entities)if(b.repairer&&!this.get(b.repairer))b.repairer=null;const free=()=>p.entities.filter(e=>e.hp>0&&e.type==='worker'&&!e.job&&!e.building&&!e.carry&&!worked.has(e.id));
@@ -130,7 +130,7 @@ class Game{
   if(b.type==='guild'){this.stock(b.team).money+=inside*s.rate*dt;return;}
   if(['metal','crystals'].includes(s.resource)&&inside){let node=this.get(b.node);if(!node||node.amount<=0){node=this.alive(b.planet).filter(e=>e.type==='deposit'&&e.resource===s.resource&&e.amount>0&&dist(e,b)<=6).sort((a,c)=>dist(a,b)-dist(c,b))[0];b.node=node?.id;}const amount=Math.min(60-b.buffer,inside*s.rate*dt,node?.amount||0);if(node)node.amount-=amount;b.buffer+=amount;}
   if(b.type==='factory'&&inside&&b.buffer<20){if(!b.batch){if(!this.pay(weaponRecipe,b.team))return;b.batch=8;}b.batch=Math.max(0,b.batch-dt);if(b.batch<1e-8){b.batch=0;b.buffer++;}}
-  if(b.type==='barracks'&&b.queue.length){const q=b.queue[0],u=this.military.find(u=>u.id===q.id&&u.hp>0);if(!u){b.queue.shift();return;}q.left-=dt;if(q.left<=0){u.location='reserve';b.queue.shift();}}
+  if(b.type==='barracks'&&b.queue.length){const q=b.queue[0],u=this.military.find(u=>u.id===q.id&&u.hp>0);if(!u){this.cancelTraining(b,q);b.queue.shift();return;}if(q.delivered<unitCosts[q.type].weapons)return;q.left-=dt;if(q.left<=0){u.location='reserve';b.queue.shift();}}
  }
  worker(u,dt){u.moving=false;if(u.building&&!this.get(u.building))this.release(u);if(u.job&&!this.get(u.job))this.release(u);
   if(u.building){const b=this.get(u.building);if(b.construction>0){this.walkTo(u,b,dt);return;}if(b.hp<b.maxHp&&b.team===u.team){if(this.walkTo(u,b,dt)){u.action+=dt;if(u.action>=1){u.action-=1;if(this.pay({metal:1},u.team))b.hp=Math.min(b.maxHp,b.hp+12);else{b.repairer=null;this.release(u);u.repairRetry=this.time+5;}}}return;}b.repairer=null;this.release(u);}
@@ -145,13 +145,23 @@ class Game{
    if(u.inside===b.id)return;if(this.walkTo(u,b,dt)){u.inside=b.id;u.path=[];}return;
   }
   if(u.inside)u.inside=null;
+  if(u.carry?.order){const b=this.get(u.carry.target),q=this.supplyOrder(b,u.carry.order,u.team);if(q){if(this.walkTo(u,b,dt)){q.delivered+=u.carry.amount;u.carry=null;u.path=[];}return;}delete u.carry.order;delete u.carry.target;u.path=[];}
   if(u.carry){const b=this.alive(u.planet).filter(e=>e.team===u.team&&this.ready(e)&&['base','warehouse'].includes(e.type)).sort((a,c)=>dist(a,u)-dist(c,u))[0];if(b&&this.walkTo(u,b,dt)){this.stock(u.team)[u.carry.resource]+=u.carry.amount;u.carry=null;u.path=[];}return;}
   const broken=this.alive(u.planet).filter(b=>b.team===u.team&&this.ready(b)&&b.type!=='worker'&&b.hp<b.maxHp&&!b.repairer).sort((a,c)=>dist(a,u)-dist(c,u))[0];if(broken&&this.stock(u.team).metal>=1&&(u.repairRetry||0)<=this.time){u.building=broken.id;broken.repairer=u.id;u.path=[];return;}
+  // Orders reserve the shared stock, but a resident must visit a local store before delivery.
+  let delivery=u.supply,b=delivery&&this.get(delivery.target),q=delivery&&this.supplyOrder(b,delivery.order,u.team);
+  if(!q||q.reserved<=0){u.supply=null;delivery=null;}
+  if(!delivery){for(const target of this.alive(u.planet).filter(e=>e.team===u.team&&e.type==='barracks'&&this.ready(e))){for(const order of target.queue){if(!this.supplyOrder(target,order.id,u.team))continue;const transit=this.alive(u.planet).filter(w=>w.carry?.order===order.id).reduce((n,w)=>n+w.carry.amount,0),missing=unitCosts[order.type].weapons-order.delivered-order.reserved-transit;if(missing>0&&this.pay({weapons:missing},u.team))order.reserved+=missing;
+     if(order.reserved>0&&!this.alive(u.planet).some(w=>w.supply?.order===order.id)){const store=this.alive(u.planet).filter(e=>e.team===u.team&&this.ready(e)&&['base','warehouse'].includes(e.type)).sort((a,c)=>dist(a,u)-dist(c,u)).find(e=>this.adjacent(u,e)||this.nearPath(u,e).length);if(store){delivery=u.supply={target:target.id,order:order.id,store:store.id};b=target;q=order;u.path=[];u.pickup=null;break;}}
+    }if(delivery)break;}}
+  if(delivery){const store=this.get(delivery.store);if(!store||store.team!==u.team||!this.ready(store)){u.supply=null;u.path=[];return;}if(this.walkTo(u,store,dt)){const amount=Math.min(20,q.reserved);q.reserved-=amount;u.carry={resource:'weapons',amount,order:q.id,target:b.id};u.supply=null;u.path=[];}return;}
   let source=this.get(u.pickup);if(!source||source.team!==u.team||source.buffer<1){source=this.alive(u.planet).filter(b=>b.team===u.team&&b.buffer>=1&&stats[b.type]?.resource!=='money').sort((a,c)=>c.buffer/(dist(c,u)+1)-a.buffer/(dist(a,u)+1))[0];u.pickup=source?.id;u.path=[];}
   if(source&&this.walkTo(u,source,dt)){const amount=Math.min(20,Math.floor(source.buffer));source.buffer-=amount;u.carry={resource:stats[source.type].resource,amount};u.path=[];u.pickup=null;}
 
  }
- train(id,team=0,type='soldier'){const b=this.get(id),cost=unitCosts[type];if(this.result||!cost||!this.operational(b)||b.team!==team||b.type!=='barracks'||this.regions[b.planet].owner!==team||b.queue.length>=3||this.population(team).free<1||!this.pay(cost,team))return false;const u={id:this.nextId++,type,team,planet:b.planet,location:'training',hp:stats[type].hp,maxHp:stats[type].hp};this.military.push(u);b.queue.push({id:u.id,type,left:stats[type].trainTime});return true;}
+ train(id,team=0,type='soldier'){const b=this.get(id),cost=unitCosts[type];if(this.result||!cost||!this.operational(b)||b.team!==team||b.type!=='barracks'||this.regions[b.planet].owner!==team||b.queue.length>=3||this.population(team).free<1||!this.pay(cost,team))return false;const u={id:this.nextId++,type,team,planet:b.planet,location:'training',hp:stats[type].hp,maxHp:stats[type].hp};this.military.push(u);b.queue.push({id:u.id,type,left:stats[type].trainTime,reserved:cost.weapons,delivered:0});return true;}
+ supplyOrder(b,id,team){return b?.team===team&&this.ready(b)&&b.type==='barracks'&&this.military.some(u=>u.id===id&&u.hp>0&&u.team===team&&u.location==='training')?b.queue.find(q=>q.id===id):null;}
+ cancelTraining(b,q){this.stock(b.team).weapons+=(q.reserved||0)+(q.delivered||0);const unit=this.military.find(u=>u.id===q.id);if(unit)unit.hp=0;}
  canCapture(id,team=0){const r=this.regions[id];return !!r&&r.owner!==team&&r.neighbors.some(n=>this.regions[n].owner===team);}
  sendArmy(from,to,counts,team=0){if(this.result||this.regions[from]?.owner!==team||!this.regions[to]||from===to||this.regions[to].owner!==team&&!this.canCapture(to,team))return false;const chosen=[];
   for(const [type,n]of Object.entries(counts||{})){if(!unitCosts[type]||!Number.isInteger(n)||n<0)return false;const pool=this.army(team,from).filter(u=>u.type===type);if(pool.length<n)return false;chosen.push(...pool.slice(0,n));}if(!chosen.length)return false;
@@ -159,7 +169,7 @@ class Game{
  }
  colonize(id,team=0){if(this.result||this.regions[id]?.owner!==team||this.alive(id).some(e=>e.type==='base')||this.missions.some(m=>m.to===id&&m.kind==='colony')||this.population(team).free<6||!this.pay(colonyCost,team))return false;const m={id:this.nextId++,kind:'colony',to:id,team,left:20};this.missions.push(m);this.message='Отправлены 6 строителей. Слоты населения зарезервированы на время перелёта.';return m;}
  capturePlanet(id,team){const r=this.regions[id],old=r.owner;r.owner=team;const p=this.planet(id);
-  for(const b of p.entities.filter(e=>e.hp>0&&e.type!=='deposit'&&e.type!=='worker')){b.team=team;b.hp=Math.max(1,Math.floor(b.maxHp*(.35+this.random()*.2)));b.queue=[];b.builder=null;b.repairer=null;b.batch=0;}
+  for(const b of p.entities.filter(e=>e.hp>0&&e.type!=='deposit'&&e.type!=='worker')){for(const q of b.queue)this.cancelTraining(b,q);b.team=team;b.hp=Math.max(1,Math.floor(b.maxHp*(.35+this.random()*.2)));b.queue=[];b.builder=null;b.repairer=null;b.batch=0;}
   for(const u of p.entities.filter(e=>e.hp>0&&e.type==='worker')){if(u.team===team)continue;if(this.random()<.65){const job=u.job,inside=u.inside;this.release(u);u.team=team;if(job&&this.get(job)?.team===team){u.job=job;u.inside=inside;}}else u.hp=0;}
   for(const u of this.military.filter(u=>u.planet===id&&u.team===old&&['training','reserve'].includes(u.location)))u.hp=0;
   this.history.unshift({time:this.time,text:`${team===0?'Вы':'Демоны'} захватили планету «${r.name}».`});this.history=this.history.slice(0,20);this.message=this.history[0].text;
@@ -208,7 +218,7 @@ class Game{
  }
  aiDispatch(id){const team=1,army=this.army(team,id);if(army.length>=4&&!this.missions.some(m=>m.team===team&&m.kind==='army')){const target=this.regions.filter(r=>this.canCapture(r.id,team)).sort((a,c)=>dist(a,this.regions[0])-dist(c,this.regions[0]))[0];if(target){const counts={};for(const u of army)counts[u.type]=(counts[u.type]||0)+1;this.sendArmy(id,target.id,counts,team);}}}
  tick(dt){if(this.result)return;dt=Math.max(0,Math.min(.1,dt));this.time+=dt;this.economyClock+=dt;this.aiClock+=dt;
-  for(const p of Object.values(this.maps)){for(const u of p.entities.filter(e=>e.hp>0&&e.type==='worker')){if(u.job&&this.get(u.job)?.team!==u.team)this.release(u);if(u.inside&&!this.get(u.inside))this.release(u);}this.construction(p,dt);for(const b of p.entities.filter(e=>e.hp>0&&e.type!=='worker'&&e.type!=='deposit'))this.production(b,dt);for(const u of p.entities.filter(e=>e.hp>0&&e.type==='worker'))this.worker(u,dt);p.entities=p.entities.filter(e=>e.hp>0);}
+  for(const p of Object.values(this.maps)){for(const b of p.entities.filter(e=>e.hp<=0&&e.type==='barracks')){for(const q of b.queue)this.cancelTraining(b,q);b.queue=[];}for(const u of p.entities.filter(e=>e.hp>0&&e.type==='worker')){if(u.job&&this.get(u.job)?.team!==u.team)this.release(u);if(u.inside&&!this.get(u.inside))this.release(u);}this.construction(p,dt);for(const b of p.entities.filter(e=>e.hp>0&&e.type!=='worker'&&e.type!=='deposit'))this.production(b,dt);for(const u of p.entities.filter(e=>e.hp>0&&e.type==='worker'))this.worker(u,dt);p.entities=p.entities.filter(e=>e.hp>0);}
   for(const r of this.regions)if(r.owner>=0)this.stock(r.owner).money+=12/20*dt;
   const arrivals=[];for(const m of this.missions){m.left-=dt;if(m.left<=0)arrivals.push(m);}this.missions=this.missions.filter(m=>m.left>0);for(const m of arrivals)this.arrive(m);
   for(const b of this.battles)this.battleTick(b,dt);

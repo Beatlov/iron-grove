@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HELIOS H4 · Лист оформления</title><style>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HELIOS H4.1 · Лист оформления</title><style>
 *{box-sizing:border-box}body{margin:0;background:#171f19;color:#e6ddbd;font:14px Arial,sans-serif;padding:30px}main{max-width:1120px;margin:auto}h1{font:28px monospace;margin:0 0 10px}h2{font:18px monospace;margin:0 0 18px;color:#c4d18d}p{color:#a8b38e;line-height:1.6}a{color:#e4c48a}.tools{display:flex;gap:22px;align-items:center;margin:20px 0}section{border:1px solid #63764f;background:#243324;padding:22px;margin:20px 0}canvas{width:100%;height:auto;image-rendering:pixelated;background:#1a271e;display:block}.labels{display:grid;grid-template-columns:repeat(5,1fr);text-align:center;font:11px monospace;color:#cec6a6;margin-top:12px}.legend{border-left:3px solid #c6b07c;padding-left:12px}.build-labels{grid-template-columns:repeat(6,1fr);gap:12px}small{font-size:11px;color:#8f9f79}input{accent-color:#c2d489}@media(max-width:700px){body{padding:14px}section{padding:12px}.labels{font-size:8px}h1{font-size:22px}}
 </style></head><body><main>
-<h1>HELIOS H4 / Люди и демоны</h1><p class="legend">Игровые спрайты из текущей версии. Компактная пиксельная графика: оливково-песочная техника людей, жители-рабочие и графитово-красные доспехи демонов.</p>
+<h1>HELIOS H4.1 / Люди и демоны</h1><p class="legend">Игровые спрайты из текущей версии. Компактная пиксельная графика: оливково-песочная техника людей, жители-рабочие и графитово-красные доспехи демонов.</p>
 <div class="tools"><a href="index.html">Открыть игру →</a><label><input id="animate" type="checkbox"> Анимация движения и работы</label></div>
 <section><h2>01 / Экспедиция «Гелиос»</h2><canvas id="human-units" width="1120" height="140" aria-label="Юниты людей"></canvas><div class="labels"><span>Десантник</span><span>Штурмовик</span><span>Медик</span><span>Гранатомётчик</span><span>Житель</span></div></section>
 <section><h2>02 / Демонический легион</h2><canvas id="demon-units" width="1120" height="140" aria-label="Юниты демонов"></canvas><div class="labels"><span>Десантник</span><span>Штурмовик</span><span>Медик</span><span>Гранатомётчик</span><span>Житель</span></div></section>
@@ -10,7 +10,7 @@
 <section><h2>04 / Военные сооружения демонов</h2><canvas id="demon-buildings" width="1120" height="440" aria-label="Сооружения демонов"></canvas></section>
 <section><h2>05 / Ресурсы промышленного мира</h2><canvas id="deposits" width="1120" height="120" aria-label="Ресурсы"></canvas><div class="labels"><span>Еда</span><span>Деньги</span><span>Металл</span><span>Кристаллы</span><span>Оружие</span></div></section>
 <small>В атласе изображения увеличены без сглаживания. В игре сохраняется масштаб мира 24 пикселя на клетку.</small>
-</main><script src="art.js?v=helios-h4"></script><script>
+</main><script src="art.js?v=helios-h4-1"></script><script>
 const types=['soldier','assault','medic','grenadier','worker'];
 const buildings=['base','house','warehouse','farm','field','ironmine','goldmine','factory','guild','barracks','tower'];
 const names=['Командное ядро','Жилой модуль','Грузовой терминал','Биореактор','Поле','Металлический бур','Кристальная шахта','Оружейный завод','Гильдия торговцев','Десантный комплекс','Рельсовая турель'];
