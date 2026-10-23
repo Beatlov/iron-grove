@@ -5,7 +5,7 @@ This is a desktop-mouse, single-player pixel RTS prototype. User-facing text is 
 - Run locally by opening index.html; preserve file:// support and offline operation.
 - No build tools, remote assets, telemetry, dependencies or external fonts.
 - Keep simulation in engine.js independent of DOM and rendering, export to both window.RTS and CommonJS.
-- Keep controls and Canvas rendering in game.js. Use native Canvas drawing for pixel assets.
+- Keep controls and the scene in game.js; native pixel sprite drawing belongs in art.js. art.js must never mutate entities or advance gameplay.
 - World coordinates use tiles; rendering uses 24 pixels/tile. World grid: 144×96, partitioned into 12 seeded territories; viewport adapts to the available battlefield area at 24 pixels per tile, with a scrollable camera and minimap.
 - Use fixed/delta simulation time rather than wall-clock timers for gameplay.
 - Validate changes with `node --test tests/*.test.cjs`.
@@ -19,7 +19,7 @@ This is a desktop-mouse, single-player pixel RTS prototype. User-facing text is 
 - Construction advances only with its reserved worker adjacent to the site; queued sites wait for an idle carrier and never steal production workers.
 - Workers inside workplaces stay in population/upkeep but are excluded from rendering, picking, selection and combat targets. Release them through the building or when it is destroyed.
 
-- Setting: Russian-language cosmic cyberpunk «Неоновый предел / Протокол Гелиос». Display composite, regolith, biogel, titanium, xenocrystals; keep stable internal resource/entity keys. Workers are autonomous drones.
+- Setting: Russian-language military space RTS «Неоновый предел / Протокол Гелиос», humans in space armor with support drones versus technological demons in space armor; a ruined industrial planet. Display composite, regolith, biogel, titanium, xenocrystals; keep stable internal resource/entity keys. Workers are autonomous drones. Use the compact player reference: olive/sand humans, green visors, coarse pixel clusters and dark outlines. Demons use graphite/red metal armor, bone trim and amber instruments, not organic insect buildings.
 - Military classes are soldier (ranged marine), assault (armored melee), medic (healing only), grenadier (siege). Use isMilitary() across population, upkeep, capture, AI and UI; unitCosts defines class-specific prices. Medics must never deal damage. Both factions obey the same economic rules.
 
 - For an HTTP preview use `python3 serve.py 8000`: it serves this checkout regardless of cwd and disables caching. Update the HTML asset version and visible HELIOS version stamp together when shipping visual changes.
