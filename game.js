@@ -9,11 +9,11 @@ const camera={x:0,y:0},keys=new Set(),icons=new Map();ctx.imageSmoothingEnabled=
 const costText=cost=>Object.entries(cost).map(([r,n])=>`${n} ${resourceNames[r].toLowerCase()}`).join(', '),clock=t=>`${Math.floor(t/60).toString().padStart(2,'0')}:${Math.floor(t%60).toString().padStart(2,'0')}`;
 function button(parent,label,fn,disabled=false,title=label){const b=document.createElement('button');b.textContent=label;b.disabled=disabled;b.title=title;b.ariaLabel=title;b.onclick=()=>{fn();updateUI();};parent.append(b);return b;}
 function icon(c,type,team=0){const key=type+team;let s=icons.get(key);if(!s){s=document.createElement('canvas');const unit=!!stats[type]?.speed,res=resources.includes(type),road=type==='road';s.width=unit?40:res||road?32:(stats[type]?.size||2)*24+8;s.height=unit?40:res?40:road?32:s.width;const p=s.getContext('2d');p.imageSmoothingEnabled=false;if(road){RTSArt.road(p,0,0,32);}else if(res)RTSArt.deposit(p,{resource:type,amount:1},16,24);else if(unit)RTSArt.unit(p,{type,team,facingX:1},16,28,0);else RTSArt.building(p,{type,team,size:stats[type]?.size||2,crop:12},s.width/2,s.height/2,0);icons.set(key,s);}const w=c.canvas?.width||32,h=c.canvas?.height||32,scale=Math.min(w/s.width,h/s.height),dw=Math.round(s.width*scale),dh=Math.round(s.height*scale);c.imageSmoothingEnabled=false;c.drawImage(s,Math.floor((w-dw)/2),Math.floor((h-dh)/2),dw,dh);}
-// Rasterize native pixel artwork once per draw, then shrink without smoothing.
-// Only world/battle sprites use this scale; UI portraits keep their original size.
+// H11 art is drawn directly on the native pixel grid. The H9 fallback keeps its original resampling.
 const unitSprite=document.createElement('canvas');unitSprite.width=48;unitSprite.height=48;
 const unitSpriteContext=unitSprite.getContext('2d'),worldUnitSize=41,worldUnitScale=worldUnitSize/48;
 function drawWorldUnit(c,e,x,y,time=0,state={}){
+ if(RTSArt.getStyle()!=='classic'){RTSArt.unit(c,e,Math.round(x),Math.round(y),time,state);return;}
  unitSpriteContext.clearRect(0,0,48,48);
  RTSArt.unit(unitSpriteContext,e,24,32,time,state);
  c.imageSmoothingEnabled=false;
@@ -112,7 +112,7 @@ function ground(c,width,height,cam,seed){
   if(n%23===0)rect(c,x*T+4,y*T+14,6,2,'#323f37');if(n%61===0)rect(c,x*T+15,y*T+5,4,3,'#697260');
  }
  for(let gy=Math.floor(cam.y/12);gy<=Math.ceil((cam.y+viewH)/12);gy++)for(let gx=Math.floor(cam.x/12);gx<=Math.ceil((cam.x+viewW)/12);gx++){
-  const n=hash(gx+500,gy+500,seed),x=(gx*12+3+n%6)*T,y=(gy*12+3+(n>>>6)%6)*T,p=RTSArt.painter(c,x,y,2);
+  const n=hash(gx+500,gy+500,seed),x=(gx*12+3+n%6)*T,y=(gy*12+3+(n>>>6)%6)*T,p=RTSArt.pixelPainter(c,x,y,2);
   if(n%2){p.plate(-13,-4,26,8,'#596353','#2d3a32');p.r(-10,-2,6,3,'#313f35');p.r(4,-2,6,3,'#313f35');}
   else{p.poly([[-12,-2],[-6,-7],[8,-6],[13,-1],[9,5],[-7,6]],'#344138');p.r(-4,-3,9,4,'#29372e');p.r(5,3,5,2,'#646c59');}
  }

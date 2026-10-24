@@ -30,3 +30,6 @@ test('both graphic styles preserve simulation and H9 remains an exact renderer f
  art.setStyle('refined');const current=calls(c=>art.unit(c,e,40,50,2));assert.notDeepEqual(current,old);
  assert.equal(art.setStyle('invalid'),false);assert.equal(art.getStyle(),'refined');assert.equal(JSON.stringify(g),before);
 });
+test('geometry scales on one native grid with one-pixel outlines rather than scaling the drawing context',()=>{
+ for(const scale of [41/48,1,2]){const calls=[],c=new Proxy({fillRect:(...a)=>calls.push(a),scale:()=>assert.fail('native pixel painter must not scale the context')},{get:(t,k)=>k in t?t[k]:()=>{},set:()=>true});const p=art.pixelPainter(c,10.3,20.7,scale);p.r(0,0,5,4,'#111');p.r(5,0,5,4,'#222');assert.equal(calls[0][0]+calls[0][2],calls[1][0],'adjacent panels meet without resampling gaps');p.line(1,1,8,1,'#333');p.poly([[0,0],[10,0],[10,6]],'#444');p.plate(1,1,8,8,'#555');assert.ok(calls.every(a=>a.every(Number.isInteger)));assert.ok(calls.some(a=>a[2]===1&&a[3]===1),'one native pixel remains available at every geometry size');}
+});
