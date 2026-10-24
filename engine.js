@@ -1,4 +1,4 @@
-/* HELIOS H16: planetary economies, structure management, campaign fleets and automatic battles. */
+/* HELIOS H17: planetary economies, structure management, campaign fleets and automatic battles. */
 (function(root){
 'use strict';
 const W=144,H=96,BW=48,BH=32,resources=['food','money','metal','crystals','gas','sulfur','weapons','ammo','armor','explosives','medicines'];
@@ -216,6 +216,8 @@ class Game{
  findSite(type,team=0,id=this.activePlanet){if(!this.affordable(stats[type]?.cost,team))return null;const base=this.alive(id).find(e=>e.type==='base'&&e.team===team);if(!base)return null;for(let r=4;r<60;r++)for(let y=Math.floor(base.y)-r;y<=Math.floor(base.y)+r;y++)for(let x=Math.floor(base.x)-r;x<=Math.floor(base.x)+r;x++){if(Math.abs(x-base.x)<r-1&&Math.abs(y-base.y)<r-1)continue;const pos=placement(type,x,y);if(this.canBuild(type,pos.x,pos.y,team,id))return pos;}return null;}
  roadPlan(cells,team=0,id=this.activePlanet){const p=this.planet(id),unique=new Map();for(const c of cells||[])if(Number.isInteger(c.x)&&Number.isInteger(c.y))unique.set(c.y*W+c.x,{x:c.x,y:c.y});else return{cells:[],blocked:[],cost:{money:0,metal:0},valid:false};const fresh=[...unique.values()].filter(c=>!p.roads.has(c.y*W+c.x)),blocked=fresh.filter(c=>this.cellBlocked(c.x,c.y,id)),cost={money:fresh.length,metal:fresh.length};return{cells:fresh,blocked,cost,valid:!this.result&&this.regions[id]?.owner===team&&this.alive(id).some(b=>b.type==='base'&&b.team===team&&this.ready(b))&&!blocked.length&&this.affordable(cost,team)};}
  buildRoads(cells,team=0,id=this.activePlanet){const plan=this.roadPlan(cells,team,id);if(!plan.valid||!plan.cells.length||!this.pay(plan.cost,team))return false;const p=this.planet(id);for(const c of plan.cells)p.roads.add(c.y*W+c.x);for(const u of this.alive(id).filter(e=>e.type==='worker'))u.path=[];return true;}
+ roadRemovalPlan(cells,team=0,id=this.activePlanet){const empty={cells:[],cost:{money:0,metal:0},valid:false};if(!Array.isArray(cells)||this.result||this.activeBattle?.()||this.regions[id]?.owner!==team)return empty;const unique=new Map();for(const c of cells){if(!c||!Number.isInteger(c.x)||!Number.isInteger(c.y)||c.x<1||c.y<1||c.x>=W-1||c.y>=H-1)return empty;unique.set(c.y*W+c.x,{x:c.x,y:c.y});}const p=this.planet(id);return{cells:[...unique.values()].filter(c=>p.roads.has(c.y*W+c.x)),cost:{money:0,metal:0},valid:true};}
+ removeRoads(cells,team=0,id=this.activePlanet){const plan=this.roadRemovalPlan(cells,team,id);if(!plan.valid||!plan.cells.length)return false;const p=this.planet(id);for(const c of plan.cells)p.roads.delete(c.y*W+c.x);for(const u of this.alive(id).filter(e=>e.type==='worker')){u.path=[];u.retry=0;}this.message='Дорога снесена: '+plan.cells.length+' клеток. Стоимость строительства не возвращается.';return true;}
  road(x,y,team=0,id=this.activePlanet){return this.buildRoads([{x,y}],team,id);}
 
  workers(b){return this.alive(b.planet).filter(e=>e.type==='worker'&&e.job===b.id&&e.team===b.team);}
