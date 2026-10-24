@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" shape-rendering="crispEdges">
+  <title>Гелиос — Неоновый предел</title>
+  <path fill="#101416" d="M4 0h24v2h2v2h2v24h-2v2h-2v2H4v-2H2v-2H0V4h2V2h2z"/>
+  <path fill="#303e31" d="M4 4h24v24H4z"/>
+  <path fill="#101416" d="M10 5h12v2h4v4h2v12h-4v4H10v-2H6v-8H4v-6h4V7h2z"/>
+  <path fill="#4c603d" d="M10 7h12v2h3v4H9V9h1zM6 13h6v8H6z"/>
+  <path fill="#7c8b62" d="M11 7h10v2H11zM9 10h5v2H9zM6 13h5v2H6z"/>
+  <path fill="#b9ac85" d="M12 20h12v4h-3v2h-9v-2H9v-5h3z"/>
+  <path fill="#ded2ab" d="M10 20h3v3h8v2h-9v-2h-2z"/>
+  <path fill="#20282b" d="M13 13h13v7h-3v2h-9v-2h-2v-5h1z"/>
+  <path fill="#a6d23e" d="M15 14h10v3h-3v1h-5v-1h-2z"/>
+  <path fill="#39464d" d="M7 17h3v5H7zM24 19h2v4h-2z"/>
+</svg>
