@@ -1,4 +1,4 @@
-/* HELIOS H15: planetary economies, structure management, campaign fleets and automatic battles. */
+/* HELIOS H16: planetary economies, structure management, campaign fleets and automatic battles. */
 (function(root){
 'use strict';
 const W=144,H=96,BW=48,BH=32,resources=['food','money','metal','crystals','gas','sulfur','weapons','ammo','armor','explosives','medicines'];
@@ -156,6 +156,16 @@ class Game{
  nearPath(u,b){const cells=[],r=Math.ceil(b.size/2)+1;for(let y=Math.floor(b.y)-r;y<=Math.floor(b.y)+r;y++)for(let x=Math.floor(b.x)-r;x<=Math.floor(b.x)+r;x++)if(!this.cellBlocked(x,y,u.planet)&&this.adjacent({x:x+.5,y:y+.5},b))cells.push({x:x+.5,y:y+.5});const roads=this.planet(u.planet).roads;cells.sort((a,c)=>Number(roads.has(Math.floor(c.y)*W+Math.floor(c.x)))-Number(roads.has(Math.floor(a.y)*W+Math.floor(a.x)))||dist(a,b)+dist(a,u)*.2-dist(c,b)-dist(c,u)*.2);for(const c of cells){const p=this.path(u.x,u.y,c.x,c.y,u.planet);if(p.length||dist(c,u)<.1)return p;}return[];}
  move(u,dt){let time=dt;const ox=u.x,oy=u.y,p=this.planet(u.planet);while(time>0&&u.path.length){const target=u.path[0];if(this.cellBlocked(Math.floor(target.x),Math.floor(target.y),u.planet)){u.path=[];break;}const speed=stats.worker.speed*(p.roads.has(Math.floor(target.y)*W+Math.floor(target.x))?ROAD_SPEED:1),d=dist(u,target),step=speed*time;if(d<=step){u.x=target.x;u.y=target.y;u.path.shift();time-=d/speed;}else{u.x+=(target.x-u.x)*step/d;u.y+=(target.y-u.y)*step/d;time=0;}}const dx=u.x-ox,dy=u.y-oy,d=Math.hypot(dx,dy);if(d>.00001){u.moving=true;u.walkDistance+=d;u.facingX=dx/d;u.facingY=dy/d;}}
  walkTo(u,b,dt){const roads=this.planet(u.planet).roads,onRoad=()=>roads.has(Math.floor(u.y)*W+Math.floor(u.x)),roadGoal=[...roads].some(k=>this.adjacent({x:k%W+.5,y:Math.floor(k/W)+.5},b));if(this.adjacent(u,b)&&(onRoad()||!roadGoal)){u.path=[];return true;}if(!u.path.length){if((u.retry||0)>this.time)return false;u.path=this.nearPath(u,b);if(!u.path.length)u.retry=this.time+2;}this.move(u,dt);const arrived=this.adjacent(u,b)&&(!u.path.length||onRoad());if(arrived)u.path=[];return arrived;}
+ // Access belongs to the final layout, including existing neighbours and whole moved compounds.
+ hasFreeSide(b,solids,id=this.activePlanet){const f=footprint(b),sides=[[],[],[],[]],p=this.planet(id);
+  for(let x=f.x;x<f.x+f.w;x++){sides[0].push({x,y:f.y-1});sides[1].push({x,y:f.y+f.h});}
+  for(let y=f.y;y<f.y+f.h;y++){sides[2].push({x:f.x-1,y});sides[3].push({x:f.x+f.w,y});}
+  return sides.some(side=>side.every(({x,y})=>x>=1&&y>=1&&x<W-1&&y<H-1&&p.terrain[y]?.[x]!==1&&!solids.some(e=>e!==b&&this.covers(e,{x:x+.5,y:y+.5}))));
+ }
+ layoutAccessValid(id,additions,ignore=[]){const excluded=new Set(ignore),scene=this.alive(id).filter(e=>!excluded.has(e.id)&&!stats[e.type]?.speed),solids=[...scene,...additions];
+  const touches=(a,b)=>{const f=footprint(a),g=footprint(b);return(f.x+f.w===g.x||g.x+g.w===f.x)&&f.y<g.y+g.h&&f.y+f.h>g.y||(f.y+f.h===g.y||g.y+g.h===f.y)&&f.x<g.x+g.w&&f.x+f.w>g.x;};
+  return [...additions,...scene.filter(e=>stats[e.type]?.cost&&additions.some(a=>touches(a,e)))].every(e=>this.hasFreeSide(e,solids,id));
+ }
  canBuild(type,x,y,team=0,id=this.activePlanet,parent=null,options={}){const s=stats[type],relocating=options.relocating===true,ignore=new Set(options.ignore||[]),scene=this.alive(id).filter(e=>!ignore.has(e.id));if(this.result||!s?.cost||type==='base'&&!relocating||this.regions[id]?.owner!==team||!this.alive(id).some(e=>e.type==='base'&&e.team===team&&this.ready(e))||!relocating&&!this.affordable(s.cost,team))return false;
   const host=options.host||this.get(parent);if(s.addon&&(!(relocating&&options.host?this.ready(host):this.operational(host))||host.type!==s.addon||host.team!==team||host.planet!==id||this.addons(host).some(a=>a.type===type&&!ignore.has(a.id))))return false;
   const w=s.width||s.size,h=s.height||s.size;if(!Number.isInteger(x-w/2)||!Number.isInteger(y-h/2))return false;const f=footprint({x,y,size:s.size,width:w,height:h}),roads=this.planet(id).roads;
@@ -163,10 +173,10 @@ class Game{
   for(let cy=f.y;cy<f.y+h;cy++)for(let cx=f.x;cx<f.x+w;cx++){if(cx<1||cy<1||cx>=W-1||cy>=H-1||this.planet(id).terrain[cy]?.[cx]===1||roads.has(cy*W+cx))return false;if(scene.some(e=>!stats[e.type]?.speed&&!(ore&&e.type==='deposit'&&e.resource===s.resource)&&this.covers(e,{x:cx+.5,y:cy+.5})))return false;}
   if(scene.some(e=>e.type==='worker'&&!e.inside&&e.x>=f.x&&e.x<f.x+w&&e.y>=f.y&&e.y<f.y+h))return false;
   if(s.addon){const h=footprint(host),edge=(f.x+w===h.x||h.x+h.w===f.x)&&f.y<h.y+h.h&&f.y+f.h>h.y||(f.y+f.h===h.y||h.y+h.h===f.y)&&f.x<h.x+h.w&&f.x+w>h.x;if(!edge)return false;}
-  if(scene.some(e=>{if(stats[e.type]?.speed||e.team<0||e.id===parent)return false;const b=footprint(e);return f.x<b.x+b.w+1&&f.x+w+1>b.x&&f.y<b.y+b.h+1&&f.y+h+1>b.y;}))return false;
+  if(!options.skipAccess&&!this.layoutAccessValid(id,[{type,x,y,size:s.size,width:w,height:h}],options.ignore||[]))return false;
   if(s.collector&&scene.some(e=>e.type==='deposit'&&e.resource===s.resource&&dist(e,{x,y})<4))return false;return true;
  }
- build(type,x,y,team=0,id=this.activePlanet,parent=null){if(!this.canBuild(type,x,y,team,id,parent)){if(team===0)this.message='Нужно своё поселение, ресурсы, свободное место и проход между зданиями. Шахта должна стоять на своей залежи. Сборный пункт — не ближе 4 клеток к своему источнику; пристройка — вплотную к заводу.';return false;}this.pay(stats[type].cost,team);const b=this.add(type,team,x,y,id);b.construction=stats[type].buildTime;b.parent=parent;if(['metal','crystals'].includes(stats[type].resource))b.node=this.alive(id).filter(e=>e.type==='deposit'&&e.resource===stats[type].resource&&e.amount>0).sort((a,c)=>dist(a,b)-dist(c,b))[0]?.id;this.message='Участок размещён. Свободный житель автоматически подойдёт и построит здание.';return b;}
+ build(type,x,y,team=0,id=this.activePlanet,parent=null){if(!this.canBuild(type,x,y,team,id,parent)){if(team===0)this.message='Нужно своё поселение, ресурсы, свободное место и хотя бы одна полностью открытая сторона у каждой постройки (свободные клетки или дорога). Шахта должна стоять на своей залежи. Сборный пункт — не ближе 4 клеток к своему источнику; пристройка — вплотную к заводу.';return false;}this.pay(stats[type].cost,team);const b=this.add(type,team,x,y,id);b.construction=stats[type].buildTime;b.parent=parent;if(['metal','crystals'].includes(stats[type].resource))b.node=this.alive(id).filter(e=>e.type==='deposit'&&e.resource===stats[type].resource&&e.amount>0).sort((a,c)=>dist(a,b)-dist(c,b))[0]?.id;this.message='Участок размещён. Свободный житель автоматически подойдёт и построит здание.';return b;}
  // Player-managed removal/movement is atomic; combat destruction retains its separate rules.
  manageable(id,team=0){const b=this.get(id);return !!b&&!!stats[b.type]?.cost&&b.team===team&&this.regions[b.planet]?.owner===team&&!this.result&&!this.activeBattle?.();}
  structureGroup(id){const b=this.get(id);return b?[b,...this.addons(b)]:[];}
@@ -193,8 +203,8 @@ class Game{
   const group=this.structureGroup(id),ignore=group.map(e=>e.id),dx=x-b.x,dy=y-b.y;if(!dx&&!dy)return null;
   const hosts=stats[b.type].addon?[this.get(b.parent),...this.alive(b.planet).filter(e=>e.id!==b.parent&&e.team===team&&e.type===stats[b.type].addon)]:[null];
   for(const host of hosts){let valid=true;const moves=[];for(const e of group){const parent=e.id===id?host?.id||null:e.parent,projected=e.id===id?null:{...b,x,y},px=e.x+dx,py=e.y+dy;
-    if(!this.canBuild(e.type,px,py,team,e.planet,parent,{relocating:true,ignore,host:projected})){valid=false;break;}moves.push({id:e.id,x:px,y:py,parent});
-   }if(valid)return moves;
+    if(!this.canBuild(e.type,px,py,team,e.planet,parent,{relocating:true,ignore,host:projected,skipAccess:true})){valid=false;break;}moves.push({id:e.id,x:px,y:py,parent});
+   }if(valid&&this.layoutAccessValid(b.planet,moves.map(m=>({...this.get(m.id),...m})),ignore))return moves;
   }return null;
  }
  moveBuilding(id,x,y,team=0){const plan=this.movePlan(id,x,y,team);if(!plan)return false;const moved=new Set(plan.map(e=>e.id)),b=this.get(id);
