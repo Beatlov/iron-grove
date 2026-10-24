@@ -1,4 +1,4 @@
-/* HELIOS H12: brutal industrial art on a unified native pixel grid, with the complete H9 renderer available for comparison. */
+/* HELIOS H13: brutal industrial art on a unified native pixel grid, with the complete H9 renderer available for comparison. */
 (function(root){
 'use strict';
 const legacy=typeof module!=='undefined'?require('./art-legacy.js'):root.RTSArtLegacy;
@@ -19,11 +19,18 @@ let style='refined';
 function setStyle(value){if(!['refined','classic'].includes(value))return false;style=value;return true;}
 const getStyle=()=>style;
 function unit(ctx,e,x,y,time=0,state={}){
- if(style==='classic')return legacy.unit(ctx,e,x,y,time,state);
- const c=palettes[e.team===1?1:0],demon=e.team===1,worker=e.type==='worker',medic=e.type==='medic',assault=e.type==='assault',grenadier=e.type==='grenadier';
+ if(style==='classic'&&!['psyker','xeno','robot','demon','pirate'].includes(e.type)&&(e.rank||1)===1)return legacy.unit(ctx,e,x,y,time,state);
+ const demon=e.team===1||e.type==='demon',c={...palettes[demon?1:0]},psyker=e.type==='psyker'||e.type==='demon',worker=e.type==='worker',medic=e.type==='medic',assault=e.type==='assault',grenadier=e.type==='grenadier';
+ if(psyker){c.glow='#bca0da';c.armor=demon?'#743a43':'#4b4565';c.light='#827695';}
+ if(e.type==='pirate'){c.armor='#765438';c.light='#aa8658';c.glow='#d89f49';}
+ if(e.type==='robot'){c.armor='#58646a';c.light='#8b9590';c.sand='#535b5d';c.glow='#dc785a';}
  const phase=Math.floor((e.walkDistance||0)*5)%4,step=e.moving?[0,2,0,-2][phase]:0,face=e.facingX<-.15?-1:1,back=e.facingY<-.45;
  ctx.save();if(face<0){ctx.translate(Math.round(x)*2,0);ctx.scale(-1,1);}
  const {r,plate,poly,line}=pixelPainter(ctx,x-14*UNIT_SCALE,y-25*UNIT_SCALE,UNIT_SCALE);
+ if(e.type==='xeno'){
+  r(3,30,29,2,'#14171955');for(const [lx,sy]of [[5,step],[24,-step]]){line(lx,18,lx-3,26+sy,'#101416',4);line(lx-3,26+sy,lx+2,31,'#8c8960',2);line(lx,20,lx+6,27-sy,'#444b3c',3);}
+  poly([[4,10],[9,5],[22,5],[28,12],[26,23],[15,27],[5,22]],'#171d1a');plate(8,12,16,10,'#655c52');r(10,13,12,3,'#93916c');r(12,18,8,2,'#393e35');poly([[10,2],[22,2],[29,8],[25,16],[12,15],[7,9]],'#4b634b');r(13,3,9,3,'#7c8b62');r(23,8,5,2,'#d9a75e');poly([[25,12],[33,15],[26,19]],'#c8ba91');line(6,16,1,12,'#b7a880',3);ctx.restore();return;
+ }
  const suit=worker?(demon?'#936130':'#be912d'):medic?c.sand:c.armor,highlight=worker?'#d9b250':medic?c.cream:c.light;
  r(5,31,23,2,'#14171955');
  // Large, simple leg shapes; every phase shares the same foot anchor.
@@ -48,8 +55,12 @@ function unit(ctx,e,x,y,time=0,state={}){
   else if(e.carry){plate(9,17,22,10,c.steel);r(11,19,18,5,c.steelLight);r(13,20,3,3,resources[e.carry.resource]||c.sand);r(24,20,3,3,resources[e.carry.resource]||c.sand);r(8,18,5,4,c.ink);r(28,18,4,4,c.ink);}
   else{r(3,19+step,5,5,c.ink);r(25,20-step,5,4,c.ink);}
  }else if(medic){plate(3,22,10,8,c.sand);r(7,23,2,6,'#427640');r(5,25,6,2,'#427640');plate(20,17,12,5,c.steel);r(29,18,3,2,c.glow);r(22,21,5,3,c.sand);}
+ else if(psyker){line(28,28,28,7,c.ink,4);line(28,27,28,7,c.steelLight,2);plate(24,3,9,8,c.dark);r(26,5,5,4,c.glow);r(27,6,2,2,c.cream);r(21,18,8,4,c.sand);poly([[9,14],[13,24],[24,24],[26,14]],c.dark);r(14,18,8,2,c.glow);}
  else if(assault){const swing=recoil*3;line(25,22,31-swing,5,c.ink,4);line(26,20,31-swing,4,c.steelLight,2);line(27,18,31-swing,5,c.sand);r(22,21,7,3,c.ink);r(22,20,4,2,c.sand);r(5,19,5,4,c.sand);}
  else{const gx=12-recoil;plate(gx,17,23,7,c.ink);r(gx+2,18,18,3,c.steel);r(gx+4,18,11,1,c.steelLight);r(gx+8,20,5,5,c.dark);r(gx+20,19,4,3,c.dark);r(gx+10,19,2,2,c.glow);r(9,21,5,3,c.sand);r(25-recoil,23,4,2,c.sand);if(grenadier){plate(17,22,10,8,c.ink);r(19,23,6,5,c.steel);r(20,23,4,1,c.hot);r(20,26,4,1,c.hot);}}
+ if(e.type==='robot'){plate(10,3,15,11,c.steel);r(14,7,9,3,c.glow);r(9,13,3,7,c.steelLight);r(25,14,3,5,c.steelLight);r(14,14,5,4,c.hot);}
+ if(e.type==='pirate'){r(10,5,14,3,'#8b4941');r(11,9,4,3,c.ink);r(5,14,3,2,c.sand);}
+ if((e.rank||1)>1){const trim=e.rank===3?'#d9b661':'#c3ccca';r(4,13,7,1,trim);r(25,14,4,1,trim);r(5,16,4,1,trim);if(e.rank===3){r(5,18,4,1,trim);r(13,3,8,1,trim);r(12,22,10,1,trim);}}
  if(back){plate(11,9,12,11,c.pack);r(12,10,10,3,worker?'#ae7d29':c.sand);r(13,15,8,4,c.pack);}
  ctx.restore();
 }

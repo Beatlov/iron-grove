@@ -109,3 +109,6 @@ canvas{display:block;image-rendering:pixelated;touch-action:none}
 .command-button:hover{border-color:#c1ce94;background:#4b5d40}
 .inventory-item{background:#1e3029bb;border-color:#526549}
 .portrait-frame{border-color:#8e9e73;background:#18261f}
+
+/* H13 encounter flow. */
+.encounter-panel{width:min(580px,95vw);padding:26px;background:#263b2c;border:1px solid #8d9b70;border-top:3px solid #c1b782;box-shadow:0 16px 80px #0008}.encounter-panel p{white-space:pre-line;line-height:1.8;color:#d0d8b8}.encounter-buttons{display:flex;gap:8px;flex-wrap:wrap}.site-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}.site-card{padding:10px;background:#1d3026;border:1px solid #5c704c}.site-card p{white-space:pre-line;font-size:11px;margin:6px 0}.world-panel{max-height:94vh;overflow:auto}.army-roster{grid-template-columns:repeat(5,minmax(0,1fr))}.army-unit-card{padding:9px}.army-unit-card p{font-size:10px}.top-controls{gap:4px}@media(max-width:1100px){.army-roster{grid-template-columns:repeat(3,minmax(0,1fr))}.top-controls button{font-size:9px;padding:4px}.site-list{grid-template-columns:1fr}}

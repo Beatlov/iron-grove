@@ -1,4 +1,4 @@
-/* HELIOS H12: independent planetary economies, campaign fleets and automatic battles. */
+/* HELIOS H13: independent planetary economies, campaign fleets and automatic battles. */
 (function(root){
 'use strict';
 const W=144,H=96,BW=48,BH=32,resources=['food','money','metal','crystals','gas','sulfur','weapons','ammo','armor','explosives','medicines'];
@@ -40,7 +40,7 @@ class Game{
   this.generateRegions();this.homeRegions=this.hasOpponent?[0,11]:[0];
   for(const [team,id]of this.homeRegions.entries()){this.regions[id].owner=team;const p=this.planet(id);const base=this.add('base',team,72,48,id);base.inventory={...this.teams[team].stock};for(let i=0;i<6;i++)this.add('worker',team,76.5,45.5+i,id);}
   for(const team of [0,1])for(const resource of resources)Object.defineProperty(this.teams[team].stock,resource,{enumerable:true,configurable:true,get:()=>this.available(resource,team),set:value=>{const delta=Math.max(0,value)-this.available(resource,team);if(delta>0)this.credit(resource,delta,team);else this.withdraw(resource,-delta,team);}});
-  this.message='Новая кампания: постройте жильё, биореактор и поле. Найм и рабочие места — в карточке здания.';
+  this.message='Новая кампания: развивайте поселение и готовьте экспедиции. Нейтральные миры охраняют враждебные гарнизоны.';if(this.initEncounters)this.initEncounters(options);
  }
  random(){this.rng=(Math.imul(this.rng,1664525)+1013904223)>>>0;return this.rng/4294967296;}
  generateRegions(){
@@ -247,7 +247,7 @@ class Game{
   if(source&&this.walkTo(u,source,dt)){const amount=Math.min(20,Math.floor(source.buffer));source.buffer-=amount;u.carry={resource:stats[source.type].resource,amount};u.path=[];u.pickup=null;}
 
  }
- train(id,team=0,type='soldier'){const b=this.get(id),cost=unitCosts[type];if(this.result||!cost||!this.operational(b)||b.team!==team||b.type!=='barracks'||this.regions[b.planet].owner!==team||b.queue.length>=3||this.population(team).free<1||!this.canSupply(type,team,b.planet)||!this.pay({money:cost.money},team))return false;const u={id:this.nextId++,type,team,planet:b.planet,location:'training',hp:stats[type].hp,maxHp:stats[type].hp};this.military.push(u);const q={id:u.id,type,left:stats[type].trainTime,reserved:0,delivered:0,deliveries:{},allocations:[]};b.queue.push(q);for(const [r,n]of this.requirements(type))this.reserveMaterial(q,b,r,n);return true;}
+ train(id,team=0,type='soldier'){const b=this.get(id),cost=unitCosts[type];if(this.result||!cost||!this.operational(b)||b.team!==team||b.type!=='barracks'||this.regions[b.planet].owner!==team||b.queue.length>=3||this.population(team).free<1||!this.canSupply(type,team,b.planet)||!this.pay({money:cost.money},team))return false;const u={id:this.nextId++,type,team,planet:b.planet,location:'training',hp:stats[type].hp,maxHp:stats[type].hp,rank:1,xp:0};this.military.push(u);const q={id:u.id,type,left:stats[type].trainTime,reserved:0,delivered:0,deliveries:{},allocations:[]};b.queue.push(q);for(const [r,n]of this.requirements(type))this.reserveMaterial(q,b,r,n);return true;}
  supplyOrder(b,id,team){return b?.team===team&&this.ready(b)&&b.type==='barracks'&&this.military.some(u=>u.id===id&&u.hp>0&&u.team===team&&u.location==='training')?b.queue.find(q=>q.id===id):null;}
  cancelTraining(b,q){q.allocations=[];q.reserved=0;for(const [r,n]of Object.entries(q.deliveries))this.refund(r,n,b.team);q.deliveries={};q.delivered=0;const unit=this.military.find(u=>u.id===q.id);if(unit)unit.hp=0;}
  canCapture(id,team=0){const r=this.regions[id];return !!r&&r.owner!==team&&r.neighbors.some(n=>this.regions[n].owner===team);}
@@ -256,7 +256,7 @@ class Game{
   const m={id:this.nextId++,kind:'army',from,to,team,left:20,units:chosen.map(u=>u.id)};for(const u of chosen)u.location='mission';this.missions.push(m);this.message='Отряд отправлен. Перелёт — 20 игровых секунд.';return m;
  }
  colonize(id,team=0){if(this.result||this.regions[id]?.owner!==team||this.alive(id).some(e=>e.type==='base')||this.missions.some(m=>m.to===id&&m.kind==='colony')||this.population(team).free<6||!this.pay(colonyCost,team))return false;const m={id:this.nextId++,kind:'colony',to:id,team,left:20};this.missions.push(m);this.message='Отправлены 6 строителей. Слоты населения зарезервированы на время перелёта.';return m;}
- capturePlanet(id,team){const r=this.regions[id],old=r.owner;r.owner=team;const p=this.planet(id);
+ capturePlanet(id,team){const r=this.regions[id],old=r.owner;r.owner=team;if(r.guardians)r.guardians=[];const p=this.planet(id);
   for(const b of p.entities.filter(e=>e.hp>0&&e.type!=='deposit'&&e.type!=='worker')){for(const q of b.queue)this.cancelTraining(b,q);this.cancelHiring(b);b.team=team;b.hp=Math.max(1,Math.floor(b.maxHp*(.35+this.random()*.2)));b.queue=[];b.builder=null;b.repairer=null;b.batch=0;}
   for(const u of p.entities.filter(e=>e.hp>0&&e.type==='worker')){if(u.team===team)continue;if(this.random()<.65){const job=u.job,inside=u.inside;this.release(u);u.team=team;if(job&&this.get(job)?.team===team){u.job=job;u.inside=inside;}}else u.hp=0;}
   for(const u of this.military.filter(u=>u.planet===id&&u.team===old&&['training','reserve'].includes(u.location)))u.hp=0;
@@ -307,7 +307,7 @@ class Game{
   }
  }
  aiDispatch(id){const team=1,army=this.army(team,id);if(army.length>=4&&!this.missions.some(m=>m.team===team&&m.kind==='army')){const target=this.regions.filter(r=>this.canCapture(r.id,team)).sort((a,c)=>dist(a,this.regions[0])-dist(c,this.regions[0]))[0];if(target){const counts={};for(const u of army)counts[u.type]=(counts[u.type]||0)+1;this.sendArmy(id,target.id,counts,team);}}}
- tick(dt){if(this.result)return;dt=Math.max(0,Math.min(.1,dt));this.time+=dt;this.economyClock+=dt;this.aiClock+=dt;for(const team of [0,1])for(const r of resources){const pending=this.teams[team].pending;if(pending[r]>1e-8)pending[r]=this.credit(r,pending[r],team);}
+ tick(dt){if(this.combatStep&&this.combatStep(dt))return;if(this.result)return;dt=Math.max(0,Math.min(.1,dt));this.time+=dt;if(this.encounterTick)this.encounterTick();this.economyClock+=dt;this.aiClock+=dt;for(const team of [0,1])for(const r of resources){const pending=this.teams[team].pending;if(pending[r]>1e-8)pending[r]=this.credit(r,pending[r],team);}
   for(const p of Object.values(this.maps)){for(const b of p.entities.filter(e=>e.hp<=0&&e.type==='base'))this.cancelHiring(b);for(const b of p.entities.filter(e=>e.hp<=0&&e.type==='barracks')){for(const q of b.queue)this.cancelTraining(b,q);b.queue=[];}for(const u of p.entities.filter(e=>e.hp>0&&e.type==='worker')){if(u.job&&this.get(u.job)?.team!==u.team)this.release(u);if(u.inside&&!this.get(u.inside))this.release(u);}this.construction(p,dt);for(const b of p.entities.filter(e=>e.hp>0&&e.type!=='worker'&&e.type!=='deposit'))this.production(b,dt);for(const u of p.entities.filter(e=>e.hp>0&&e.type==='worker'))this.worker(u,dt);p.entities=p.entities.filter(e=>e.hp>0);}
   for(const r of this.regions)if(r.owner>=0)this.credit('money',12/20*dt,r.owner,r.id);
   const arrivals=[];for(const m of this.missions){m.left-=dt;if(m.left<=0)arrivals.push(m);}this.missions=this.missions.filter(m=>m.left>0);for(const m of arrivals)this.arrive(m);
@@ -317,5 +317,5 @@ class Game{
   this.military=this.military.filter(u=>u.hp>0);if(this.aiEnabled&&this.aiClock>=4){this.aiClock=0;this.ai();}
  }
 }
-const api={Game,stats,footprint,placement,W,H,BW,BH,dist,resources,resourceTiers,unitCosts,isMilitary,colonyCost,workerCost,weaponRecipe,ROAD_SPEED,FIELD_YIELD,SOW_TIME,GROW_TIME,HIRE_TIME,HARVEST_TIME,FOOD_PROCESS_TIME,GAS_RADIUS,GAS_LOAD,GAS_GATHER_TIME,GAS_PACK_TIME};if(typeof module!=='undefined')module.exports=api;else root.RTS=api;
+const api={Game,stats,footprint,placement,W,H,BW,BH,dist,resources,resourceTiers,unitCosts,isMilitary,colonyCost,workerCost,weaponRecipe,ROAD_SPEED,FIELD_YIELD,SOW_TIME,GROW_TIME,HIRE_TIME,HARVEST_TIME,FOOD_PROCESS_TIME,GAS_RADIUS,GAS_LOAD,GAS_GATHER_TIME,GAS_PACK_TIME};if(typeof module!=='undefined'){module.exports=api;require('./combat.js').install(api);}else root.RTS=api;
 })(typeof window!=='undefined'?window:globalThis);
