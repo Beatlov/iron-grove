@@ -15,7 +15,7 @@ test('preview serves the current checkout from any cwd and never reuses a condit
   });
   const base=`http://127.0.0.1:${port}`;
   const response=await fetch(base);assert.equal(response.status,200);assert.match(response.headers.get('cache-control'),/no-store/);
-  const html=await response.text();assert.match(html,/Неоновый предел/);assert.match(html,/Версия: HELIOS H11/);
+  const html=await response.text();assert.match(html,/Неоновый предел/);assert.match(html,/Версия: HELIOS H12/);
   const files=[...html.matchAll(/(?:src|href)="((?:engine\.js|game\.js|art\.js|style\.css)\?[^\"]+)"/g)].map(m=>m[1]);assert.equal(files.length,4);
   for(const file of ['',...files]){
    const fresh=await fetch(`${base}/${file}`,{headers:{'If-Modified-Since':'Fri, 01 Jan 2100 00:00:00 GMT','If-None-Match':'"old-build"'}});

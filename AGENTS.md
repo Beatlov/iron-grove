@@ -28,3 +28,7 @@ Reference art uses coarse pixel clusters and simple dark silhouettes. Human work
 ## H11 graphics
 
 Brutal industrial palette, reinforced armor and native-pixel building detail. `pixelPainter` scales/rounds geometry before drawing, maintaining one-pixel edges at any object size. Building macro layouts retain their footprints while seams, bolts, grilles, pipes, shutters and hazard markings use the shared native grid. All gallery categories use the same magnification. Legacy H9 remains unchanged; full H10 snapshot is on tag `helios-h10-before-brutal-refresh`.
+
+## H12 peaceful campaign (current rules)
+
+The user temporarily removed the opponent. Default Game and the actual UI must create only player 0's capital/residents; all other eleven sectors, including Inferna, are neutral with no enemy entities. No time-limit ending: victory only when all twelve sectors belong to player 0, not when Inferna is taken. Adjacency, expedition travel, separate colonization, finite resources and upkeep remain unchanged. Enemy/AI/combat code is retained for future restoration; archived regression scenarios must explicitly pass `{opponent:true}` (optionally `ai:false`). `ai:true` alone never spawns an enemy, and no opponent checkbox is exposed. Neutral worlds are not labelled enemy capitals. Victory must be visible even if a campaign modal was open. Earlier capital-victory instructions describe archived opponent mode, not current gameplay.

@@ -1,4 +1,4 @@
-/* HELIOS H11: independent planetary economies, campaign fleets and automatic battles. */
+/* HELIOS H12: independent planetary economies, campaign fleets and automatic battles. */
 (function(root){
 'use strict';
 const W=144,H=96,BW=48,BH=32,resources=['food','money','metal','crystals','gas','sulfur','weapons','ammo','armor','explosives','medicines'];
@@ -35,10 +35,10 @@ const footprint=e=>{const w=e.width||e.size,h=e.height||e.size;return{x:Math.flo
 const placement=(type,x,y)=>{const s=stats[type],w=s.width||s.size,h=s.height||s.size;return{x:Math.round(x-w/2)+w/2,y:Math.round(y-h/2)+h/2};};
 class Game{
  constructor(seed=Math.floor(Math.random()*0xffffffff),options={}){
-  this.seed=seed>>>0;this.rng=this.seed;this.aiEnabled=options.ai!==false;this.time=0;this.result=null;this.nextId=1;this.regions=[];this.maps={};this.military=[];this.missions=[];this.battles=[];this.history=[];this.effects=[];this.activePlanet=0;this.economyClock=0;this.aiClock=0;
+  this.seed=seed>>>0;this.rng=this.seed;this.hasOpponent=options.opponent===true;this.aiEnabled=this.hasOpponent&&options.ai!==false;this.time=0;this.result=null;this.nextId=1;this.regions=[];this.maps={};this.military=[];this.missions=[];this.battles=[];this.history=[];this.effects=[];this.activePlanet=0;this.economyClock=0;this.aiClock=0;
   this.teams=[0,1].map(()=>({stock:{food:200,money:220,metal:180,crystals:60,gas:0,sulfur:0,weapons:8,ammo:8,armor:12,explosives:5,medicines:4},pending:Object.fromEntries(resources.map(r=>[r,0])),hungry:false,unpaid:false,desertion:0}));
-  this.generateRegions();this.homeRegions=[0,11];
-  for(const team of [0,1]){const id=this.homeRegions[team];this.regions[id].owner=team;const p=this.planet(id);const base=this.add('base',team,72,48,id);base.inventory={...this.teams[team].stock};for(let i=0;i<6;i++)this.add('worker',team,76.5,45.5+i,id);}
+  this.generateRegions();this.homeRegions=this.hasOpponent?[0,11]:[0];
+  for(const [team,id]of this.homeRegions.entries()){this.regions[id].owner=team;const p=this.planet(id);const base=this.add('base',team,72,48,id);base.inventory={...this.teams[team].stock};for(let i=0;i<6;i++)this.add('worker',team,76.5,45.5+i,id);}
   for(const team of [0,1])for(const resource of resources)Object.defineProperty(this.teams[team].stock,resource,{enumerable:true,configurable:true,get:()=>this.available(resource,team),set:value=>{const delta=Math.max(0,value)-this.available(resource,team);if(delta>0)this.credit(resource,delta,team);else this.withdraw(resource,-delta,team);}});
   this.message='Новая кампания: постройте жильё, биореактор и поле. Найм и рабочие места — в карточке здания.';
  }
@@ -262,7 +262,7 @@ class Game{
   for(const u of this.military.filter(u=>u.planet===id&&u.team===old&&['training','reserve'].includes(u.location)))u.hp=0;
   this.history.unshift({time:this.time,text:`${team===0?'Вы':'Демоны'} захватили планету «${r.name}».`});this.history=this.history.slice(0,20);this.message=this.history[0].text;
   if(this.activePlanet===id&&team!==0)this.activePlanet=this.regions.find(r=>r.owner===0)?.id??id;
-  if(id===this.homeRegions[1]&&team===0)this.result='victory';if(id===this.homeRegions[0]&&team===1)this.result='defeat';
+  if(team===0&&(this.hasOpponent?id===this.homeRegions[1]:this.regions.every(r=>r.owner===0)))this.result='victory';if(id===this.homeRegions[0]&&team===1)this.result='defeat';
  }
  arrive(m){if(m.kind==='colony'){if(this.regions[m.to].owner!==m.team||this.alive(m.to).some(e=>e.type==='base')){for(const [r,n]of Object.entries(colonyCost))this.refund(r,n,m.team);return;}this.add('base',m.team,72,48,m.to);for(let i=0;i<6;i++)this.add('worker',m.team,76.5,45.5+i,m.to);return;}
   const troops=m.units.map(id=>this.military.find(u=>u.id===id&&u.hp>0)).filter(Boolean);if(!troops.length)return;
