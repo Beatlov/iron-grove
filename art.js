@@ -1,4 +1,4 @@
-/* HELIOS H13: brutal industrial art on a unified native pixel grid, with the complete H9 renderer available for comparison. */
+/* HELIOS H14: brutal industrial art on a unified native pixel grid, with the complete H9 renderer available for comparison. */
 (function(root){
 'use strict';
 const legacy=typeof module!=='undefined'?require('./art-legacy.js'):root.RTSArtLegacy;
@@ -13,6 +13,37 @@ function pixelPainter(ctx,ox,oy,scale=1){
  plate:(x,y,w,h,c,edge)=>p.plate(at(x),at(y),span(x,w),span(y,h),c,edge),
  line:(x,y,tx,ty,c,width=1)=>p.line(at(x),at(y),at(tx),at(ty),c,Math.max(1,Math.round(width))),
  poly:(points,c)=>p.poly(points.map(([x,y])=>[at(x),at(y)]),c)};
+}
+// Shared square-grid RTS camera: depth goes 2 pixels right / 1 pixel up.
+// No world-grid shear or bitmap resampling; every face is rasterized on the native grid.
+const perspective=Object.freeze({depthX:2,depthY:-1,light:'upper-left'});
+function prism(p,x,y,w,h,front,top,side,ink='#101416'){
+ x=Math.round(x);y=Math.round(y);w=Math.round(w);h=Math.round(h);
+ const dx=Math.max(2,Math.min(6,Math.floor(w/6)*2,Math.floor(h/3)*2)),dy=dx/2;
+ p.poly([[x,y+dy],[x+dx,y],[x+w-1,y],[x+w-1,y+h-dy-1],[x+w-dx-1,y+h-1],[x,y+h-1]],ink);
+ p.poly([[x+1,y+dy+1],[x+dx,y+1],[x+w-3,y+1],[x+w-dx-2,y+dy+1]],top);
+ p.r(x+1,y+dy+2,Math.max(1,w-dx-2),Math.max(1,h-dy-4),front);
+ p.poly([[x+w-dx,y+dy+1],[x+w-2,y+2],[x+w-2,y+h-dy-2],[x+w-dx,y+h-3]],side);
+ p.line(x+1,y+dy+1,x+w-dx-2,y+dy+1,top);
+}
+function yard(p,w,h,type,c){
+ const slab='#65685b',light='#7d7f6c',seam='#4b5149';
+ // Broad poured concrete under the structure, interrupted perimeter and exposed corners.
+ p.poly([[8,3],[w-15,3],[w-15,7],[w-4,7],[w-4,h-17],[w-7,h-17],[w-7,h-5],[w/2+8,h-5],[w/2+8,h-2],[w/2-8,h-2],[w/2-8,h-5],[4,h-5],[4,15],[8,15]],slab);
+ p.line(9,4,w-17,4,light);p.line(5,16,5,h-8,light);p.r(w/2-7,h-6,14,4,'#747766');
+ for(let x=20;x<w-8;x+=18)p.line(x,8,x,h-7,seam);
+ for(let y=22;y<h-7;y+=18)p.line(6,y,w-8,y,seam);
+ p.r(6,h-8,4,1,light);p.r(w-11,10,3,1,light);p.r(8,h-6,2,1,seam);
+ if(type==='field')return;
+ // Short fence sections leave entrances and middle side attachment sockets open.
+ const post=(x,y)=>{prism(p,x,y,4,7,c.steel,c.steelLight,c.dark,c.ink);p.r(x+1,y+2,1,2,c.sand);};
+ const fence=(x,y,len)=>{p.r(x,y+3,len,4,c.dark);p.r(x,y+3,len,1,c.steelLight);p.r(x,y+6,len,1,c.steel);for(let i=4;i<len-2;i+=5)p.r(x+i,y+4,1,2,c.steel);post(x,y);post(x+len-4,y);};
+ fence(7,3,w>=72?18:10);if(w>=72){fence(w-24,h-10,17);p.r(3,19,2,10,c.dark);p.r(3,19,1,10,c.steelLight);post(2,17);post(2,27);}
+ post(3,h-15);post(w/2-11,h-9);post(w/2+8,h-9);
+ p.r(w/2-10,h-8,2,2,c.hot);p.r(w/2+9,h-8,2,2,c.hot);
+ // Drain and service locker are functional edge detail, not a continuous rectangular frame.
+ p.r(w-8,18,3,9,c.dark);for(let y=19;y<26;y+=3)p.r(w-8,y,2,1,c.steelLight);
+ if(w>=72){prism(p,w-17,8,9,11,c.steel,c.steelLight,c.dark,c.ink);p.r(w-14,13,3,2,c.glow);}
 }
 const UNIT_SCALE=41/48;
 let style='refined';
@@ -36,23 +67,24 @@ function unit(ctx,e,x,y,time=0,state={}){
  // Large, simple leg shapes; every phase shares the same foot anchor.
  for(const [lx,s]of [[7,step],[20,-step]]){plate(lx,20+Math.max(0,s),7,11-Math.abs(s),c.ink);r(lx+1,21+Math.max(0,s),5,6-Math.abs(s),suit);if(!worker)r(lx+1,23+Math.max(0,s),4,3,c.sand);r(lx-1,28+Math.max(0,s),9,4,c.ink);r(lx,28+Math.max(0,s),7,1,c.steel);}
  // Backpack, antenna and solid chest blocks, deliberately no fine surface noise.
- plate(3,7,9,15,c.pack);r(4,8,3,8,worker?'#b07825':c.pack);r(7,3,3,7,c.ink);r(8,3,1,3,worker?c.hot:c.glow);
+ prism({r,poly,line},3,7,9,15,c.pack,c.sand,c.dark,c.ink);r(4,8,3,8,worker?'#b07825':c.pack);r(7,3,3,7,c.ink);r(8,3,1,3,worker?c.hot:c.glow);
  plate(8,10,18,14,c.ink);r(9,11,16,11,suit);r(12,19,10,5,c.dark);r(13,11,7,5,worker?c.sand:c.sand);r(9,12,3,6,highlight);
  plate(3,12,9,9,c.ink);r(4,13,7,6,suit);r(4,13,5,2,highlight);plate(24,13,6,9,c.ink);r(25,14,4,5,suit);
  // Reinforced pauldrons, collar, belt and scarred plates give weight without growing the unit.
- r(3,12,9,2,c.steel);r(4,15,2,3,c.steelLight);r(24,13,6,2,c.steel);r(13,16,10,2,c.dark);r(16,19,3,2,c.steelLight);r(7,26,2,2,c.steel);r(21,26,2,2,c.steel);r(10,12,2,1,c.cream);
+ poly([[3,14],[7,12],[12,12],[9,14]],c.steelLight);r(3,14,9,1,c.steel);r(4,15,2,3,c.steelLight);r(24,13,6,2,c.steel);r(13,16,10,2,c.dark);r(16,19,3,2,c.steelLight);r(7,26,2,2,c.steel);r(21,26,2,2,c.steel);r(10,12,2,1,c.cream);
  // Helmet and mask closely follow the supplied reference.
  poly([[12,1],[21,1],[21,3],[25,3],[25,12],[20,14],[11,12],[9,8],[9,4],[12,4]],c.ink);
  const helmet=worker||medic?c.sand:c.armor;
  r(12,2,9,3,worker||medic?c.cream:c.light);r(10,5,14,5,helmet);r(13,3,10,6,helmet);r(13,9,13,5,c.ink);r(14,10,11,3,c.dark);
  r(11,7,3,1,c.steelLight);r(21,5,2,1,c.dark);r(24,8,2,5,c.steel);
  if(worker){r(16,10,3,2,c.hot);r(22,10,2,2,c.hot);}else r(16,10,8,2,c.glow);
+ poly([[11,5],[15,3],[22,3],[24,5]],worker||medic?c.cream:c.light);r(24,6,1,2,c.shade);
  if(demon){poly([[10,6],[7,0],[11,2],[14,6]],c.sand);poly([[21,5],[26,0],[25,6]],c.sand);r(5,14,2,3,c.sand);r(26,16,2,3,c.sand);r(16,15,4,2,c.sand);}
  if(medic){r(17,4,2,4,'#526c44');r(16,5,4,2,'#526c44');}
  const recoil=(e.cool||0)>(grenadier?1.83:.84)?1:0;
  if(worker){
   if(state.working){plate(23,16,8,4,c.steel);r(29,12,3,7,c.steelLight);r(29,11,5,3,c.steel);r(21,18,5,4,c.ink);if(Math.floor(time*7)%2){r(33,9,2,2,c.hot);r(32,14,2,1,c.cream);}}
-  else if(e.carry){plate(9,17,22,10,c.steel);r(11,19,18,5,c.steelLight);r(13,20,3,3,resources[e.carry.resource]||c.sand);r(24,20,3,3,resources[e.carry.resource]||c.sand);r(8,18,5,4,c.ink);r(28,18,4,4,c.ink);}
+  else if(e.carry){prism({r,poly,line},9,17,22,10,c.steel,c.steelLight,c.dark,c.ink);r(11,19,18,5,c.steelLight);r(13,20,3,3,resources[e.carry.resource]||c.sand);r(24,20,3,3,resources[e.carry.resource]||c.sand);r(8,18,5,4,c.ink);r(28,18,4,4,c.ink);}
   else{r(3,19+step,5,5,c.ink);r(25,20-step,5,4,c.ink);}
  }else if(medic){plate(3,22,10,8,c.sand);r(7,23,2,6,'#427640');r(5,25,6,2,'#427640');plate(20,17,12,5,c.steel);r(29,18,3,2,c.glow);r(22,21,5,3,c.sand);}
  else if(psyker){line(28,28,28,7,c.ink,4);line(28,27,28,7,c.steelLight,2);plate(24,3,9,8,c.dark);r(26,5,5,4,c.glow);r(27,6,2,2,c.cream);r(21,18,8,4,c.sand);poly([[9,14],[13,24],[24,24],[26,14]],c.dark);r(14,18,8,2,c.glow);}
@@ -61,7 +93,7 @@ function unit(ctx,e,x,y,time=0,state={}){
  if(e.type==='robot'){plate(10,3,15,11,c.steel);r(14,7,9,3,c.glow);r(9,13,3,7,c.steelLight);r(25,14,3,5,c.steelLight);r(14,14,5,4,c.hot);}
  if(e.type==='pirate'){r(10,5,14,3,'#8b4941');r(11,9,4,3,c.ink);r(5,14,3,2,c.sand);}
  if((e.rank||1)>1){const trim=e.rank===3?'#d9b661':'#c3ccca';r(4,13,7,1,trim);r(25,14,4,1,trim);r(5,16,4,1,trim);if(e.rank===3){r(5,18,4,1,trim);r(13,3,8,1,trim);r(12,22,10,1,trim);}}
- if(back){plate(11,9,12,11,c.pack);r(12,10,10,3,worker?'#ae7d29':c.sand);r(13,15,8,4,c.pack);}
+ if(back){prism({r,poly,line},11,9,12,11,c.pack,c.sand,c.dark,c.ink);r(12,10,10,3,worker?'#ae7d29':c.sand);r(13,15,8,4,c.pack);}
  ctx.restore();
 }
 function road(ctx,x,y,size=24){if(style==='classic')return legacy.road(ctx,x,y,size);const {r}=painter(ctx,x,y,size/24);r(0,0,24,24,'#343c3d');for(const [x,y,w]of [[2,3,5],[13,12,7],[6,20,4]])r(x,y,w,2,'#3c4444');r(18,2,2,2,'#293336');}
@@ -71,10 +103,12 @@ function building(ctx,e,x,y,time=0,state={}){
  ctx.save();ctx.beginPath();ctx.rect(ox,oy,width,height);ctx.clip();
  const {r,plate,line,poly}=pixelPainter(ctx,ox,oy,2),w=width/2,h=height/2;
  const detail=painter(ctx,ox,oy);
- // Disconnected utility paving blends into the terrain rather than framing the lot.
- r(1,h-7,w-5,4,'#444943');r(w-9,4,7,5,'#414840');r(2,h-6,8,1,'#737565');r(w-8,5,6,1,'#6d7060');
- r(1,h-3,5,2,'#323b33');r(w-5,h-9,4,6,'#353e37');
- const block=(x,y,bw,bh,color=c.armor)=>{plate(x,y,bw,bh,c.ink);r(x+1,y+1,bw-2,bh-3,color);r(x+2,y+1,bw-4,2,c.light);r(x+1,y+bh-4,bw-2,3,c.shade);r(x+2,y+bh-3,bw-4,1,c.dark);detail.r(x*2+3,y*2+2,bw*2-6,1,c.steelLight);detail.r(x*2+2,(y+bh)*2-4,bw*2-4,1,c.ink);for(const px of [x*2+2,(x+bw)*2-3]){detail.r(px,y*2+3,1,1,c.sand);detail.r(px,(y+bh)*2-3,1,1,c.steelLight);}};
+ yard(detail,width,height,e.type,c);
+ const block=(x,y,bw,bh,color=c.armor)=>{
+  prism(detail,x*2,y*2,bw*2,bh*2,color,color===c.steel?c.steelLight:c.light,c.shade,c.ink);
+  detail.r(x*2+3,(y+bh)*2-5,Math.max(1,bw*2-10),1,c.dark);
+  for(const px of [x*2+3,(x+bw)*2-9]){detail.r(px,(y+bh)*2-8,1,1,c.sand);detail.r(px,(y+bh)*2-4,1,1,c.steelLight);}
+ };
  const door=(x,y,bw,bh)=>{plate(x,y,bw,bh,c.dark);r(x+1,y+1,bw-2,bh-2,c.steel);r(x+2,y+1,bw-4,1,c.steelLight);for(let sy=y*2+5;sy<(y+bh)*2-3;sy+=4)detail.r(x*2+3,sy,bw*2-6,1,c.dark);};
  const vent=(x,y)=>{r(x,y,7,4,c.dark);r(x+1,y+1,5,1,c.steelLight);r(x+1,y+3,5,1,c.steel);};
  if(e.construction>0){const level=Math.max(2,Math.floor((h-8)*(state.progress||0)));r(4,h-6,w-8,2,c.steel);r(5,h-6-level,w-10,level,c.shade);for(let i=0;i<3;i++)r(4+i*Math.floor((w-9)/2),4,1,h-9,c.pack);line(4,5,w-4,h-8,c.sand);line(w-5,5,5,h-8,c.sand);if(state.working){r(w-6,h-10,2,2,c.hot);r(w-8,h-12,1,2,c.cream);}ctx.restore();return;}
@@ -95,7 +129,7 @@ function building(ctx,e,x,y,time=0,state={}){
  const d=detail.r,edge=detail.line;
  const grille=(x,y,gw,gh)=>{detail.plate(x,y,gw,gh,c.dark);for(let i=2;i<gh-1;i+=3)d(x+2,y+i,gw-4,1,c.steelLight);};
  const pipe=(x,y,tx,ty)=>{edge(x+1,y+1,tx+1,ty+1,c.ink,3);edge(x,y,tx,ty,c.steel,2);edge(x,y,tx,ty,c.steelLight);};
- const crate=(x,y)=>{detail.plate(x,y,10,8,c.pack);d(x+2,y+2,6,1,c.sand);d(x+4,y+1,1,6,c.dark);};
+ const crate=(x,y)=>{prism(detail,x,y,10,8,c.pack,c.sand,c.dark,c.ink);d(x+3,y+3,1,3,c.dark);};
  const hazard=(x,y,hw)=>{d(x,y,hw,3,c.ink);for(let i=0;i<hw-2;i+=5)d(x+i,y,2,3,c.hot);};
  const roof=(x,y,rw,rh)=>{for(let i=8;i<rw-3;i+=10){d(x+i,y,1,rh,c.shade);d(x+i+1,y+1,1,rh-2,c.dark);}d(x+3,y+rh-2,rw-6,1,c.ink);};
  if(type!=='field'){
@@ -106,7 +140,10 @@ function building(ctx,e,x,y,time=0,state={}){
  if(type==='base'){
   roof(22,12,width-44,20);grille(16,37,13,8);grille(width-29,37,13,8);
   detail.plate(width/2-10,19,20,11,c.dark);d(width/2-7,21,14,2,c.glow);d(width/2-6,25,6,1,c.steelLight);
-  pipe(12,30,12,48);pipe(width-13,28,width-13,48);hazard(width/2-11,height-12,22);
+  pipe(12,30,12,48);pipe(width-13,28,width-13,48);
+  detail.plate(33,40,width-66,11,c.shade);d(36,42,width-72,1,c.steelLight);d(36,47,width-72,1,c.dark);
+  for(const px of [32,width-33]){d(px,33,1,22,c.dark);d(px+1,34,1,20,c.light);}
+  hazard(width/2-11,height-12,22);
   for(let i=0;i<3;i++)d(width/2-9+i*7,height-8,5,1,c.steelLight);
   detail.plate(5,height-37,5,6,c.steel);d(6,height-36,2,1,c.hot);
  }else if(type==='house'){
@@ -162,23 +199,23 @@ function building(ctx,e,x,y,time=0,state={}){
 }
 function deposit(ctx,e,x,y,time=0){
  if(style==='classic')return legacy.deposit(ctx,e,x,y,time);
- const {r,plate,poly}=painter(ctx,Math.round(x)-12,Math.round(y)-14),color=resources[e.resource]||resources.crystals;
+ const {r,plate,poly,line}=painter(ctx,Math.round(x)-12,Math.round(y)-14),color=resources[e.resource]||resources.crystals;
  if(e.amount<=0){r(4,17,17,3,'#626357');r(7,16,4,1,'#8d8e77');return;}
  if(e.resource==='metal'||e.resource==='crystals'||e.resource==='sulfur'){
   const crystal=e.resource==='crystals',dark=e.resource==='metal'?'#303e46':crystal?'#553954':'#6d602c';
   poly([[1,21],[3,12],[8,12],[10,3],[16,3],[18,13],[22,15],[23,21]],'#1c2528');
   poly([[3,19],[5,13],[10,13],[11,5],[15,5],[17,14],[21,16],[21,19]],dark);
-  r(11,6,3,10,color);r(5,14,3,4,color);r(17,16,3,3,color);r(11,5,2,5,crystal?'#e5c4d8':e.resource==='sulfur'?'#f4df89':'#c3d2d2');
+  poly([[10,6],[12,4],[15,4],[16,6]],e.resource==='metal'?'#c3d2d2':crystal?'#e5c4d8':'#f4df89');r(15,7,2,8,dark);r(11,6,3,10,color);r(5,14,3,4,color);r(17,16,3,3,color);r(11,5,2,5,crystal?'#e5c4d8':e.resource==='sulfur'?'#f4df89':'#c3d2d2');
  }else if(e.resource==='gas'&&e.type==='deposit'){poly([[1,20],[4,13],[17,12],[23,18],[21,22]],'#2d3c39');r(6,16,12,4,'#172524');r(8,15,8,2,color);const shift=Math.floor(time*2)%3;r(9,7-shift,5,5,'#78b8a3');r(12,3-shift,4,4,'#a2d2b8');}
  else if(e.resource==='gas'){plate(6,4,13,19,'#394c49');r(8,7,9,11,color);r(8,7,2,8,'#c0ddd0');r(9,2,7,3,'#919e8d');}
  else if(e.resource==='weapons'){plate(2,12,21,6,'#24292e');r(4,13,16,2,'#6f737d');r(11,17,4,5,'#24292e');r(17,14,2,2,'#a7ee15');}
  else if(e.resource==='armor'){poly([[3,8],[8,5],[10,9],[15,9],[17,5],[22,8],[19,15],[19,22],[6,22],[6,15]],'#20292f');r(8,10,9,11,color);r(9,11,2,6,'#d1d9d7');}
- else if(e.resource==='ammo'){plate(3,8,19,14,'#3d443a');for(let i=0;i<3;i++){r(6+i*5,10,3,9,color);r(6+i*5,8,3,3,'#eed098');}}
- else if(e.resource==='medicines'){plate(3,8,19,14,color);r(10,10,4,10,'#467b45');r(7,13,10,4,'#467b45');r(9,5,7,3,'#5c6e60');}
- else if(e.resource==='explosives'){plate(3,9,19,13,'#5b3930');r(5,11,15,9,color);r(11,11,3,9,'#9d4f38');r(10,5,4,5,'#d4b15f');}
- else{plate(5,6,15,17,color);r(7,8,11,3,'#dfd9ad');r(9,13,7,7,e.resource==='money'?'#8b7842':'#697f3a');}
+ else if(e.resource==='ammo'){prism({r,poly,line},3,8,19,14,'#3d443a','#8d987d','#29352d');for(let i=0;i<3;i++){r(6+i*5,10,3,9,color);r(6+i*5,8,3,3,'#eed098');}}
+ else if(e.resource==='medicines'){prism({r,poly,line},3,8,19,14,color,'#e1e6c8','#6e8b79');r(10,10,4,10,'#467b45');r(7,13,10,4,'#467b45');r(9,5,7,3,'#5c6e60');}
+ else if(e.resource==='explosives'){prism({r,poly,line},3,9,19,13,'#5b3930','#bf956c','#403131');r(5,11,15,9,color);r(11,11,3,9,'#9d4f38');r(10,5,4,5,'#d4b15f');}
+ else{prism({r,poly,line},5,6,15,17,color,'#dfd9ad',e.resource==='money'?'#8b7842':'#506438');r(7,8,11,3,'#dfd9ad');r(9,13,7,7,e.resource==='money'?'#8b7842':'#697f3a');}
 }
 function fallen(ctx,e,x,y,age){if(style==='classic')return legacy.fallen(ctx,e,x,y,age);if(age<.2)return unit(ctx,{...e,moving:false},x,y,0);const c=palettes[e.team===1?1:0],{r,plate}=painter(ctx,x-14,y-5);plate(3,3,10,7,c.sand);plate(11,2,14,8,e.type==='worker'?'#be912d':c.armor);r(18,8,12,4,c.dark);}
 function menuScene(ctx,width,height){if(style==='classic')return legacy.menuScene(ctx,width,height);ctx.fillStyle='#303b36';ctx.fillRect(0,0,width,height);for(let x=0;x<width;x+=24)road(ctx,x,170,24);building(ctx,{type:'base',team:0,size:3},105,100);building(ctx,{type:'factory',team:0,size:4},255,105);building(ctx,{type:'barracks',team:1,size:4},width-100,105);for(const [i,type]of ['worker','soldier','assault','medic','grenadier'].entries())unit(ctx,{type,team:0,facingX:1},120+i*38,230+i%2*8);for(let i=0;i<3;i++)unit(ctx,{type:'soldier',team:1,facingX:-1},width-145+i*36,230);}
-const api={palettes,resources,painter,pixelPainter,UNIT_SCALE,road,unit,building,deposit,fallen,menuScene,setStyle,getStyle};if(typeof module!=='undefined')module.exports=api;else root.RTSArt=api;
+const api={palettes,resources,painter,pixelPainter,perspective,prism,UNIT_SCALE,road,unit,building,deposit,fallen,menuScene,setStyle,getStyle};if(typeof module!=='undefined')module.exports=api;else root.RTSArt=api;
 })(typeof window!=='undefined'?window:globalThis);
