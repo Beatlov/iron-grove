@@ -1,4 +1,4 @@
-/* HELIOS H23: planetary economies, structure management, campaign fleets and automatic battles. */
+/* HELIOS H24: planetary economies, structure management, campaign fleets and automatic battles. */
 (function(root){
 'use strict';
 const W=144,H=96,resources=['food','money','metal','crystals','gas','sulfur','weapons','ammo','armor','explosives','medicines'];
@@ -36,7 +36,7 @@ const footprint=e=>{const w=e.width||e.size,h=e.height||e.size;return{x:Math.flo
 const placement=(type,x,y)=>{const s=stats[type],w=s.width||s.size,h=s.height||s.size;return{x:Math.round(x-w/2)+w/2,y:Math.round(y-h/2)+h/2};};
 class Game{
  constructor(seed=Math.floor(Math.random()*0xffffffff),options={}){
-  this.seed=seed>>>0;this.rng=this.seed;this.hasOpponent=options.opponent===true;this.aiEnabled=this.hasOpponent&&options.ai!==false;this.time=0;this.result=null;this.nextId=1;this.regions=[];this.maps={};this.military=[];this.missions=[];this.battles=[];this.history=[];this.effects=[];this.activePlanet=0;this.economyClock=0;this.aiClock=0;
+  this.seed=seed>>>0;this.rng=this.seed;this.hasOpponent=options.opponent===true;this.aiEnabled=this.hasOpponent&&options.ai!==false;this.time=0;this.result=null;this.nextId=1;this.regions=[];this.maps={};this.military=[];this.missions=[];this.battles=[];this.history=[];this.effects=[];this.activePlanet=0;this.economyClock=0;this.aiClock=0;this.resourceFlowHistory=[];
   this.teams=[0,1].map(()=>({stock:{food:200,money:220,metal:180,crystals:60,gas:0,sulfur:0,weapons:8,ammo:8,armor:12,explosives:5,medicines:4},pending:Object.fromEntries(resources.map(r=>[r,0])),hungry:false,unpaid:false,desertion:0}));
   this.generateRegions();this.homeRegions=this.hasOpponent?[0,11]:[0];
   for(const [team,id]of this.homeRegions.entries()){this.regions[id].owner=team;const p=this.planet(id);const base=this.add('base',team,72,48,id);base.inventory={...this.teams[team].stock};for(let i=0;i<6;i++)this.add('worker',team,76.5,45.5+i,id);for(let i=0;i<2;i++)this.spawnCarrier(base);}
@@ -133,8 +133,24 @@ class Game{
  operational(e){return this.ready(e)&&e.hp>=e.maxHp*.65;}
  population(team=0){const all=this.all().filter(e=>e.team===team),workers=all.filter(e=>e.type==='worker').length,soldiers=this.military.filter(u=>u.team===team&&u.hp>0).length,reserved=this.missions.filter(m=>m.team===team&&m.kind==='colony').length*6,hiring=all.filter(e=>e.type==='base').reduce((n,b)=>n+b.hireQueue.length,0),capacity=all.filter(e=>this.ready(e)).reduce((n,e)=>n+(e.type==='base'?6:e.type==='house'?4:0),0);return{workers,soldiers,reserved,hiring,total:workers+soldiers+reserved+hiring,capacity,free:Math.max(0,capacity-workers-soldiers-reserved-hiring)};}
  army(team=0,planet=this.activePlanet){return this.military.filter(u=>u.team===team&&u.hp>0&&u.location==='reserve'&&u.planet===planet);}
- income(team=0){return this.regions.filter(r=>r.owner===team).length*12+this.all().filter(b=>b.team===team&&b.type==='guild'&&this.operational(b)).reduce((n,b)=>n+this.workers(b).filter(u=>u.inside===b.id).length*3,0);}
+ income(team=0){return this.resourceFlows(team).money.income*2;}
  upkeep(team=0){const units=this.military.filter(u=>u.team===team&&u.hp>0&&u.location!=='training');return{metal:this.all().filter(e=>e.team===team&&e.type==='drone').length*DRONE_METAL_UPKEEP,food:this.population(team).workers+units.reduce((n,u)=>n+stats[u.type].food,0),money:units.reduce((n,u)=>n+stats[u.type].money,0)};}
+ recordResourceFlow(resource,direction,amount,team,source){
+  if(!resources.includes(resource)||!['income','expense'].includes(direction)||!Number.isFinite(amount)||amount<=0)return;
+  this.resourceFlowHistory=this.resourceFlowHistory.filter(e=>e.time>this.time-60);
+  this.resourceFlowHistory.push({time:this.time,resource,direction,amount,team,source});
+ }
+ resourceFlows(team=0){
+  const window=Math.max(1,Math.min(60,this.time)),period=10,flows=Object.fromEntries(resources.map(r=>[r,{income:0,expense:0,incomeSources:[],expenseSources:[],period,window}]));
+  const add=(r,direction,source,amount)=>{if(amount<=1e-8)return;const f=flows[r],list=f[direction+'Sources'],existing=list.find(e=>e.source===source);if(existing)existing.amount+=amount;else list.push({source,amount});f[direction]+=amount;};
+  const stores=this.storages(team),canReceiveMoney=stores.some(s=>this.inputRoom(s,'money')>1e-8),owned=this.regions.filter(r=>r.owner===team);
+  if(canReceiveMoney){add('money','income','tax',owned.length*12/20*period);for(const b of this.all().filter(b=>b.team===team&&b.type==='guild'&&this.operational(b)&&this.productionNeeded(b)))add('money','income','guild',this.workers(b).filter(u=>u.inside===b.id).length*stats.guild.rate*period);}
+  const military=this.military.filter(u=>u.team===team&&u.hp>0&&u.location!=='training');
+  add('food','expense','residents',this.population(team).workers);add('food','expense','army',military.reduce((n,u)=>n+stats[u.type].food,0));add('money','expense','army',military.reduce((n,u)=>n+stats[u.type].money,0));add('metal','expense','drones',this.upkeep(team).metal);
+  if(this.available('metal',team)>=1)for(const u of this.all().filter(e=>e.type==='worker'&&e.team===team&&e.building)){const b=this.get(u.building);if(this.ready(b)&&b.team===team&&b.hp<b.maxHp&&!u.path.length&&this.adjacent(u,b))add('metal','expense','repair',period);}
+  for(const e of this.resourceFlowHistory)if(e.team===team&&e.time>this.time-60)add(e.resource,e.direction,e.source,e.amount/window*period);
+  return flows;
+ }
  hire(id,team=0){const b=this.get(id);if(this.result||!this.canManageProcesses(team)||!this.operational(b)||b.type!=='base'||b.team!==team||this.regions[b.planet].owner!==team||b.hireQueue.length>=5||this.population(team).free<1||!this.pay(workerCost,team))return false;b.hireQueue.push({left:HIRE_TIME});this.message='Найм жителя: 8 игровых секунд. Место населения зарезервировано.';return true;}
  cancelHiring(b){for(const q of b.hireQueue)this.refund('money',workerCost.money,b.team);b.hireQueue=[];}
  freeNear(b){for(let r=2;r<10;r++)for(let y=Math.floor(b.y)-r;y<=Math.floor(b.y)+r;y++)for(let x=Math.floor(b.x)-r;x<=Math.floor(b.x)+r;x++)if(!this.cellBlocked(x,y,b.planet)&&!this.alive(b.planet).some(u=>u.type==='worker'&&!u.inside&&dist(u,{x:x+.5,y:y+.5})<.7))return{x:x+.5,y:y+.5};return{x:b.x+2.5,y:b.y};}
@@ -239,7 +255,7 @@ class Game{
   if(!b.batch&&this.isProducer(b)&&!this.productionNeeded(b))return;
   if(b.type==='guild'){this.credit('money',inside*s.rate*dt,b.team,b.planet);return;}
   if(s.extractor&&inside){let node=this.get(b.node);if(!node||node.amount<=0){node=this.alive(b.planet).filter(e=>e.type==='deposit'&&e.resource===s.resource&&e.amount>0&&this.covers(b,e)).sort((a,c)=>dist(a,b)-dist(c,b))[0];b.node=node?.id;}const amount=Math.min(60-b.buffer,inside*s.rate*dt,node?.amount||0);if(node)node.amount-=amount;b.buffer+=amount;}
-  if(s.recipe&&inside){const host=this.get(b.parent);if(!this.operational(host)||host.team!==b.team||host.type!==s.addon)return;if(!b.batch){if(!Object.entries(s.recipe).every(([r,n])=>host.inventory[r]>=n))return;for(const [r,n]of Object.entries(s.recipe))host.inventory[r]-=n;b.batch=s.cycle;}b.batch=Math.max(1e-9,b.batch-dt);if(b.batch<1e-8&&this.room(host)>=1){b.batch=0;host.inventory[s.resource]++;}}
+  if(s.recipe&&inside){const host=this.get(b.parent);if(!this.operational(host)||host.team!==b.team||host.type!==s.addon)return;if(!b.batch){if(!Object.entries(s.recipe).every(([r,n])=>host.inventory[r]>=n))return;for(const [r,n]of Object.entries(s.recipe)){host.inventory[r]-=n;this.recordResourceFlow(r,'expense',n,b.team,'craft');}b.batch=s.cycle;}b.batch=Math.max(1e-9,b.batch-dt);if(b.batch<1e-8&&this.room(host)>=1){b.batch=0;host.inventory[s.resource]++;this.recordResourceFlow(s.resource,'income',1,b.team,'production');}}
 
 
   if(b.type==='barracks'&&b.queue.length){const q=b.queue[0],u=this.military.find(u=>u.id===q.id&&u.hp>0);if(!u){this.cancelTraining(b,q);b.queue.shift();return;}if(!this.supplied(q))return;q.left-=dt;if(q.left<=0){u.location='reserve';b.queue.shift();}}
@@ -291,7 +307,7 @@ class Game{
  capturePlanet(id,team){const r=this.regions[id],old=r.owner;r.owner=team;if(r.guardians)r.guardians=[];const p=this.planet(id);
   for(const b of p.entities.filter(e=>e.hp>0&&e.type!=='deposit'&&!stats[e.type]?.speed)){for(const q of b.queue)this.cancelTraining(b,q);this.cancelHiring(b);this.cancelDrones(b,true);b.team=team;b.hp=Math.max(1,Math.floor(b.maxHp*(.35+this.random()*.2)));b.queue=[];b.builder=null;b.repairer=null;b.batch=0;}
   for(const u of p.entities.filter(e=>e.hp>0&&e.type==='worker')){if(u.team===team)continue;if(this.random()<.65){const job=u.job,inside=u.inside;this.release(u);u.team=team;if(job&&this.get(job)?.team===team){u.job=job;u.inside=inside;}}else u.hp=0;}
-  for(const d of p.entities.filter(e=>e.hp>0&&e.type==='drone')){if(this.get(d.home)?.team===team){d.team=team;d.task=null;d.path=[];if(d.carry){delete d.carry.order;delete d.carry.target;delete d.carry.to;}}}
+  for(const d of p.entities.filter(e=>e.hp>0&&e.type==='drone')){if(this.get(d.home)?.team===team){d.team=team;d.task=null;d.path=[];if(d.carry){delete d.carry.order;delete d.carry.target;delete d.carry.to;delete d.carry.fresh;}}}
   for(const u of this.military.filter(u=>u.planet===id&&u.team===old&&['training','reserve'].includes(u.location)))u.hp=0;
   this.history.unshift({time:this.time,text:`${team===0?'Вы':'Демоны'} захватили планету «${r.name}».`});this.history=this.history.slice(0,20);this.message=this.history[0].text;
   if(this.activePlanet===id&&team!==0)this.activePlanet=this.regions.find(r=>r.owner===0)?.id??id;

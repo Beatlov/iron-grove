@@ -45,7 +45,7 @@ function install(api){
    if(d.carry){if(d.inside)this.leaveInterior(d);const c=d.carry;
     if(c.order){const b=this.get(c.target),q=this.supplyOrder(b,c.order,d.team);if(q){if(this.walkTo(d,b,dt)){q.deliveries[c.resource]=(q.deliveries[c.resource]||0)+c.amount;q.delivered=q.deliveries.weapons||0;d.carry=null;d.path=[];}return;}delete c.order;delete c.target;d.path=[];}
     let to=this.get(c.to);if(to?.team!==d.team||!this.ready(to)||this.inputRoom(to,c.resource)<1e-8){delete c.to;d.path=[];to=this.carrierDocks(d.team,d.planet).filter(b=>this.inputRoom(b,c.resource)>1e-8).sort((a,b)=>dist(a,d)-dist(b,d)).find(b=>this.adjacent(d,b)||this.nearPath(d,b).length);if(to)c.to=to.id;}
-    if(to){if(this.walkTo(d,to,dt)){c.amount-=this.deposit(to,c.resource,c.amount);if(c.amount<1e-8)d.carry=null;d.path=[];}else if(!d.path.length&&(d.retry||0)>this.time){delete c.to;d.retry=0;}}return;
+    if(to){if(this.walkTo(d,to,dt)){const delivered=this.deposit(to,c.resource,c.amount);if(c.fresh)this.recordResourceFlow(c.resource,'income',delivered,d.team,c.fresh);c.amount-=delivered;if(c.amount<1e-8)d.carry=null;d.path=[];}else if(!d.path.length&&(d.retry||0)>this.time){delete c.to;d.retry=0;}}return;
    }
    this.maintainSupply(this.planet(d.planet),d.team);
    let t=d.task;if(t){const from=this.get(t.from),to=this.get(t.to),q=t.order&&this.supplyOrder(to,t.order,d.team),amount=t.order?q?.allocations.filter(a=>a.store===t.from&&a.resource===t.resource).reduce((n,a)=>n+a.amount,0):from?this.transportAvailable(d,from,t.resource,t.buffer):0;if(from?.team!==d.team||!this.ready(from)||to?.team!==d.team||!this.ready(to)||!amount||!t.order&&this.transportRoom(d,to,t.resource)<1){d.task=null;d.path=[];t=null;}}
@@ -53,7 +53,7 @@ function install(api){
    if(d.inside){const path=d.path;this.leaveInterior(d);d.path=path;}
    const from=this.get(t.from),to=this.get(t.to);if(!this.walkTo(d,from,dt)){if(!d.path.length&&(d.retry||0)>this.time)d.task=null;return;}
    let amount=Math.min(t.amount,stats.drone.load);if(t.order){const q=this.supplyOrder(to,t.order,d.team);if(!q){d.task=null;return;}let left=amount;for(const a of q.allocations.filter(a=>a.store===from.id&&a.resource===t.resource)){const take=Math.min(left,a.amount,from.inventory[t.resource]);a.amount-=take;from.inventory[t.resource]-=take;left-=take;}amount-=left;q.allocations=q.allocations.filter(a=>a.amount>1e-8);q.reserved=q.allocations.filter(a=>a.resource==='weapons').reduce((n,a)=>n+a.amount,0);if(amount>0)d.carry={resource:t.resource,amount,order:t.order,target:to.id};}
-   else{amount=Math.min(amount,this.transportAvailable(d,from,t.resource,t.buffer),this.transportRoom(d,to,t.resource));if(amount>0){if(t.buffer)from.buffer-=amount;else from.inventory[t.resource]-=amount;d.carry={resource:t.resource,amount,to:to.id};}}
+   else{amount=Math.min(amount,this.transportAvailable(d,from,t.resource,t.buffer),this.transportRoom(d,to,t.resource));if(amount>0){if(t.buffer)from.buffer-=amount;else from.inventory[t.resource]-=amount;d.carry={resource:t.resource,amount,to:to.id};if(t.buffer)d.carry.fresh=from.type==='farm'?'food':'extraction';}}
    d.task=null;d.path=[];
   }
  });

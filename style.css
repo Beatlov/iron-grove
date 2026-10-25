@@ -123,3 +123,15 @@ canvas{display:block;image-rendering:pixelated;touch-action:none}
 .selection-panel .console-heading{white-space:normal;flex-wrap:wrap;height:auto;min-height:12px;row-gap:2px}
 #workforce-info{letter-spacing:0}
 .selection-panel:has(#carrier-info:not([hidden])) #details{max-height:32px}
+
+/* H24: stable focusable counters and a live resource-flow tooltip. */
+.resource[tabindex]{cursor:help;outline-offset:3px}
+.resource:focus-visible{outline:1px solid #c5d596}
+.resource-tooltip{position:fixed;z-index:20;pointer-events:none;width:290px;max-width:calc(100vw - 16px);max-height:calc(100dvh - 24px);overflow:hidden;padding:12px 14px;background:#202b24f5;border:1px solid #8b9b70;border-top:2px solid #c5bb8a;box-shadow:0 6px 20px #0008;font:12px/1.45 Arial,sans-serif;color:#dedcc3}
+.resource-tooltip p{margin:0}
+.resource-tooltip-title{display:block;font:14px monospace;color:#ece1b9;margin-bottom:4px}
+.resource-tooltip-period{font-size:10px;color:#a5b293;margin-bottom:9px!important}
+.resource-flow{margin-top:8px}
+.resource-flow-total{font-weight:bold}.resource-flow.income .resource-flow-total{color:#c3da95}.resource-flow.expense .resource-flow-total{color:#e0ad85}
+.resource-flow-source{font-size:11px;color:#c0c8ab;padding-left:8px;margin-top:2px!important}
+.resource-tooltip-note{border-top:1px solid #71815b77;padding-top:8px;margin-top:10px!important;font-size:10px;color:#a6b393}
