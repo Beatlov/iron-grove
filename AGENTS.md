@@ -39,7 +39,7 @@ Default campaign still has no strategic opponent/AI, but eleven neutral planets 
 
 ## H14 perspective and building lots
 
-Current refined art uses shared square-grid RTS perspective: depth 2 pixels right / 1 up, light top / dark side; do not shear the world grid. `prism` in art.js renders native pixel faces for buildings, equipment and resource containers. Irregular concrete slabs, short fence sections, gate bollards, drains and utility props stay within each exact footprint, with transparent corners, open central entrances and clear middle side attachment sockets. Fields retain soil. Decorations add no collision or gameplay entities. Keep UNIT_SCALE/foot anchors, mechanics and H9 fallback unchanged. Current menu style is «Поселения · H26»; H14 perspective remains unchanged.
+Current refined art uses shared square-grid RTS perspective: depth 2 pixels right / 1 up, light top / dark side; do not shear the world grid. `prism` in art.js renders native pixel faces for buildings, equipment and resource containers. Irregular concrete slabs, short fence sections, gate bollards, drains and utility props stay within each exact footprint, with transparent corners, open central entrances and clear middle side attachment sockets. Fields retain soil. Decorations add no collision or gameplay entities. Keep UNIT_SCALE/foot anchors, mechanics and H9 fallback unchanged. Current menu style is «Поселения · H27»; H14 perspective remains unchanged.
 
 ## H15 structure management
 
@@ -93,8 +93,12 @@ Campaign keeps normal header/minimap/selection/building panels; only build/manag
 
 ## H26 settlement and art (current overrides)
 
-All cores are immovable and cannot be manually removed through API or UI, regardless of number. Combat damage/capture/repair/hiring remain. Refined worker uses native resident geometry (about14×21px plus tool/cargo), narrower human anatomy, 1px grid; logical size1/speed unchanged, classic H9 untouched. Production/food timings only change for five T2 recipes above; upkeep/prices/extraction/field cycles/training unchanged. Distinct building geometry and functional equipment; icons must use same building renderer.
+All cores are immovable and cannot be manually removed through API or UI, regardless of number. Combat damage/capture/repair/hiring remain. Refined worker uses native resident geometry (about14×21px plus tool/cargo), narrower human anatomy, 1px grid; logical size1/speed unchanged, classic H9 untouched. Production/food timings only change for five T2 recipes above; upkeep/prices/extraction/field cycles/training unchanged. Distinct building geometry and functional equipment; H27 icons use dedicated buildingIcon instead of detailed world sprites.
 
 workerVisible includes outdoor farm work, hide processing/waiting only. Output destination is nearest reachable nonfull dock from pickup position (incoming capacity reservations count), no home preference; loaded reroutes nearest available without losing cargo. Production100 > military80 > output60; roads still control routes among sources, not destination distance. Strict priorities can delay lower categories under constant production load; regression chains must staff extraction and provision enough robots rather than silently restore military-first behavior.
 
 workforce(team,planet=null) excludes dead and queued people, splits actual residents into free/staffed/busy and separately counts drones/hauling. Header shows global residents breakdown and drones near population; footer is local including battle surfaces. Keep category semantics and no double counts with army/training/hiring. H26 guide export required.
+
+## H27 worker and building icons
+
+Refined resident retains H26 native size, gait/anchor, tool/cargo, human face and industrial ochre/sand palette. Helmet/goggles/respirator, reinforced vest, angular shoulder pads, gloves, knees/boots make it more brutal without marine-size scaling. H9 world renderer unchanged. Dedicated RTSArt.buildingIcon(ctx,type,team) draws simplified32×32 UI symbols for all19 building types in either style; no yard or fine surface details. game.js icon cache uses these symbols for building buttons/portraits, not scaled world lots. Detailed world geometry, mechanics and balance unchanged. Update H27 guide/export.

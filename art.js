@@ -1,4 +1,4 @@
-/* HELIOS H26: brutal industrial art on a unified native pixel grid, with the complete H9 renderer available for comparison. */
+/* HELIOS H27: brutal industrial art on a unified native pixel grid, with the complete H9 renderer available for comparison. */
 (function(root){
 'use strict';
 const legacy=typeof module!=='undefined'?require('./art-legacy.js'):root.RTSArtLegacy;
@@ -61,14 +61,18 @@ function resident(ctx,e,x,y,time=0,state={}){
  const c=palettes[e.team===1?1:0],phase=Math.floor((e.walkDistance||0)*6)%4,step=e.moving?[0,1,0,-1][phase]:0,face=e.facingX<-.15?-1:1;
  ctx.save();if(face<0){ctx.translate(Math.round(x)*2,0);ctx.scale(-1,1);}const {r,plate,line}=pixelPainter(ctx,x-8,y-20,1),suit=e.team===1?'#936130':'#be912d';
  r(4,20,11,1,'#14171955');
- // Slender human legs, separate boots, exposed face and an ordinary work jacket.
- for(const [lx,offset]of [[6,step],[10,-step]]){r(lx,14+Math.max(0,offset),2,6-Math.abs(offset),c.ink);r(lx,14+Math.max(0,offset),2,3,suit);r(lx-1,19+Math.max(0,offset),4,2,c.ink);r(lx,19+Math.max(0,offset),2,1,c.steel);}
- plate(3,8,4,7,c.pack);r(4,9,2,4,c.sand);plate(6,8,6,7,suit);r(7,9,1,4,'#d9b250');r(7,13,5,2,c.dark);r(9,13,1,1,c.sand);
- plate(5,1,8,7,c.ink);r(6,2,6,2,c.sand);r(5,4,8,1,c.cream);r(7,5,5,3,c.sand);r(8,5,4,2,c.cream);r(11,5,1,1,c.ink);r(7,7,3,1,c.pack);
- if(e.facingY<-.45){r(7,5,5,3,c.sand);r(8,9,3,4,c.pack);}
- if(e.carry){plate(5,11,10,6,c.steel);r(6,12,8,3,resources[e.carry.resource]||c.sand);r(8,12,1,3,c.cream);r(4,12,2,3,c.sand);r(14,12,2,3,c.sand);}
- else if(state.working){const swing=Math.floor(time*6)%2;r(4,9,2,4,suit);line(11,10,14,12-swing,c.ink,2);r(13,11-swing,2,2,c.sand);line(15,8-swing,15,16-swing,c.steelLight);r(13,7-swing,5,2,c.steel);if(e.building&&swing)r(17,15,1,1,c.hot);}
- else{r(4,10+step,2,4,suit);r(4,13+step,2,2,c.sand);r(12,10-step,2,4,suit);r(12,13-step,2,2,c.sand);}
+ // Compact industrial worker: reinforced boots, knee pads and a heavy safety vest.
+ for(const [lx,offset]of [[6,step],[10,-step]]){r(lx,14+Math.max(0,offset),2,6-Math.abs(offset),c.ink);r(lx,14+Math.max(0,offset),2,3,suit);r(lx,16+Math.max(0,offset),2,1,c.steelLight);r(lx-1,19+Math.max(0,offset),4,2,c.ink);r(lx-1,19+Math.max(0,offset),3,1,c.steel);}
+ plate(3,8,4,7,c.pack);r(4,9,2,4,c.steel);r(4,9,1,3,c.sand);
+ plate(6,8,7,7,suit);r(7,9,5,3,c.steel);r(7,9,4,1,c.steelLight);r(8,10,3,2,c.dark);r(7,13,6,2,c.dark);r(9,13,2,1,c.sand);
+ // Broad collar and angular pauldrons retain the small human silhouette, not marine armor.
+ r(6,7,7,2,c.ink);r(7,8,5,1,c.sand);plate(4,8,4,4,c.steel);r(5,9,2,1,c.sand);plate(11,8,4,4,c.steel);r(12,9,2,1,c.sand);
+ plate(5,1,8,7,c.ink);r(6,2,6,2,c.sand);r(7,2,1,2,c.steel);r(5,4,8,1,c.steelLight);
+ r(7,5,5,3,c.sand);r(7,5,5,1,c.dark);r(8,5,3,1,c.hot);r(8,6,4,1,c.cream);r(8,7,4,1,c.steel);r(10,6,2,2,c.dark);
+ if(e.facingY<-.45){r(7,5,5,3,c.sand);r(7,5,1,2,c.steel);r(8,9,3,4,c.pack);r(9,10,1,2,c.sand);}
+ if(e.carry){plate(5,11,10,6,c.steel);r(6,12,8,3,resources[e.carry.resource]||c.sand);r(8,12,1,3,c.cream);r(4,12,2,3,c.dark);r(14,12,2,3,c.dark);r(4,12,2,1,c.sand);r(14,12,2,1,c.sand);}
+ else if(state.working){const swing=Math.floor(time*6)%2;r(4,9,2,4,suit);line(11,10,14,12-swing,c.ink,2);r(13,11-swing,2,2,c.dark);r(13,11-swing,1,1,c.sand);line(15,8-swing,15,16-swing,c.steelLight);r(13,7-swing,5,2,c.steel);if(e.building&&swing)r(17,15,1,1,c.hot);}
+ else{r(4,10+step,2,4,suit);r(4,13+step,2,2,c.dark);r(4,13+step,1,1,c.sand);r(12,10-step,2,4,suit);r(12,13-step,2,2,c.dark);r(12,13-step,1,1,c.sand);}
  ctx.restore();
 }
 function unit(ctx,e,x,y,time=0,state={}){
@@ -120,6 +124,35 @@ function unit(ctx,e,x,y,time=0,state={}){
  ctx.restore();
 }
 function road(ctx,x,y,size=24){if(style==='classic')return legacy.road(ctx,x,y,size);const {r}=painter(ctx,x,y,size/24);r(0,0,24,24,'#343c3d');for(const [x,y,w]of [[2,3,5],[13,12,7],[6,20,4]])r(x,y,w,2,'#3c4444');r(18,2,2,2,'#293336');}
+// Dedicated 32px UI symbols: readable silhouettes, no lot, fences or surface microdetail.
+function buildingIcon(ctx,type,team=0){
+ const c=palettes[team===1?1:0],{r,plate,poly}=pixelPainter(ctx,0,0,1);
+ const hall=(x,y,w,h)=>{plate(x,y,w,h,c.armor);r(x+1,y+1,w-2,3,c.light);};
+ const gate=(x,y,w,h)=>{plate(x,y,w,h,c.dark);r(x+1,y+1,w-2,1,c.steelLight);};
+ const tank=(x,y,w,h,color)=>{plate(x,y,w,h,c.steel);r(x+2,y+2,w-4,h-4,color);r(x+2,y+2,2,h-4,c.sand);};
+ switch(type){
+ case 'base':poly([[8,5],[23,5],[28,11],[28,25],[4,25],[4,11]],c.ink);r(7,11,18,12,c.armor);r(10,7,12,5,c.light);gate(12,16,8,10);r(14,9,4,2,c.glow);break;
+ case 'house':hall(4,8,15,18);hall(18,13,10,13);r(7,14,4,4,c.sand);r(13,14,3,4,c.sand);gate(21,20,4,6);break;
+ case 'warehouse':hall(4,7,22,20);gate(8,15,11,12);plate(21,20,8,7,c.sand);break;
+ case 'farm':tank(5,6,10,20,c.glow);tank(17,6,10,20,c.glow);r(14,21,4,3,c.steelLight);break;
+ case 'field':plate(4,6,24,21,c.pack);for(let y=10;y<=22;y+=6)r(7,y,18,3,c.light);break;
+ case 'ironmine':hall(4,15,10,11);poly([[12,8],[28,8],[25,19],[15,19]],c.ink);poly([[15,10],[25,10],[23,16],[17,16]],c.steelLight);r(18,19,4,7,c.steel);break;
+ case 'goldmine':hall(4,14,10,12);poly([[16,18],[19,5],[23,10],[27,7],[27,22]],c.ink);poly([[18,18],[20,9],[22,15],[25,12],[25,20]],'#b18bb7');break;
+ case 'gasstation':tank(8,5,16,22,'#78b8a3');r(13,3,6,3,c.steelLight);break;
+ case 'sulfurstation':hall(5,16,22,11);tank(8,5,6,16,'#d0bd62');tank(19,5,6,16,'#d0bd62');break;
+ case 'factory':hall(4,10,24,17);gate(8,18,13,9);r(9,14,12,3,c.hot);plate(23,3,5,10,c.steel);r(23,3,5,2,c.sand);break;
+ case 'chemical':tank(4,10,8,17,'#78b8a3');tank(13,5,8,22,'#78b8a3');tank(22,13,7,14,'#78b8a3');r(10,19,15,2,c.steelLight);break;
+ case 'guild':hall(5,12,22,15);plate(3,9,26,6,c.sand);r(7,18,18,5,c.dark);r(10,19,3,3,c.hot);r(18,19,3,3,c.hot);break;
+ case 'barracks':hall(3,10,12,17);hall(17,10,12,17);gate(6,18,6,9);gate(20,18,6,9);plate(13,4,6,13,c.sand);r(15,7,2,6,c.glow);break;
+ case 'tower':plate(8,17,16,10,c.armor);plate(5,10,22,10,c.steel);plate(9,4,5,10,c.dark);plate(19,4,5,10,c.dark);r(10,4,2,7,c.sand);r(20,4,2,7,c.sand);break;
+ case 'weaponshop':hall(4,11,24,15);plate(7,15,18,5,c.dark);r(12,19,4,5,c.dark);r(8,15,12,1,c.steelLight);break;
+ case 'ammoshop':hall(4,10,24,17);for(let x=8;x<=22;x+=6){plate(x,13,4,11,c.hot);r(x+1,12,2,3,c.sand);}break;
+ case 'armorshop':hall(4,11,24,16);poly([[8,13],[12,11],[16,14],[20,11],[24,13],[21,19],[21,25],[11,25],[11,19]],c.ink);r(13,16,6,7,c.steelLight);break;
+ case 'explosiveshop':hall(4,9,24,18);plate(8,16,6,9,c.hot);plate(18,16,6,9,c.hot);r(10,13,2,4,c.sand);r(20,13,2,4,c.sand);break;
+ case 'medicineshop':hall(4,9,24,18);r(9,13,14,11,c.sand);r(14,13,4,11,c.armor);r(10,17,12,3,c.armor);break;
+ default:hall(5,8,22,19);gate(11,17,10,10);
+ }
+}
 function building(ctx,e,x,y,time=0,state={}){
  if(style==='classic')return legacy.building(ctx,e,x,y,time,state);
  const width=(e.width||e.size||2)*24,height=(e.height||e.size||2)*24,c=palettes[e.team===1?1:0],signal=c.glow,ox=Math.round(x-width/2),oy=Math.round(y-height/2);
@@ -214,5 +247,5 @@ function deposit(ctx,e,x,y,time=0){
 }
 function fallen(ctx,e,x,y,age){if(e.type==='drone')return drone(ctx,{...e,moving:false},x,y);if(style==='classic')return legacy.fallen(ctx,e,x,y,age);if(age<.2)return unit(ctx,{...e,moving:false},x,y,0);const c=palettes[e.team===1?1:0],{r,plate}=painter(ctx,x-14,y-5);plate(3,3,10,7,c.sand);plate(11,2,14,8,e.type==='worker'?'#be912d':c.armor);r(18,8,12,4,c.dark);}
 function menuScene(ctx,width,height){if(style==='classic')return legacy.menuScene(ctx,width,height);ctx.fillStyle='#303b36';ctx.fillRect(0,0,width,height);for(let x=0;x<width;x+=24)road(ctx,x,170,24);building(ctx,{type:'base',team:0,size:3},105,100);building(ctx,{type:'factory',team:0,size:4},255,105);building(ctx,{type:'barracks',team:1,size:4},width-100,105);for(const [i,type]of ['worker','soldier','assault','medic','grenadier'].entries())unit(ctx,{type,team:0,facingX:1},120+i*38,230+i%2*8);for(let i=0;i<3;i++)unit(ctx,{type:'soldier',team:1,facingX:-1},width-145+i*36,230);}
-const api={palettes,resources,painter,pixelPainter,perspective,prism,UNIT_SCALE,road,unit,building,deposit,fallen,menuScene,setStyle,getStyle};if(typeof module!=='undefined')module.exports=api;else root.RTSArt=api;
+const api={palettes,resources,painter,pixelPainter,perspective,prism,UNIT_SCALE,road,unit,building,buildingIcon,deposit,fallen,menuScene,setStyle,getStyle};if(typeof module!=='undefined')module.exports=api;else root.RTSArt=api;
 })(typeof window!=='undefined'?window:globalThis);

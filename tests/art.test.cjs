@@ -16,6 +16,7 @@ test('drawing factions, work, combat and corpse frames leaves the simulation int
   else art.building(c,e,e.x*24,e.y*24,10,{occupants:2,operating:true});
  }
  for(const team of [0,1])for(const [type,s]of Object.entries(stats).filter(([,s])=>s.cost)){
+  art.buildingIcon(c,type,team);
   art.building(c,{type,team,size:s.size},30,50,3,{operating:true,occupants:2});
   art.building(c,{type,team,size:s.size,construction:1},30,50,3,{working:true,progress:.5});
  }
