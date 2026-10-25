@@ -364,5 +364,5 @@ class Game{
   this.military=this.military.filter(u=>u.hp>0);if(this.aiEnabled&&this.aiClock>=4){this.aiClock=0;this.ai();}
  }
 }
-const api={Game,stats,footprint,placement,W,H,BW,BH,dist,resources,resourceTiers,unitCosts,isMilitary,colonyCost,workerCost,weaponRecipe,ROAD_SPEED,FIELD_YIELD,SOW_TIME,GROW_TIME,HIRE_TIME,HARVEST_TIME,FOOD_PROCESS_TIME,GAS_RADIUS,GAS_LOAD,GAS_GATHER_TIME,GAS_PACK_TIME};if(typeof module!=='undefined'){module.exports=api;require('./combat.js').install(api);}else root.RTS=api;
+const api={Game,stats,footprint,placement,W,H,BW,BH,dist,resources,resourceTiers,unitCosts,isMilitary,colonyCost,workerCost,weaponRecipe,ROAD_SPEED,FIELD_YIELD,SOW_TIME,GROW_TIME,HIRE_TIME,HARVEST_TIME,FOOD_PROCESS_TIME,GAS_RADIUS,GAS_LOAD,GAS_GATHER_TIME,GAS_PACK_TIME};if(typeof module!=='undefined'){module.exports=api;require('./combat.js').install(api);require('./battle-lab.js').install(api);}else root.RTS=api;
 })(typeof window!=='undefined'?window:globalThis);
