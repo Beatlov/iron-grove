@@ -26,7 +26,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     root = Path(__file__).resolve().parent
     server = ThreadingHTTPServer(('0.0.0.0', args.port), partial(GameHandler, directory=str(root)))
-    print(f'HELIOS H22: serving {root} on port {server.server_port}', flush=True)
+    print(f'HELIOS H23: serving {root} on port {server.server_port}', flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

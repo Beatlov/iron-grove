@@ -1,4 +1,4 @@
-/* HELIOS H22: planetary economies, structure management, campaign fleets and automatic battles. */
+/* HELIOS H23: planetary economies, structure management, campaign fleets and automatic battles. */
 (function(root){
 'use strict';
 const W=144,H=96,resources=['food','money','metal','crystals','gas','sulfur','weapons','ammo','armor','explosives','medicines'];
@@ -165,7 +165,7 @@ class Game{
  }
  layoutAccessValid(id,additions,ignore=[]){const excluded=new Set(ignore),scene=this.alive(id).filter(e=>!excluded.has(e.id)&&!stats[e.type]?.speed),solids=[...scene,...additions];
   const touches=(a,b)=>{const f=footprint(a),g=footprint(b);return(f.x+f.w===g.x||g.x+g.w===f.x)&&f.y<g.y+g.h&&f.y+f.h>g.y||(f.y+f.h===g.y||g.y+g.h===f.y)&&f.x<g.x+g.w&&f.x+f.w>g.x;};
-  for(const a of additions)for(const b of solids){if(a===b||!stats[b.type]?.cost)continue;const f=footprint(a),g=footprint(b),exception=stats[a.type]?.addon&&stats[b.type]?.addon||a.parent===b.id||b.parent===a.id;if(!exception&&f.x<g.x+g.w+1&&f.x+f.w+1>g.x&&f.y<g.y+g.h+1&&f.y+f.h+1>g.y)return false;}
+  for(const a of additions)for(const b of solids){if(a===b||!stats[b.type]?.cost)continue;const f=footprint(a),g=footprint(b),exception=a.type==='field'&&['field','farm'].includes(b.type)||b.type==='field'&&a.type==='farm'||stats[a.type]?.addon&&stats[b.type]?.addon||a.parent===b.id||b.parent===a.id;if(!exception&&f.x<g.x+g.w+1&&f.x+f.w+1>g.x&&f.y<g.y+g.h+1&&f.y+f.h+1>g.y)return false;}
   return [...additions,...scene.filter(e=>stats[e.type]?.cost&&additions.some(a=>touches(a,e)))].every(e=>this.hasFreeSide(e,solids,id));
  }
  canBuild(type,x,y,team=0,id=this.activePlanet,parent=null,options={}){const s=stats[type],relocating=options.relocating===true,ignore=new Set(options.ignore||[]),scene=this.alive(id).filter(e=>!ignore.has(e.id));if(this.result||this.activeBattle?.()||!s?.cost||type==='base'&&!relocating||this.regions[id]?.owner!==team||!this.alive(id).some(e=>e.type==='base'&&e.team===team&&this.ready(e))||!relocating&&!this.affordable(s.cost,team))return false;
@@ -178,7 +178,7 @@ class Game{
   if(!options.skipAccess&&!this.layoutAccessValid(id,[{type,x,y,size:s.size,width:w,height:h,parent}],options.ignore||[]))return false;
   if(s.collector&&!scene.some(e=>e.type==='deposit'&&e.resource===s.resource&&e.amount>0&&dist(e,{x,y})<=s.radius))return false;return true;
  }
- build(type,x,y,team=0,id=this.activePlanet,parent=null){if(!this.canBuild(type,x,y,team,id,parent)){if(team===0)this.message='Нужно своё поселение, ресурсы и зазор 1 клетка между самостоятельными зданиями. Пристройки могут касаться своего завода и других пристроек. Газ/сера — станция на залежи. Пункт металла/кристаллов — в радиусе 8 клеток от ресурса; пристройка — вплотную к заводу.';return false;}this.pay(stats[type].cost,team);const b=this.add(type,team,x,y,id);b.construction=stats[type].buildTime;b.parent=parent;if(stats[type].extractor)b.node=this.alive(id).find(e=>e.type==='deposit'&&e.resource===stats[type].resource&&e.amount>0&&this.covers(b,e))?.id;this.message='Участок размещён. Свободный житель автоматически подойдёт и построит здание.';return b;}
+ build(type,x,y,team=0,id=this.activePlanet,parent=null){if(!this.canBuild(type,x,y,team,id,parent)){if(team===0)this.message='Нужно своё поселение, ресурсы и зазор 1 клетка между самостоятельными зданиями. Поля могут касаться биореактора и других полей, пристройки — своего завода и других пристроек. Газ/сера — станция на залежи. Пункт металла/кристаллов — в радиусе 8 клеток от ресурса; пристройка — вплотную к заводу.';return false;}this.pay(stats[type].cost,team);const b=this.add(type,team,x,y,id);b.construction=stats[type].buildTime;b.parent=parent;if(stats[type].extractor)b.node=this.alive(id).find(e=>e.type==='deposit'&&e.resource===stats[type].resource&&e.amount>0&&this.covers(b,e))?.id;this.message='Участок размещён. Свободный житель автоматически подойдёт и построит здание.';return b;}
  // Player-managed removal/movement is atomic; combat destruction retains its separate rules.
  manageable(id,team=0){const b=this.get(id);return !!b&&!!stats[b.type]?.cost&&b.team===team&&this.regions[b.planet]?.owner===team&&!this.result&&!this.activeBattle?.();}
  structureGroup(id){const b=this.get(id);return b?[b,...this.addons(b)]:[];}
