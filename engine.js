@@ -1,4 +1,4 @@
-/* HELIOS H24: planetary economies, structure management, campaign fleets and automatic battles. */
+/* HELIOS H25: planetary economies, structure management, campaign fleets and automatic battles. */
 (function(root){
 'use strict';
 const W=144,H=96,resources=['food','money','metal','crystals','gas','sulfur','weapons','ammo','armor','explosives','medicines'];

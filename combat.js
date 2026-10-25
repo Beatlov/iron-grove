@@ -1,4 +1,4 @@
-/* HELIOS H21: neutral encounters, deliberate battle start, campaign pause and veterancy. */
+/* HELIOS H25: real surface actors, random ring landings and automatic combat. */
 (function(root){
 'use strict';
 function install(api){
@@ -42,7 +42,7 @@ function install(api){
   encounterBusy(planet,site=null){return this.pendingEncounters.some(e=>e.planet===planet&&e.site===site)||this.missions.some(m=>m.to===planet&&(site?m.site===site:m.kind==='army'))||this.battles.some(b=>!b.done&&b.planet===planet&&b.site===site);},
   canRaid(from,id,team=0){const s=this.site(id);return !!s&&s.active&&this.regions[from]?.owner===team&&(this.regions[s.planet].owner===team||this.canCapture(s.planet,team))&&!this.encounterBusy(s.planet,s.id)&&!this.activeBattle()&&!this.result;},
   sendRaid(from,id,counts,team=0){if(!this.canRaid(from,id,team))return false;const s=this.site(id),chosen=[];for(const [type,n]of Object.entries(counts||{})){if(!unitCosts[type]||!Number.isInteger(n)||n<0)return false;const pool=this.army(team,from).filter(u=>u.type===type);if(pool.length<n)return false;chosen.push(...pool.slice(0,n));}if(!chosen.length)return false;const m={id:this.nextId++,kind:'raid',from,to:s.planet,site:s.id,generation:s.generation,team,left:20,units:chosen.map(u=>u.id)};for(const u of chosen)u.location='mission';this.missions.push(m);this.message='Экспедиция к '+s.name+': перелёт 20 с.';return m;},
-  queueEncounter(m,troops){const defense=!m.site&&m.team!==0&&this.regions[m.to].owner===0,e={id:this.nextId++,planet:m.to,from:m.from,site:m.site||null,generation:m.generation||null,team:m.team,laboratory:!!m.laboratory,defense,countdown:defense?3:null,landing:m.landing||'edge',units:troops.map(u=>u.id)};for(const u of troops){u.location='arrived';u.planet=m.to;}this.pendingEncounters.push(e);this.message=defense?'Нападение на '+this.regions[e.planet].name+'! Бой начнётся через 3 с.':'Отряд прибыл: '+(this.site(e.site)?.name||this.regions[e.planet].name)+'. Выберите место высадки.';this.history.unshift({time:this.time,text:this.message});this.history=this.history.slice(0,20);return e;},
+  queueEncounter(m,troops){const defense=!m.site&&m.team!==0&&this.regions[m.to].owner===0,e={id:this.nextId++,planet:m.to,from:m.from,site:m.site||null,generation:m.generation||null,team:m.team,laboratory:!!m.laboratory,defense,countdown:defense?3:null,units:troops.map(u=>u.id)};for(const u of troops){u.location='arrived';u.planet=m.to;}this.pendingEncounters.push(e);this.message=defense?'Нападение на '+this.regions[e.planet].name+'! Бой начнётся через 3 с.':'Отряд прибыл: '+(this.site(e.site)?.name||this.regions[e.planet].name)+'. Отряд готов к высадке.';this.history.unshift({time:this.time,text:this.message});this.history=this.history.slice(0,20);return e;},
   arrive(m){
    if(m.kind==='colony'){if(this.activeBattle()){m.left=.1;this.missions.push(m);return;}return oldArrive.call(this,m);}
    const troops=(m.units||[]).map(id=>this.military.find(u=>u.id===id&&u.hp>0)).filter(Boolean);if(!troops.length)return;
@@ -55,32 +55,53 @@ function install(api){
    return this.queueEncounter(m,troops);
   },
   retreatEncounter(id){if(this.activeBattle())return false;const e=this.pendingEncounters.find(e=>e.id===id);if(!e||e.defense)return false;const troops=e.units.map(id=>this.military.find(u=>u.id===id&&u.hp>0)).filter(Boolean);this.pendingEncounters=this.pendingEncounters.filter(v=>v!==e);if(troops.length){for(const u of troops)u.location='mission';this.missions.push({id:this.nextId++,kind:'return',from:e.planet,to:e.from,team:e.team,left:20,units:troops.map(u=>u.id)});}return true;},
-  startEncounter(id,landing='edge'){
-   if(this.activeBattle()||this.result||!['center','edge'].includes(landing))return false;const e=this.pendingEncounters.find(v=>v.id===id);if(!e)return false;const troops=e.units.map(id=>this.military.find(u=>u.id===id&&u.hp>0&&u.location==='arrived')).filter(Boolean);if(!troops.length)return false;
+  startEncounter(id){
+   if(this.activeBattle()||this.result)return false;const e=this.pendingEncounters.find(v=>v.id===id);if(!e)return false;const troops=e.units.map(id=>this.military.find(u=>u.id===id&&u.hp>0&&u.location==='arrived')).filter(Boolean);if(!troops.length)return false;
    const s=this.site(e.site);if(e.site&&(!s?.active||s.generation!==e.generation))return this.retreatEncounter(id);
    const owner=this.regions[e.planet].owner,defenders=s?s.guards.filter(u=>u.hp>0):owner>=0?this.army(owner,e.planet):this.guardians(e.planet),towers=!s&&owner>=0?this.alive(e.planet).filter(t=>t.team===owner&&t.type==='tower'&&this.operational(t)):[];
-   this.pendingEncounters=this.pendingEncounters.filter(v=>v!==e);return this.startBattle(e.planet,e.team,troops,defenders,towers,{from:e.from,site:e.site,generation:e.generation,landing:e.defense?e.landing:landing,laboratory:!!e.laboratory});
+   const battle=this.startBattle(e.planet,e.team,troops,defenders,towers,{from:e.from,site:e.site,generation:e.generation,laboratory:!!e.laboratory});if(battle)this.pendingEncounters=this.pendingEncounters.filter(v=>v!==e);return battle;
   },
   siteSurface(id){const site=this.site(id);if(!site)return null;const key='site:'+id;if(this.maps[key])return this.maps[key];const parent=this.planet(site.planet),width=site.kind==='moon'?112:96,height=site.kind==='moon'?80:64,p={id:key,width,height,seed:(parent.seed^Math.imul(id,2654435761))>>>0,roads:new Set(),entities:[],terrain:Array.from({length:H},(_,y)=>Array.from({length:W},(_,x)=>+(x<1||y<1||x>=width-1||y>=height-1)))};this.maps[key]=p;
    for(let i=0;i<8;i++){const n=(Math.imul(i+1,1664525)^p.seed)>>>0,e=this.add('deposit',-1,10+n%(width-20),10+(n>>>8)%(height-20),key);e.resource=i%2?'metal':'crystals';e.amount=1200;}return p;
   },
   battleSurface(b=this.activeBattle()){return b?this.planet(b.mapId??b.planet):this.planet();},
   canManageProcesses(team=0){const b=this.activeBattle();return !b||!b.done&&b.defender===team&&!b.site;},
-  deploymentPoint(p,anchor,index){const width=p.width||W,height=p.height||H;for(let r=0;r<20;r++)for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){const x=Math.floor(anchor.x)+dx+.5,y=Math.floor(anchor.y)+dy+.5;if(x<2||y<2||x>width-2||y>height-2||this.cellBlocked(Math.floor(x),Math.floor(y),p.id))continue;if((index--||0)<=0)return{x,y};}return{x:5.5,y:height/2+.5};},
-  battleUnit(b,u,side,anchor){const p=this.battleSurface(b),pos=this.deploymentPoint(p,anchor,b.units.filter(v=>v.side===side&&v.type!=='tower').length),v={id:u.id,type:u.type,team:u.team,faction:u.faction,rank:u.rank||1,side,...pos,hp:u.hp,maxHp:u.maxHp||this.unitProfile(u).hp,size:1,cool:0,walkDistance:0,moving:false,facingX:side?-1:1,facingY:0,dealt:0,healed:0,lastHP:u.hp};u.location='battle';u.planet=b.planet;b.units.push(v);b.initial.push({id:u.id,type:u.type,side});return v;},
+  landingRadius(p,point){return Math.hypot((point.x-(p.width||W)/2)/((p.width||W)/2-3),(point.y-(p.height||H)/2)/((p.height||H)/2-3));},
+  deploymentOccupied(p){return new Set(this.visible(p.id).filter(e=>stats[e.type]?.speed).map(e=>Math.floor(e.y)*W+Math.floor(e.x)));},
+  deploymentPoint(p,anchor,index=0,occupied=this.deploymentOccupied(p)){
+   const width=p.width||W,height=p.height||H,blocked=this.blockedGrid(p.id);
+   for(let r=0;r<Math.max(width,height);r++)for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){if(Math.max(Math.abs(dx),Math.abs(dy))!==r)continue;const x=Math.floor(anchor.x)+dx,y=Math.floor(anchor.y)+dy,key=y*W+x;if(x<2||y<2||x>=width-2||y>=height-2||blocked[key]||occupied.has(key))continue;if(index--<=0)return{x:x+.5,y:y+.5};}return null;
+  },
+  deploymentRegion(p,origin){const width=p.width||W,height=p.height||H,blocked=this.blockedGrid(p.id),seen=new Set(),queue=[Math.floor(origin.y)*W+Math.floor(origin.x)];seen.add(queue[0]);for(let i=0;i<queue.length;i++){const k=queue[i],x=k%W,y=Math.floor(k/W);for(const [dx,dy]of [[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy,n=ny*W+nx;if(nx<2||ny<2||nx>=width-2||ny>=height-2||blocked[n]||seen.has(n))continue;seen.add(n);queue.push(n);}}return seen;},
+  ringDeployment(p,count,occupied,origin){
+   const width=p.width||W,height=p.height||H,reachable=this.deploymentRegion(p,origin),cells=[];
+   for(const key of reachable){if(occupied.has(key))continue;const point={x:key%W+.5,y:Math.floor(key/W)+.5},radius=this.landingRadius(p,point);if(radius>=.4&&radius<=.8)cells.push(point);}
+   const anchors=cells.filter(point=>{const radius=this.landingRadius(p,point);return radius>=.48&&radius<=.67&&dist(point,origin)>=8;});if(!anchors.length||cells.length<count)return null;
+   const first=Math.floor(this.random()*anchors.length),spread=Math.max(6,Math.ceil(Math.sqrt(count)*1.8));
+   for(let i=0;i<anchors.length;i++){const anchor=anchors[(first+i)%anchors.length],positions=[...cells].sort((a,b)=>dist(a,anchor)-dist(b,anchor)||a.y-b.y||a.x-b.x).slice(0,count);if(positions.length===count&&dist(positions.at(-1),anchor)<=spread)return{anchor,positions};}return null;
+  },
+  battleUnit(b,u,side,anchor,position=null){
+   const existing=b.units.find(v=>v.id===u.id);if(existing)return existing;const p=this.battleSurface(b),pos=position||this.deploymentPoint(p,anchor);if(!pos)return null;
+   const v={id:u.id,type:u.type,team:u.team,faction:u.faction,rank:u.rank||1,side,...pos,planet:p.id,combatBattle:b.id,hp:u.hp,maxHp:u.maxHp||this.unitProfile(u).hp,size:stats[u.type]?.size||1,path:[],inside:null,construction:0,cool:0,walkDistance:0,moving:false,facingX:side?-1:1,facingY:0,dealt:0,healed:0,lastHP:u.hp};
+   u.location='battle';u.planet=b.planet;p.entities.push(v);b.units.push(v);b.initial.push({id:u.id,type:u.type,side});return v;
+  },
+  clearBattleUnits(b){const p=this.battleSurface(b);for(let i=p.entities.length-1;i>=0;i--)if(p.entities[i].combatBattle===b.id)p.entities.splice(i,1);},
   startBattle(planet,attacker,attackers,defenders,towers=[],context={}){
-   if(this.activeBattle()||!['edge','center'].includes(context.landing||'edge'))return false;const surface=context.site?this.siteSurface(context.site):this.planet(planet),site=this.site(context.site),width=surface.width||W,height=surface.height||H,owner=this.regions[planet].owner,defender=defenders[0]?.team??(owner>=0?owner:2),local=this.alive(surface.id),headquarters=local.find(e=>e.team===defender&&e.type==='base'),b={id:this.nextId++,planet,mapId:surface.id,from:context.from??this.homeRegions[attacker]??0,site:context.site||null,generation:context.generation||null,attacker,defender,time:0,done:false,winner:null,units:[],effects:[],seed:surface.seed,guardRefs:defenders,initial:[],reward:{},promotions:[],landing:context.landing||'edge',laboratory:!!context.laboratory,entityRefs:local,baseId:headquarters?.id};
-   b.field={w:width,h:height,terrain:surface.terrain,entities:surface.entities,roads:surface.roads};b.defenseAnchor=local.find(e=>e.team===defender&&e.type==='barracks'&&this.ready(e))||headquarters||{x:width/2+12,y:height/2};b.landingAnchor=b.landing==='center'?{x:width/2,y:height/2}:{x:5,y:height/2};
-   if(defender===0&&!site){const all=this.army(0,planet);defenders=[...new Map([...defenders,...all].map(u=>[u.id,u])).values()];b.guardRefs=defenders;}
-   this.ensureCombatTeam(attacker);this.ensureCombatTeam(defender);for(const u of attackers)this.battleUnit(b,u,0,b.landingAnchor);for(const u of defenders)this.battleUnit(b,u,1,b.defenseAnchor);
+   if(this.activeBattle()||!attackers.length)return false;const surface=context.site?this.siteSurface(context.site):this.planet(planet),site=this.site(context.site);if(!surface)return false;
+   const width=surface.width||W,height=surface.height||H,owner=this.regions[planet].owner,defender=defenders[0]?.team??(owner>=0?owner:2),local=this.alive(surface.id),headquarters=local.find(e=>e.team===defender&&e.type==='base'),defenseAnchor=defender===0&&!site?(local.find(e=>e.team===defender&&e.type==='barracks'&&this.ready(e))||headquarters||{x:width/2,y:height/2}):{x:width/2,y:height/2};
+   if(defender===0&&!site)defenders=[...new Map([...defenders,...this.army(0,planet)].map(u=>[u.id,u])).values()];
+   const occupied=this.deploymentOccupied(surface),positions=[];for(const u of defenders){const pos=this.deploymentPoint(surface,defenseAnchor,0,occupied);if(!pos){this.message='Недостаточно свободного места для защитников.';return false;}positions.push(pos);occupied.add(Math.floor(pos.y)*W+Math.floor(pos.x));}
+   const origin=positions[0]||this.deploymentPoint(surface,defenseAnchor,0,occupied),landing=origin&&this.ringDeployment(surface,attackers.length,occupied,origin);if(!landing){this.message='Нет доступного места для высадки в кольцевой зоне.';return false;}
+   const b={id:this.nextId++,planet,mapId:surface.id,from:context.from??this.homeRegions[attacker]??0,site:context.site||null,generation:context.generation||null,attacker,defender,time:0,done:false,winner:null,units:[],effects:[],seed:surface.seed,guardRefs:defenders,initial:[],reward:{},promotions:[],landing:'random-ring',landingAnchor:landing.anchor,defenseAnchor:{x:defenseAnchor.x,y:defenseAnchor.y},laboratory:!!context.laboratory,entityRefs:local,baseId:headquarters?.id};
+   this.ensureCombatTeam(attacker);this.ensureCombatTeam(defender);for(const [i,u]of attackers.entries())this.battleUnit(b,u,0,b.landingAnchor,landing.positions[i]);for(const [i,u]of defenders.entries())this.battleUnit(b,u,1,b.defenseAnchor,positions[i]);
    for(const t of [...new Map([...towers,...local.filter(e=>e.type==='tower'&&e.team===defender&&this.operational(e))].map(e=>[e.id,e])).values()])b.units.push({id:-t.id,entityId:t.id,type:'tower',team:t.team,rank:1,side:1,x:t.x,y:t.y,hp:t.hp,maxHp:t.maxHp,size:t.size,cool:0,dealt:0,healed:0,lastHP:t.hp});
-   this.battles.push(b);this.activeBattleId=b.id;this.message='Бой на поверхности: '+(site?.name||this.regions[planet].name)+'. Строительство недоступно.';return b;
+   this.battles.push(b);this.activeBattleId=b.id;this.message='Высадка: '+(site?.name||this.regions[planet].name)+'. Отряды действуют автоматически.';return b;
   },
   damageAmount(attacker,target,distance=dist(attacker,target),falloff=1){const a=this.unitProfile(attacker),t=this.unitProfile(target),kind=a.damageType||'firearm';if(t.immunities?.includes(kind))return 0;let raw=(stats[target.type]?.cost&&a.buildingDamage?a.buildingDamage*(1+.15*((attacker.rank||1)-1)):a.damage)*falloff;if(kind==='mental'&&attacker.type==='psyker')raw*=1+Math.max(0,1-distance/a.range);raw*=t.weaknesses?.[kind]||1;return Math.max(1,raw-(kind==='mental'?0:t.armor));},
   battleTick(b,dt){
-   if(b.done)return;const surface=this.battleSurface(b),width=b.field.w,height=b.field.h;b.time+=dt;b.effects=b.effects.filter(e=>(e.left-=dt)>0);
+   if(b.done)return;const surface=this.battleSurface(b),width=surface.width||W,height=surface.height||H;b.time+=dt;b.effects=b.effects.filter(e=>(e.left-=dt)>0);
    if(b.defender===0&&!b.site)for(const u of this.army(0,b.planet))this.battleUnit(b,u,1,b.defenseAnchor);
-   const entities=this.alive(b.mapId),primary=new Set(b.units.filter(u=>u.entityId).map(u=>u.entityId)),passive=entities.filter(e=>e.team===b.defender&&e.type!=='deposit'&&!e.inside&&(e.type!=='worker'||this.workerVisible(e))&&!primary.has(e.id)).map(e=>({id:-e.id,entityId:e.id,type:e.type,team:e.team,side:1,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,size:e.size,passive:true,ref:e}));
+   const entities=this.alive(b.mapId),primary=new Set(b.units.filter(u=>u.entityId).map(u=>u.entityId)),passive=entities.filter(e=>e.team===b.defender&&!e.combatBattle&&e.type!=='deposit'&&!e.inside&&(e.type!=='worker'||this.workerVisible(e))&&!primary.has(e.id)).map(e=>({id:-e.id,entityId:e.id,type:e.type,team:e.team,side:1,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,size:e.size,passive:true,ref:e}));
    for(const u of b.units){const original=u.entityId?entities.find(e=>e.id===u.entityId):this.military.find(v=>v.id===u.id)||b.guardRefs.find(v=>v.id===u.id);if(original&&original.hp!==u.lastHP)u.hp=original.hp;}
    const targets=[...b.units,...passive],distance=(u,v)=>v.entityId&&!stats[v.type]?.speed?Math.hypot(Math.max(0,Math.abs(u.x-v.x)-v.size/2),Math.max(0,Math.abs(u.y-v.y)-v.size/2)):dist(u,v);
    const move=(u,target,retreat=false)=>{const profile=this.unitProfile(u),ox=u.x,oy=u.y,dx=target.x-u.x,dy=target.y-u.y,d=Math.hypot(dx,dy)||1;
@@ -106,10 +127,10 @@ function install(api){
    const s=this.site(b.site);
    if(s){s.guards=s.guards.filter(u=>u.hp>0);if(victory&&s.active&&s.generation===b.generation){s.active=false;s.guards=[];s.respawnAt=this.time+1200+Math.floor(this.random()*600);b.reward={...s.reward};for(const [r,n]of Object.entries(b.reward))this.refund(r,n,b.attacker);}}
    else{this.regions[b.planet].guardians=this.guardians(b.planet);if(victory){const base=b.entityRefs.find(e=>e.id===b.baseId);if(base&&base.hp<=0)base.hp=1;this.capturePlanet(b.planet,winner);}}
-   b.summary={victory,survivors:b.units.filter(u=>u.side===0&&u.hp>0).length,lost:b.units.filter(u=>u.side===0&&u.hp<=0).length,enemiesLost:b.units.filter(u=>u.side===1&&u.hp<=0).length,reward:b.reward,promotions:b.promotions};
+   this.clearBattleUnits(b);b.summary={victory,survivors:b.units.filter(u=>u.side===0&&u.hp>0).length,lost:b.units.filter(u=>u.side===0&&u.hp<=0).length,enemiesLost:b.units.filter(u=>u.side===1&&u.hp<=0).length,reward:b.reward,promotions:b.promotions};
    this.history.unshift({time:this.time,text:(victory?'Победа':'Поражение')+': '+(s?.name||this.regions[b.planet].name)});this.history=this.history.slice(0,20);
   },
-  acknowledgeBattle(id){const b=this.activeBattle();if(!b||b.id!==id||!b.done)return false;this.activeBattleId=null;this.military=this.military.filter(u=>u.hp>0);return true;}
+  acknowledgeBattle(id){const b=this.activeBattle();if(!b||b.id!==id||!b.done)return false;this.clearBattleUnits(b);this.activeBattleId=null;this.military=this.military.filter(u=>u.hp>0);return true;}
  });
 }
 if(typeof module!=='undefined')module.exports={install};else install(root.RTS);
