@@ -1,4 +1,4 @@
-/* HELIOS H22: brutal industrial art on a unified native pixel grid, with the complete H9 renderer available for comparison. */
+/* HELIOS H26: brutal industrial art on a unified native pixel grid, with the complete H9 renderer available for comparison. */
 (function(root){
 'use strict';
 const legacy=typeof module!=='undefined'?require('./art-legacy.js'):root.RTSArtLegacy;
@@ -57,8 +57,22 @@ function drone(ctx,e,x,y,time=0){
  poly([[3,3],[5,1],[12,1],[15,4],[14,8],[4,8]],c.ink);r(5,2,7,2,c.light);r(4,4,10,3,c.armor);r(5,4,8,1,c.sand);r(face>0?12:4,5,2,2,c.glow);r(8,0,2,2,c.dark);r(8,0,1,1,c.hot);
  if(e.carry){plate(5,2,7,5,c.ink);r(6,3,5,3,resources[e.carry.resource]||c.sand);r(7,3,1,3,c.cream);r(11,2,1,4,c.steelLight);}else{r(7,3,5,2,c.dark);r(8,3,3,1,c.steelLight);}
 }
+function resident(ctx,e,x,y,time=0,state={}){
+ const c=palettes[e.team===1?1:0],phase=Math.floor((e.walkDistance||0)*6)%4,step=e.moving?[0,1,0,-1][phase]:0,face=e.facingX<-.15?-1:1;
+ ctx.save();if(face<0){ctx.translate(Math.round(x)*2,0);ctx.scale(-1,1);}const {r,plate,line}=pixelPainter(ctx,x-8,y-20,1),suit=e.team===1?'#936130':'#be912d';
+ r(4,20,11,1,'#14171955');
+ // Slender human legs, separate boots, exposed face and an ordinary work jacket.
+ for(const [lx,offset]of [[6,step],[10,-step]]){r(lx,14+Math.max(0,offset),2,6-Math.abs(offset),c.ink);r(lx,14+Math.max(0,offset),2,3,suit);r(lx-1,19+Math.max(0,offset),4,2,c.ink);r(lx,19+Math.max(0,offset),2,1,c.steel);}
+ plate(3,8,4,7,c.pack);r(4,9,2,4,c.sand);plate(6,8,6,7,suit);r(7,9,1,4,'#d9b250');r(7,13,5,2,c.dark);r(9,13,1,1,c.sand);
+ plate(5,1,8,7,c.ink);r(6,2,6,2,c.sand);r(5,4,8,1,c.cream);r(7,5,5,3,c.sand);r(8,5,4,2,c.cream);r(11,5,1,1,c.ink);r(7,7,3,1,c.pack);
+ if(e.facingY<-.45){r(7,5,5,3,c.sand);r(8,9,3,4,c.pack);}
+ if(e.carry){plate(5,11,10,6,c.steel);r(6,12,8,3,resources[e.carry.resource]||c.sand);r(8,12,1,3,c.cream);r(4,12,2,3,c.sand);r(14,12,2,3,c.sand);}
+ else if(state.working){const swing=Math.floor(time*6)%2;r(4,9,2,4,suit);line(11,10,14,12-swing,c.ink,2);r(13,11-swing,2,2,c.sand);line(15,8-swing,15,16-swing,c.steelLight);r(13,7-swing,5,2,c.steel);if(e.building&&swing)r(17,15,1,1,c.hot);}
+ else{r(4,10+step,2,4,suit);r(4,13+step,2,2,c.sand);r(12,10-step,2,4,suit);r(12,13-step,2,2,c.sand);}
+ ctx.restore();
+}
 function unit(ctx,e,x,y,time=0,state={}){
- if(e.type==='drone')return drone(ctx,e,x,y,time);
+ if(e.type==='drone')return drone(ctx,e,x,y,time);if(e.type==='worker'&&style!=='classic')return resident(ctx,e,x,y,time,state);
  if(style==='classic'&&!['psyker','xeno','robot','demon','pirate'].includes(e.type)&&(e.rank||1)===1)return legacy.unit(ctx,e,x,y,time,state);
  const demon=e.team===1||e.type==='demon',c={...palettes[demon?1:0]},psyker=e.type==='psyker'||e.type==='demon',worker=e.type==='worker',medic=e.type==='medic',assault=e.type==='assault',grenadier=e.type==='grenadier';
  if(psyker){c.glow='#bca0da';c.armor=demon?'#743a43':'#4b4565';c.light='#827695';}
@@ -121,19 +135,27 @@ function building(ctx,e,x,y,time=0,state={}){
  const door=(x,y,bw,bh)=>{plate(x,y,bw,bh,c.dark);r(x+1,y+1,bw-2,bh-2,c.steel);r(x+2,y+1,bw-4,1,c.steelLight);for(let sy=y*2+5;sy<(y+bh)*2-3;sy+=4)detail.r(x*2+3,sy,bw*2-6,1,c.dark);};
  const vent=(x,y)=>{r(x,y,7,4,c.dark);r(x+1,y+1,5,1,c.steelLight);r(x+1,y+3,5,1,c.steel);};
  if(e.construction>0){const level=Math.max(2,Math.floor((h-8)*(state.progress||0)));r(4,h-6,w-8,2,c.steel);r(5,h-6-level,w-10,level,c.shade);for(let i=0;i<3;i++)r(4+i*Math.floor((w-9)/2),4,1,h-9,c.pack);line(4,5,w-4,h-8,c.sand);line(w-5,5,5,h-8,c.sand);if(state.working){r(w-6,h-10,2,2,c.hot);r(w-8,h-12,1,2,c.cream);}ctx.restore();return;}
+ const tank=(x,y,bw,bh,color)=>{const px=Math.round(x*2),py=Math.round(y*2),tw=Math.round(bw*2),th=Math.round(bh*2);detail.poly([[px+3,py],[px+tw-4,py],[px+tw-1,py+3],[px+tw-1,py+th-4],[px+tw-4,py+th-1],[px+3,py+th-1],[px,py+th-4],[px,py+3]],c.ink);detail.poly([[px+3,py+1],[px+tw-4,py+1],[px+tw-2,py+3],[px+tw-2,py+th-4],[px+tw-4,py+th-2],[px+3,py+th-2],[px+1,py+th-4],[px+1,py+3]],color);detail.r(px+3,py+3,2,th-7,c.cream);detail.r(px+tw-5,py+4,3,th-8,c.shade);detail.r(px+2,py+5,tw-4,1,c.steelLight);detail.r(px+2,py+th-6,tw-4,2,c.steel);};
  const type=e.type;
  if(type==='field'){r(2,3,w-4,h-7,'#403a28');for(let i=0;i<4;i++){r(3,5+i*4,w-6,2,'#67613b');if(e.fieldStage!=='sowing'&&(e.crop||0)>i){for(let j=0;j<4;j++)r(4+j*4,4+i*4,2,3,e.fieldStage==='growing'?'#73894b':'#c1be68');}}r(1,h-5,w-2,2,c.steel);}
- else if(type==='base'){block(6,12,w-12,h-18);block(10,5,w-20,14);r(13,8,w-26,5,c.dark);r(15,9,w-30,2,signal);block(2,h-19,11,13);block(w-13,h-19,11,13);door(w/2-5,h-19,10,13);r(5,h-16,5,3,signal);r(w-10,h-16,5,3,signal);vent(8,21);vent(w-15,21);r(w-12,1,1,6,c.steelLight);r(w-13,0,3,2,signal);}
- else if(type==='house'){block(4,7,w-8,h-14);block(7,4,w-14,6);for(let i=0;i<3;i++){door(7+i*7,11,5,10);r(8+i*7,12,3,5,c.sand);}r(7,25,w-14,2,c.steel);r(3,h-6,7,3,c.pack);}
- else if(type==='warehouse'){block(3,9,w-6,h-15,c.steel);r(4,10,w-8,3,c.steelLight);door(8,15,w-16,h-21);r(10,17,w-20,1,c.sand);r(10,21,w-20,1,c.steelLight);block(1,h-9,7,6,c.pack);block(w-9,h-9,7,6,c.pack);}
- else if(type==='farm'){block(3,7,w-6,h-14);for(let i=0;i<3;i++){plate(6+i*8,10,6,15,c.dark);r(7+i*8,12,4,10,'#9ba755');r(7+i*8,12,1,8,c.cream);}r(5,5,w-10,3,c.steel);r(w-8,h-8,5,3,c.pack);}
- else if(type==='ironmine'||type==='goldmine'){block(3,5,w-6,h-10,c.steel);block(4,3,w-12,5);door(6,11,w-12,8);r(7,12,w-14,3,resources[type==='ironmine'?'metal':'crystals']);r(w-7,6,3,3,signal);block(1,h-7,6,4,c.pack);r(3,h-6,3,1,c.sand);}
- else if(['gasstation','sulfurstation'].includes(type)){for(const dx of [3,13]){block(dx,4,8,15,c.steel);r(dx+2,7,4,8,resources[type==='gasstation'?'gas':'sulfur']);r(dx+2,7,1,6,c.cream);}r(6,2,12,2,c.steelLight);r(9,18,6,4,c.dark);r(10,19,4,2,signal);}
- else if(type==='factory'||type==='chemical'){block(5,11,w-10,h-17);block(7,5,w-19,12,c.steel);vent(10,8);vent(20,8);block(12,16,13,5,c.steel);r(14,17,9,2,type==='chemical'?resources.gas:c.steelLight);door(12,h-22,w-25,15);r(14,h-19,w-29,3,type==='chemical'?resources.medicines:c.hot);block(w-12,3,6,h-12,c.steel);r(w-11,4,4,3,c.sand);r(w-16,h-13,3,7,signal);block(1,h-8,7,5,c.pack);if(type==='chemical'){r(8,16,5,9,resources.gas);r(9,17,1,6,c.cream);}}
- else if(['weaponshop','ammoshop','armorshop','explosiveshop','medicineshop'].includes(type)){block(3,7,w-6,h-13);block(4,3,7,6,c.steel);door(6,12,w-12,7);const resource={weaponshop:'weapons',ammoshop:'ammo',armorshop:'armor',explosiveshop:'explosives',medicineshop:'medicines'}[type];r(8,13,w-16,3,resources[resource]);r(w-8,8,3,2,signal);r(1,h-5,5,2,c.pack);}
- else if(type==='guild'){block(4,8,w-8,h-14);block(8,4,w-16,7);r(11,6,w-22,3,c.sand);door(w/2-4,15,8,h-20);r(6,13,5,6,c.sand);r(w-11,13,5,6,c.sand);r(3,h-7,5,3,c.pack);}
- else if(type==='barracks'){block(4,11,w-8,h-17);block(8,5,w-16,11);r(12,8,w-24,3,c.sand);door(9,20,12,h-25);door(w-21,20,12,h-25);r(w/2-1,20,2,7,signal);r(3,h-7,8,2,c.steel);r(w-11,h-7,8,2,c.steel);}
- else if(type==='tower'){block(5,12,w-10,h-16,c.steel);block(2,5,w-4,10);r(6,7,w-12,3,c.dark);r(w/2-2,1,4,9,c.ink);r(w/2-1,1,2,8,c.steelLight);r(5,16,3,2,signal);}
+ else if(type==='base'){block(5,19,14,18);block(w-17,16,12,22,c.steel);poly([[10,9],[w-15,9],[w-6,18],[w-6,h-15],[w/2,h-7],[10,h-15],[5,18]],c.ink);poly([[11,10],[w-16,10],[w-8,19],[w-8,h-17],[w/2,h-10],[11,h-17],[7,19]],c.armor);poly([[11,11],[w-16,11],[w-9,18],[10,18]],c.light);door(w/2-5,h-22,10,13);block(w/2-9,7,16,9,c.steel);r(w/2-5,10,8,2,signal);line(w-13,4,w-13,14,c.steelLight,2);poly([[w-20,3],[w-6,3],[w-9,7],[w-17,7]],c.sand);r(w-13,0,1,4,c.hot);}
+ else if(type==='house'){block(4,5,w-13,12);block(12,16,w-16,13);block(3,20,8,9,c.steel);for(const [px,py]of [[7,9],[15,9],[17,20],[25,20]]){r(px,py,5,4,c.dark);r(px+1,py+1,3,2,c.sand);}door(6,h-16,5,10);r(2,h-7,12,2,c.steel);r(w-10,11,7,2,c.sand);r(w-9,13,1,10,c.steelLight);}
+ else if(type==='warehouse'){block(3,8,w-15,h-16,c.steel);door(7,17,w-24,h-25);r(5,10,w-19,3,c.steelLight);block(w-13,16,9,6,c.pack);block(w-13,23,9,6,c.armor);r(w-15,5,2,h-14,c.steel);r(w-15,5,12,2,c.sand);line(w-5,7,w-5,14,c.steelLight);r(w-7,13,4,2,c.ink);r(w-13,h-6,9,1,c.steelLight);}
+ else if(type==='farm'){block(3,h-14,w-6,7,c.steel);tank(4,7,12,h-17,'#7d934d');tank(w-16,4,12,h-14,'#91a45a');r(4,h-14,w-8,2,c.steelLight);block(w/2-4,h-14,8,7);r(w/2-2,h-12,4,3,signal);line(9,4,w-9,4,c.steelLight,2);r(w/2-1,4,2,8,c.steel);}
+ else if(type==='ironmine'){block(2,4,8,10,c.steel);r(4,7,4,3,c.steelLight);block(11,12,10,8,c.pack);poly([[12,13],[15,8],[18,12],[20,9],[21,16],[12,16]],resources.metal);r(8,15,13,3,c.dark);for(let i=0;i<4;i++)r(9+i*3,16,1,1,c.steelLight);r(19,6,2,7,c.steel);r(13,5,8,2,c.sand);}
+ else if(type==='goldmine'){block(3,13,w-6,7,c.steel);block(3,5,6,9);poly([[10,7],[19,5],[22,8],[19,13],[12,14]],c.ink);poly([[11,8],[18,7],[20,8],[18,11],[12,12]],resources.crystals);r(15,3,2,5,c.steelLight);r(4,7,3,2,signal);r(11,16,9,2,c.dark);for(let i=0;i<3;i++)r(12+i*3,15,1,4,resources.crystals);}
+ else if(type==='gasstation'){tank(3,3,12,17,c.steel);r(6,7,6,9,resources.gas);r(7,8,1,6,c.cream);block(16,12,6,8);line(14,6,20,6,c.steelLight,2);line(20,6,20,13,c.steelLight,2);r(17,15,3,2,signal);r(3,20,18,2,c.dark);}
+ else if(type==='sulfurstation'){block(3,11,w-6,9,c.steel);tank(4,4,6,14,c.steel);tank(14,2,6,14,c.steel);r(5,8,4,5,resources.sulfur);r(15,6,4,5,resources.sulfur);r(8,16,8,3,c.dark);r(9,17,6,1,c.sand);line(10,8,14,8,c.steelLight,2);}
+ else if(type==='factory'){block(4,12,w-16,h-19,c.steel);block(7,5,w-22,10);door(8,20,w-25,h-27);r(10,22,w-29,4,c.hot);r(w-13,7,4,h-18,c.steel);r(w-15,5,8,3,c.sand);r(5,7,w-14,2,c.sand);line(w-15,9,w-15,18,c.steelLight);r(w-18,17,6,3,c.ink);tank(w-12,h-19,8,12,c.steel);r(w-10,h-16,4,3,c.hot);}
+ else if(type==='chemical'){block(3,h-15,w-6,8,c.steel);tank(5,13,10,h-21,resources.gas);tank(18,8,11,h-16,c.steel);tank(w-16,4,10,h-12,'#758c76');r(20,14,7,11,resources.gas);r(w-14,9,5,16,resources.medicines);line(9,8,w-10,8,c.steelLight,2);line(10,8,10,14,c.steelLight,2);line(23,4,23,8,c.steelLight,2);block(w/2-4,h-15,8,7);r(w/2-2,h-13,4,2,signal);}
+ else if(type==='weaponshop'){block(2,14,w-4,7,c.steel);r(4,4,2,11,c.steel);r(w-6,4,2,11,c.steel);r(3,3,w-6,4,c.armor);r(6,12,13,3,c.dark);r(8,11,9,1,c.steelLight);r(12,14,2,3,c.pack);r(w-7,8,3,3,signal);}
+ else if(type==='ammoshop'){block(4,11,w-8,10,c.steel);block(7,3,10,10);poly([[4,3],[20,3],[17,8],[7,8]],c.sand);r(10,9,4,7,c.dark);for(let i=0;i<3;i++){r(5+i*5,17,3,4,c.hot);r(6+i*5,16,1,2,c.cream);}}
+ else if(type==='armorshop'){block(3,5,5,h-10,c.steel);block(w-8,5,5,h-10,c.steel);r(4,3,w-8,4,c.armor);r(8,h-7,w-16,3,c.steel);poly([[9,9],[12,11],[15,9],[18,13],[16,19],[9,19],[6,13]],c.ink);poly([[10,11],[12,13],[14,11],[16,14],[15,17],[10,17],[8,14]],resources.armor);r(11,5,2,6,c.steelLight);}
+ else if(type==='explosiveshop'){block(3,7,w-6,10,c.shade);poly([[3,7],[8,3],[w-7,3],[w-3,7]],c.light);for(let i=0;i<3;i++){tank(3+i*6,13,5,7,resources.explosives);r(4+i*6,14,3,1,c.hot);}r(7,6,10,2,c.dark);}
+ else if(type==='medicineshop'){block(4,6,w-8,14,c.sand);block(7,3,w-14,5,c.steel);r(8,9,8,7,c.dark);r(11,10,2,5,resources.medicines);r(9,12,6,1,resources.medicines);r(3,16,4,5,c.steel);r(w-7,16,4,5,c.steel);r(9,18,6,2,c.steelLight);}
+ else if(type==='guild'){block(4,13,w-8,h-20);block(5,7,11,8,c.steel);block(w-15,5,10,11,c.steel);poly([[3,12],[w-5,12],[w-1,17],[7,17]],c.sand);door(w/2-4,18,8,h-24);r(7,20,5,4,c.hot);r(w-11,20,5,4,c.hot);r(w-11,2,1,4,c.steelLight);poly([[w-16,2],[w-5,2],[w-7,5],[w-14,5]],c.sand);}
+ else if(type==='barracks'){block(3,16,19,h-22);block(w-22,10,18,h-16,c.steel);poly([[2,16],[8,9],[20,9],[23,16]],c.light);poly([[w-23,10],[w-18,5],[w-7,5],[w-3,10]],c.armor);door(7,22,11,h-28);door(w-18,16,10,h-22);block(w/2-3,7,6,h-14,c.steel);r(w/2-1,10,2,8,c.sand);r(w/2-1,23,2,7,signal);r(6,18,13,2,c.sand);}
+ else if(type==='tower'){poly([[4,15],[9,12],[18,13],[22,17],[18,22],[6,22]],c.ink);poly([[5,16],[10,14],[17,14],[20,17],[17,20],[7,20]],c.steel);block(7,8,11,9);poly([[4,7],[8,4],[20,4],[22,8],[18,12],[7,12]],c.armor);r(8,1,3,9,c.ink);r(15,1,3,9,c.ink);r(9,1,1,7,c.steelLight);r(16,1,1,7,c.steelLight);r(8,15,8,2,signal);}
  // Native-grid industrial detail. Large structural forms remain legible at normal zoom.
  const d=detail.r,edge=detail.line;
  const grille=(x,y,gw,gh)=>{detail.plate(x,y,gw,gh,c.dark);for(let i=2;i<gh-1;i+=3)d(x+2,y+i,gw-4,1,c.steelLight);};
@@ -146,58 +168,24 @@ function building(ctx,e,x,y,time=0,state={}){
   d(4,height-11,9,1,'#7b7b65');d(width-14,12,7,1,'#6b7364');d(width-9,height-15,4,2,c.dark);
   if(width>=72){crate(width-13,height-13);d(4,height-17,10,1,c.dark);}
  }
- if(type==='base'){
-  roof(22,12,width-44,20);grille(16,37,13,8);grille(width-29,37,13,8);
-  detail.plate(width/2-10,19,20,11,c.dark);d(width/2-7,21,14,2,c.glow);d(width/2-6,25,6,1,c.steelLight);
-  pipe(12,30,12,48);pipe(width-13,28,width-13,48);
-  detail.plate(33,40,width-66,11,c.shade);d(36,42,width-72,1,c.steelLight);d(36,47,width-72,1,c.dark);
-  for(const px of [32,width-33]){d(px,33,1,22,c.dark);d(px+1,34,1,20,c.light);}
-  hazard(width/2-11,height-12,22);
-  for(let i=0;i<3;i++)d(width/2-9+i*7,height-8,5,1,c.steelLight);
-  detail.plate(5,height-37,5,6,c.steel);d(6,height-36,2,1,c.hot);
- }else if(type==='house'){
-  roof(12,10,width-24,10);grille(12,43,14,7);pipe(width-13,19,width-13,48);
-  for(let i=0;i<3;i++){d(17+i*14,35,4,2,c.dark);d(17+i*14,28,1,5,c.cream);}d(18,height-15,width-36,1,c.steelLight);
- }else if(type==='warehouse'){
-  roof(10,20,width-20,11);grille(9,31,9,9);pipe(width-10,29,width-10,48);hazard(18,height-13,width-36);
-  crate(3,height-15);crate(width-14,height-13);d(21,height-9,width-42,1,c.steelLight);
- }else if(type==='farm'){
-  pipe(7,16,7,48);pipe(width-8,16,width-8,48);grille(15,10,16,5);
-  for(let i=0;i<3;i++){const px=14+i*16;d(px+1,25,6,1,c.cream);d(px+2,42,5,2,'#546d3e');d(px,49,8,2,c.steel);}
-  detail.plate(4,height-18,6,8,c.steel);d(6,height-16,2,2,c.hot);
- }else if(type==='ironmine'||type==='goldmine'){
-  grille(7,height-16,9,7);grille(width-16,height-16,9,7);hazard(12,5,width-24);
-  pipe(9,12,9,height-22);d(21,16,6,3,c.dark);d(22,17,4,1,c.steelLight);
-  for(let i=0;i<3;i++)d(21,23+i*4,6,1,c.ink);detail.plate(width-11,12,5,9,c.steel);d(width-10,14,2,2,c.hot);
- }else if(['gasstation','sulfurstation'].includes(type)){
-  for(const px of [6,26]){d(px+3,14,10,1,c.cream);d(px+2,28,12,2,c.steel);d(px+5,7,7,2,c.dark);}
-  pipe(18,22,26,22);pipe(16,34,16,42);grille(18,36,12,6);hazard(4,height-7,12);
- }else if(type==='factory'||type==='chemical'){
-  roof(17,12,width-42,17);grille(18,16,12,8);grille(34,16,12,8);pipe(9,35,9,64);
-  pipe(width-29,29,width-14,29);d(width-21,29,4,3,c.ink);d(width-20,29,2,1,c.hot);
-  detail.plate(width-25,34,10,18,c.steel);d(width-23,37,6,9,type==='chemical'?resources.gas:c.shade);d(width-23,37,1,7,c.cream);
-  grille(15,47,7,14);hazard(25,height-17,width-50);crate(4,height-17);
-  for(let i=0;i<3;i++)d(28+i*10,height-12,6,1,c.steelLight);
-  d(width-22,7,8,1,c.cream);d(width-21,14,6,1,c.ink);d(width-21,19,6,1,c.ink);
-  if(type==='chemical'){pipe(21,28,21,53);d(27,43,5,8,resources.medicines);d(28,44,1,5,c.cream);}
-  else{detail.plate(27,36,21,10,c.dark);d(30,39,14,2,c.steelLight);d(34,42,7,1,c.hot);}
- }else if(['weaponshop','ammoshop','armorshop','explosiveshop','medicineshop'].includes(type)){
-  roof(9,15,width-18,8);grille(8,7,9,5);pipe(width-9,17,width-9,34);hazard(13,height-11,width-26);
-  detail.plate(7,29,5,7,c.steel);d(8,30,2,2,c.hot);
-  if(type==='weaponshop'){d(15,28,16,2,c.steelLight);d(23,30,3,4,c.ink);}
-  if(type==='ammoshop'){for(let i=0;i<3;i++)d(16+i*5,27,2,6,c.hot);}
-  if(type==='armorshop'){detail.poly([[19,26],[27,26],[29,31],[26,34],[20,34],[17,31]],resources.armor);d(21,27,1,5,c.cream);}
-  if(type==='explosiveshop'){d(17,28,13,5,resources.explosives);d(22,28,2,5,c.ink);}
-  if(type==='medicineshop'){d(21,26,3,8,resources.medicines);d(18,29,9,2,resources.medicines);}
- }else if(type==='guild'){
-  roof(17,10,width-34,9);grille(10,44,10,6);pipe(width-12,26,width-12,47);detail.plate(width/2-4,14,8,6,c.dark);d(width/2-2,16,4,2,c.hot);
- }else if(type==='barracks'){
-  roof(18,12,width-36,17);grille(19,17,13,7);grille(width-32,17,13,7);pipe(12,30,12,62);pipe(width-13,30,width-13,62);
-  detail.poly([[width/2,15],[width/2+6,19],[width/2+4,27],[width/2,30],[width/2-4,27],[width/2-6,19]],c.sand);d(width/2-2,20,4,5,c.dark);
-  hazard(19,height-14,20);hazard(width-39,height-14,20);crate(3,height-15);crate(width-14,height-15);
- }else if(type==='tower'){
-  grille(13,24,width-26,6);pipe(8,22,8,36);d(width/2-2,4,4,3,c.ink);d(width/2-1,4,2,2,c.steelLight);hazard(14,height-10,width-28);
- }
+ if(type==='base'){grille(15,43,10,11);grille(width-28,38,10,15);roof(24,22,32,11);hazard(width/2-10,height-14,20);pipe(width-19,20,width-19,42);detail.poly([[width/2,43],[width/2+5,48],[width/2,53],[width/2-5,48]],c.sand);d(width/2-1,45,2,6,c.dark);}
+ else if(type==='house'){roof(13,12,25,10);roof(30,34,27,9);grille(7,43,9,7);pipe(width-16,24,width-16,36);d(31,52,19,1,c.sand);crate(width-14,height-13);}
+ else if(type==='warehouse'){roof(9,18,31,13);hazard(15,height-14,22);pipe(width-29,13,width-29,34);crate(width-23,height-17);crate(width-13,height-16);d(width-18,14,10,1,c.cream);for(let i=0;i<3;i++)d(18+i*6,height-9,4,1,c.steelLight);}
+ else if(type==='farm'){pipe(18,9,18,15);pipe(30,42,44,42);grille(31,height-18,12,6);d(13,24,9,1,c.cream);d(width-26,18,10,1,c.cream);d(width-25,25,5,7,'#b9c781');}
+ else if(type==='ironmine'){grille(6,15,10,7);hazard(20,36,22);pipe(17,21,25,21);for(let i=0;i<4;i++)d(23+i*4,33,2,2,c.steelLight);}
+ else if(type==='goldmine'){grille(8,34,10,6);pipe(10,24,19,24);d(24,16,6,2,'#e5c4d8');d(26,20,3,4,resources.crystals);hazard(25,39,12);}
+ else if(type==='gasstation'){pipe(28,16,35,16);grille(33,30,7,7);hazard(9,41,17);d(15,6,9,1,c.cream);}
+ else if(type==='sulfurstation'){grille(16,31,15,6);pipe(12,25,29,25);hazard(13,41,22);d(13,9,3,8,resources.sulfur);d(33,6,3,7,resources.sulfur);}
+ else if(type==='factory'){roof(17,12,width-48,12);grille(17,16,16,7);pipe(11,35,11,61);hazard(18,height-16,28);crate(5,height-16);d(21,45,23,3,c.steelLight);d(29,48,7,5,c.ink);d(width-18,18,2,14,c.cream);}
+ else if(type==='chemical'){pipe(27,38,37,38);pipe(58,22,65,22);pipe(46,8,46,16);grille(39,height-18,14,6);d(43,26,3,20,c.cream);d(width-27,16,3,25,c.cream);hazard(12,height-9,17);}
+ else if(type==='weaponshop'){grille(9,8,10,4);pipe(6,17,6,28);d(14,25,23,2,c.steelLight);d(26,27,3,7,c.ink);hazard(8,40,26);}
+ else if(type==='ammoshop'){grille(17,24,12,5);pipe(9,20,9,31);hazard(8,42,29);d(20,10,8,1,c.cream);}
+ else if(type==='armorshop'){grille(7,23,6,10);grille(36,23,5,10);d(19,28,2,6,c.cream);hazard(15,41,18);}
+ else if(type==='explosiveshop'){grille(16,10,12,5);pipe(7,20,7,27);hazard(8,24,30);d(21,34,2,5,c.cream);}
+ else if(type==='medicineshop'){grille(17,8,14,5);pipe(36,18,36,34);for(let i=0;i<3;i++){d(16+i*5,36,3,6,resources.medicines);d(17+i*5,34,1,3,c.cream);}}
+ else if(type==='guild'){roof(12,17,17,7);roof(width-27,13,15,8);d(12,30,width-21,1,c.cream);crate(5,height-17);crate(width-16,height-15);grille(9,45,9,6);}
+ else if(type==='barracks'){roof(14,22,26,8);roof(width-36,14,23,7);grille(18,36,14,6);grille(width-31,23,12,6);hazard(15,height-14,23);hazard(width-35,height-14,18);pipe(width/2+3,37,width/2+3,66);}
+ else if(type==='tower'){grille(18,25,13,6);pipe(12,29,12,36);hazard(16,41,18);d(19,5,1,9,c.cream);d(33,5,1,9,c.cream);}
  if(type!=='field'){
   // Sparse wear follows panel edges; no random noisy texture over the silhouette.
   d(9,height-19,3,1,c.steelLight);d(width-17,24,2,1,c.steelLight);d(width-8,height-9,2,1,c.pack);

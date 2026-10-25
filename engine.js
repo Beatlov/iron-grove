@@ -1,4 +1,4 @@
-/* HELIOS H25: planetary economies, structure management, campaign fleets and automatic battles. */
+/* HELIOS H26: planetary economies, structure management, campaign fleets and automatic battles. */
 (function(root){
 'use strict';
 const W=144,H=96,resources=['food','money','metal','crystals','gas','sulfur','weapons','ammo','armor','explosives','medicines'];
@@ -20,11 +20,11 @@ const stats={
  sulfurstation:{hp:450,size:2,buildTime:20,cost:{metal:45,money:35,crystals:8},resource:'sulfur',slots:2,extractor:true,rate:.6},
  chemical:{hp:550,size:4,capacity:240,buildTime:22,cost:{metal:65,money:80,crystals:25,gas:10}},
  factory:{hp:550,size:4,capacity:240,buildTime:22,cost:{metal:80,money:65,crystals:20}},
- weaponshop:{hp:300,size:2,buildTime:12,cost:{metal:25,money:25,gas:5},addon:'factory',resource:'weapons',slots:1,recipe:{metal:6,gas:2},cycle:8},
- ammoshop:{hp:300,size:2,buildTime:12,cost:{metal:25,money:20,sulfur:5},addon:'factory',resource:'ammo',slots:1,recipe:{sulfur:2,metal:3},cycle:6},
- armorshop:{hp:300,size:2,buildTime:12,cost:{metal:30,money:25,crystals:8},addon:'factory',resource:'armor',slots:1,recipe:{metal:5,crystals:3},cycle:8},
- explosiveshop:{hp:300,size:2,buildTime:12,cost:{metal:30,money:35,gas:5,sulfur:5},addon:'factory',resource:'explosives',slots:1,recipe:{sulfur:3,gas:2,crystals:3},cycle:10},
- medicineshop:{hp:300,size:2,buildTime:12,cost:{metal:25,money:35,crystals:8,gas:5},addon:'chemical',resource:'medicines',slots:1,recipe:{crystals:4,gas:2},cycle:8},
+ weaponshop:{hp:300,size:2,buildTime:12,cost:{metal:25,money:25,gas:5},addon:'factory',resource:'weapons',slots:1,recipe:{metal:9,gas:3},cycle:12},
+ ammoshop:{hp:300,size:2,buildTime:12,cost:{metal:25,money:20,sulfur:5},addon:'factory',resource:'ammo',slots:1,recipe:{sulfur:3,metal:5},cycle:9},
+ armorshop:{hp:300,size:2,buildTime:12,cost:{metal:30,money:25,crystals:8},addon:'factory',resource:'armor',slots:1,recipe:{metal:8,crystals:5},cycle:12},
+ explosiveshop:{hp:300,size:2,buildTime:12,cost:{metal:30,money:35,gas:5,sulfur:5},addon:'factory',resource:'explosives',slots:1,recipe:{sulfur:5,gas:3,crystals:5},cycle:15},
+ medicineshop:{hp:300,size:2,buildTime:12,cost:{metal:25,money:35,crystals:8,gas:5},addon:'chemical',resource:'medicines',slots:1,recipe:{crystals:6,gas:3},cycle:12},
  guild:{hp:450,size:3,buildTime:16,cost:{metal:40,money:60,crystals:10},resource:'money',slots:2,rate:.15},
  barracks:{hp:650,size:4,buildTime:22,cost:{metal:60,money:60,crystals:15}},
  tower:{hp:800,size:2,buildTime:24,cost:{metal:60,money:50,crystals:10},damage:24,range:7}
@@ -132,6 +132,7 @@ class Game{
  ready(e){return !!e&&e.hp>0&&e.construction<=0;}
  operational(e){return this.ready(e)&&e.hp>=e.maxHp*.65;}
  population(team=0){const all=this.all().filter(e=>e.team===team),workers=all.filter(e=>e.type==='worker').length,soldiers=this.military.filter(u=>u.team===team&&u.hp>0).length,reserved=this.missions.filter(m=>m.team===team&&m.kind==='colony').length*6,hiring=all.filter(e=>e.type==='base').reduce((n,b)=>n+b.hireQueue.length,0),capacity=all.filter(e=>this.ready(e)).reduce((n,e)=>n+(e.type==='base'?6:e.type==='house'?4:0),0);return{workers,soldiers,reserved,hiring,total:workers+soldiers+reserved+hiring,capacity,free:Math.max(0,capacity-workers-soldiers-reserved-hiring)};}
+ workforce(team=0,planet=null){const people=this.all().filter(e=>e.type==='worker'&&e.team===team&&(planet===null||e.planet===planet)),free=people.filter(e=>!e.job&&!e.building&&!e.carry).length,staffed=people.filter(e=>!!e.job).length,drones=this.all().filter(e=>e.type==='drone'&&e.team===team&&(planet===null||e.planet===planet));return{total:people.length,free,staffed,busy:people.length-free-staffed,drones:drones.length,hauling:drones.filter(d=>d.task||d.carry).length};}
  army(team=0,planet=this.activePlanet){return this.military.filter(u=>u.team===team&&u.hp>0&&u.location==='reserve'&&u.planet===planet);}
  income(team=0){return this.resourceFlows(team).money.income*2;}
  upkeep(team=0){const units=this.military.filter(u=>u.team===team&&u.hp>0&&u.location!=='training');return{metal:this.all().filter(e=>e.team===team&&e.type==='drone').length*DRONE_METAL_UPKEEP,food:this.population(team).workers+units.reduce((n,u)=>n+stats[u.type].food,0),money:units.reduce((n,u)=>n+stats[u.type].money,0)};}
@@ -184,7 +185,7 @@ class Game{
   for(const a of additions)for(const b of solids){if(a===b||!stats[b.type]?.cost)continue;const f=footprint(a),g=footprint(b),exception=a.type==='field'&&['field','farm'].includes(b.type)||b.type==='field'&&a.type==='farm'||stats[a.type]?.addon&&stats[b.type]?.addon||a.parent===b.id||b.parent===a.id;if(!exception&&f.x<g.x+g.w+1&&f.x+f.w+1>g.x&&f.y<g.y+g.h+1&&f.y+f.h+1>g.y)return false;}
   return [...additions,...scene.filter(e=>stats[e.type]?.cost&&additions.some(a=>touches(a,e)))].every(e=>this.hasFreeSide(e,solids,id));
  }
- canBuild(type,x,y,team=0,id=this.activePlanet,parent=null,options={}){const s=stats[type],relocating=options.relocating===true,ignore=new Set(options.ignore||[]),scene=this.alive(id).filter(e=>!ignore.has(e.id));if(this.result||this.activeBattle?.()||!s?.cost||type==='base'&&!relocating||this.regions[id]?.owner!==team||!this.alive(id).some(e=>e.type==='base'&&e.team===team&&this.ready(e))||!relocating&&!this.affordable(s.cost,team))return false;
+ canBuild(type,x,y,team=0,id=this.activePlanet,parent=null,options={}){const s=stats[type],relocating=options.relocating===true,ignore=new Set(options.ignore||[]),scene=this.alive(id).filter(e=>!ignore.has(e.id));if(this.result||this.activeBattle?.()||!s?.cost||type==='base'||this.regions[id]?.owner!==team||!this.alive(id).some(e=>e.type==='base'&&e.team===team&&this.ready(e))||!relocating&&!this.affordable(s.cost,team))return false;
   const host=options.host||this.get(parent);if(s.addon&&(!(relocating&&options.host?this.ready(host):this.operational(host))||host.type!==s.addon||host.team!==team||host.planet!==id||this.addons(host).some(a=>a.type===type&&!ignore.has(a.id))))return false;
   const w=s.width||s.size,h=s.height||s.size;if(!Number.isInteger(x-w/2)||!Number.isInteger(y-h/2))return false;const f=footprint({x,y,size:s.size,width:w,height:h}),roads=this.planet(id).roads;
   const ore=!!s.extractor,covered=scene.filter(e=>e.type==='deposit'&&e.resource===s.resource&&e.amount>0&&this.covers({x,y,size:s.size},e));if(ore&&!covered.length)return false;
@@ -196,9 +197,9 @@ class Game{
  }
  build(type,x,y,team=0,id=this.activePlanet,parent=null){if(!this.canBuild(type,x,y,team,id,parent)){if(team===0)this.message='Нужно своё поселение, ресурсы и зазор 1 клетка между самостоятельными зданиями. Поля могут касаться биореактора и других полей, пристройки — своего завода и других пристроек. Газ/сера — станция на залежи. Пункт металла/кристаллов — в радиусе 8 клеток от ресурса; пристройка — вплотную к заводу.';return false;}this.pay(stats[type].cost,team);const b=this.add(type,team,x,y,id);b.construction=stats[type].buildTime;b.parent=parent;if(stats[type].extractor)b.node=this.alive(id).find(e=>e.type==='deposit'&&e.resource===stats[type].resource&&e.amount>0&&this.covers(b,e))?.id;this.message='Участок размещён. Свободный житель автоматически подойдёт и построит здание.';return b;}
  // Player-managed removal/movement is atomic; combat destruction retains its separate rules.
- manageable(id,team=0){const b=this.get(id);return !!b&&!!stats[b.type]?.cost&&b.team===team&&this.regions[b.planet]?.owner===team&&!this.result&&!this.activeBattle?.();}
+ manageable(id,team=0){const b=this.get(id);return !!b&&!!stats[b.type]?.cost&&b.type!=='base'&&b.team===team&&this.regions[b.planet]?.owner===team&&!this.result&&!this.activeBattle?.();}
  structureGroup(id){const b=this.get(id);return b?[b,...this.addons(b)]:[];}
- canDemolish(id,team=0){const b=this.get(id);return this.manageable(id,team)&&this.ready(b)&&(b.type!=='base'||this.storages(team).some(e=>e.type==='base'&&e.id!==id));}
+ canDemolish(id,team=0){const b=this.get(id);return this.manageable(id,team)&&this.ready(b);}
  cancelConstruction(id,team=0){const b=this.get(id);if(!this.manageable(id,team)||!(b.construction>0))return false;return this.removeStructure(b,true);}
  demolish(id,team=0){if(!this.canDemolish(id,team))return false;return this.removeStructure(this.get(id),false);}
  removeStructure(b,cancel){
