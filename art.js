@@ -1,4 +1,4 @@
-/* HELIOS H14: brutal industrial art on a unified native pixel grid, with the complete H9 renderer available for comparison. */
+/* HELIOS H20: brutal industrial art on a unified native pixel grid, with the complete H9 renderer available for comparison. */
 (function(root){
 'use strict';
 const legacy=typeof module!=='undefined'?require('./art-legacy.js'):root.RTSArtLegacy;
@@ -118,7 +118,7 @@ function building(ctx,e,x,y,time=0,state={}){
  else if(type==='house'){block(4,7,w-8,h-14);block(7,4,w-14,6);for(let i=0;i<3;i++){door(7+i*7,11,5,10);r(8+i*7,12,3,5,c.sand);}r(7,25,w-14,2,c.steel);r(3,h-6,7,3,c.pack);}
  else if(type==='warehouse'){block(3,9,w-6,h-15,c.steel);r(4,10,w-8,3,c.steelLight);door(8,15,w-16,h-21);r(10,17,w-20,1,c.sand);r(10,21,w-20,1,c.steelLight);block(1,h-9,7,6,c.pack);block(w-9,h-9,7,6,c.pack);}
  else if(type==='farm'){block(3,7,w-6,h-14);for(let i=0;i<3;i++){plate(6+i*8,10,6,15,c.dark);r(7+i*8,12,4,10,'#9ba755');r(7+i*8,12,1,8,c.cream);}r(5,5,w-10,3,c.steel);r(w-8,h-8,5,3,c.pack);}
- else if(type==='ironmine'||type==='goldmine'){block(2,h-10,w-4,7,c.steel);poly([[4,h-11],[8,4],[w-8,4],[w-4,h-11]],c.ink);line(6,h-11,9,5,c.steelLight,2);line(w-6,h-11,w-9,5,c.steel,2);r(10,5,4,h-14,c.steel);r(10,h-11,4,4,type==='ironmine'?c.hot:resources.crystals);r(5,2,w-10,3,c.sand);}
+ else if(type==='ironmine'||type==='goldmine'){block(3,5,w-6,h-10,c.steel);block(4,3,w-12,5);door(6,11,w-12,8);r(7,12,w-14,3,resources[type==='ironmine'?'metal':'crystals']);r(w-7,6,3,3,signal);block(1,h-7,6,4,c.pack);r(3,h-6,3,1,c.sand);}
  else if(['gasstation','sulfurstation'].includes(type)){for(const dx of [3,13]){block(dx,4,8,15,c.steel);r(dx+2,7,4,8,resources[type==='gasstation'?'gas':'sulfur']);r(dx+2,7,1,6,c.cream);}r(6,2,12,2,c.steelLight);r(9,18,6,4,c.dark);r(10,19,4,2,signal);}
  else if(type==='factory'||type==='chemical'){block(5,11,w-10,h-17);block(7,5,w-19,12,c.steel);vent(10,8);vent(20,8);block(12,16,13,5,c.steel);r(14,17,9,2,type==='chemical'?resources.gas:c.steelLight);door(12,h-22,w-25,15);r(14,h-19,w-29,3,type==='chemical'?resources.medicines:c.hot);block(w-12,3,6,h-12,c.steel);r(w-11,4,4,3,c.sand);r(w-16,h-13,3,7,signal);block(1,h-8,7,5,c.pack);if(type==='chemical'){r(8,16,5,9,resources.gas);r(9,17,1,6,c.cream);}}
  else if(['weaponshop','ammoshop','armorshop','explosiveshop','medicineshop'].includes(type)){block(3,7,w-6,h-13);block(4,3,7,6,c.steel);door(6,12,w-12,7);const resource={weaponshop:'weapons',ammoshop:'ammo',armorshop:'armor',explosiveshop:'explosives',medicineshop:'medicines'}[type];r(8,13,w-16,3,resources[resource]);r(w-8,8,3,2,signal);r(1,h-5,5,2,c.pack);}
