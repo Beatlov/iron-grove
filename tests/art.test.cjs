@@ -6,7 +6,7 @@ test('drawing factions, work, combat and corpse frames leaves the simulation int
  const g=new Game(42,{ai:false}),calls=[];
  const c=new Proxy({fillRect:(...args)=>calls.push(args)},{get:(target,key)=>key in target?target[key]:()=>{},set:(target,key,value)=>{target[key]=value;return true;}});
  const before=JSON.stringify(g);
- for(const team of [0,1,2])for(const rank of [1,2,3])for(const type of ['worker','soldier','assault','medic','grenadier','psyker','xeno','robot','demon','pirate']){
+ for(const team of [0,1,2])for(const rank of [1,2,3])for(const type of ['worker','drone','soldier','assault','medic','grenadier','psyker','xeno','robot','demon','pirate']){
   const e={type,team,rank,id:1,moving:true,facingX:-1,facingY:-1,walkDistance:2.3,cool:1.9,carry:{resource:'metal'}};
   const snapshot=JSON.stringify(e);art.unit(c,e,20.3,40.7,12,{working:true});art.fallen(c,e,25,40,.1);art.fallen(c,e,25,40,1);assert.equal(JSON.stringify(e),snapshot);
  }

@@ -1,4 +1,4 @@
-/* HELIOS H20: brutal industrial art on a unified native pixel grid, with the complete H9 renderer available for comparison. */
+/* HELIOS H22: brutal industrial art on a unified native pixel grid, with the complete H9 renderer available for comparison. */
 (function(root){
 'use strict';
 const legacy=typeof module!=='undefined'?require('./art-legacy.js'):root.RTSArtLegacy;
@@ -49,7 +49,16 @@ const UNIT_SCALE=41/48;
 let style='refined';
 function setStyle(value){if(!['refined','classic'].includes(value))return false;style=value;return true;}
 const getStyle=()=>style;
+function drone(ctx,e,x,y,time=0){
+ const c=palettes[e.team===1?1:0],{r,plate,poly}=pixelPainter(ctx,x-9,y-10,1),face=e.facingX<0?-1:1,roll=e.moving?Math.floor((e.walkDistance||0)*7)%3:0;
+ // Low tracked chassis: one native pixel grid, smaller than the resident silhouette.
+ r(1,10,17,2,'#26302b');plate(0,5,18,7,c.ink);r(1,6,16,4,c.steel);r(2,6,4,1,c.steelLight);r(12,6,4,1,c.steelLight);
+ for(const offset of [0,12]){r(offset,6,6,5,c.ink);r(offset+1,7,4,3,c.dark);for(let i=0;i<3;i++)r(offset+1+(i+roll)%4,9,1,1,c.steelLight);}
+ poly([[3,3],[5,1],[12,1],[15,4],[14,8],[4,8]],c.ink);r(5,2,7,2,c.light);r(4,4,10,3,c.armor);r(5,4,8,1,c.sand);r(face>0?12:4,5,2,2,c.glow);r(8,0,2,2,c.dark);r(8,0,1,1,c.hot);
+ if(e.carry){plate(5,2,7,5,c.ink);r(6,3,5,3,resources[e.carry.resource]||c.sand);r(7,3,1,3,c.cream);r(11,2,1,4,c.steelLight);}else{r(7,3,5,2,c.dark);r(8,3,3,1,c.steelLight);}
+}
 function unit(ctx,e,x,y,time=0,state={}){
+ if(e.type==='drone')return drone(ctx,e,x,y,time);
  if(style==='classic'&&!['psyker','xeno','robot','demon','pirate'].includes(e.type)&&(e.rank||1)===1)return legacy.unit(ctx,e,x,y,time,state);
  const demon=e.team===1||e.type==='demon',c={...palettes[demon?1:0]},psyker=e.type==='psyker'||e.type==='demon',worker=e.type==='worker',medic=e.type==='medic',assault=e.type==='assault',grenadier=e.type==='grenadier';
  if(psyker){c.glow='#bca0da';c.armor=demon?'#743a43':'#4b4565';c.light='#827695';}
@@ -215,7 +224,7 @@ function deposit(ctx,e,x,y,time=0){
  else if(e.resource==='explosives'){prism({r,poly,line},3,9,19,13,'#5b3930','#bf956c','#403131');r(5,11,15,9,color);r(11,11,3,9,'#9d4f38');r(10,5,4,5,'#d4b15f');}
  else{prism({r,poly,line},5,6,15,17,color,'#dfd9ad',e.resource==='money'?'#8b7842':'#506438');r(7,8,11,3,'#dfd9ad');r(9,13,7,7,e.resource==='money'?'#8b7842':'#697f3a');}
 }
-function fallen(ctx,e,x,y,age){if(style==='classic')return legacy.fallen(ctx,e,x,y,age);if(age<.2)return unit(ctx,{...e,moving:false},x,y,0);const c=palettes[e.team===1?1:0],{r,plate}=painter(ctx,x-14,y-5);plate(3,3,10,7,c.sand);plate(11,2,14,8,e.type==='worker'?'#be912d':c.armor);r(18,8,12,4,c.dark);}
+function fallen(ctx,e,x,y,age){if(e.type==='drone')return drone(ctx,{...e,moving:false},x,y);if(style==='classic')return legacy.fallen(ctx,e,x,y,age);if(age<.2)return unit(ctx,{...e,moving:false},x,y,0);const c=palettes[e.team===1?1:0],{r,plate}=painter(ctx,x-14,y-5);plate(3,3,10,7,c.sand);plate(11,2,14,8,e.type==='worker'?'#be912d':c.armor);r(18,8,12,4,c.dark);}
 function menuScene(ctx,width,height){if(style==='classic')return legacy.menuScene(ctx,width,height);ctx.fillStyle='#303b36';ctx.fillRect(0,0,width,height);for(let x=0;x<width;x+=24)road(ctx,x,170,24);building(ctx,{type:'base',team:0,size:3},105,100);building(ctx,{type:'factory',team:0,size:4},255,105);building(ctx,{type:'barracks',team:1,size:4},width-100,105);for(const [i,type]of ['worker','soldier','assault','medic','grenadier'].entries())unit(ctx,{type,team:0,facingX:1},120+i*38,230+i%2*8);for(let i=0;i<3;i++)unit(ctx,{type:'soldier',team:1,facingX:-1},width-145+i*36,230);}
 const api={palettes,resources,painter,pixelPainter,perspective,prism,UNIT_SCALE,road,unit,building,deposit,fallen,menuScene,setStyle,getStyle};if(typeof module!=='undefined')module.exports=api;else root.RTSArt=api;
 })(typeof window!=='undefined'?window:globalThis);
