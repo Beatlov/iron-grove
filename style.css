@@ -140,3 +140,5 @@ canvas{display:block;image-rendering:pixelated;touch-action:none}
 .census{display:flex;flex-direction:column;gap:2px;min-width:165px;white-space:nowrap;font-family:monospace}
 .census-top{display:flex;align-items:center;gap:9px}#population{padding-left:8px}#carrier-total{font-size:10px;color:#c6d2a5}#civilian-summary{font-size:9px;color:#b9c5a0;padding-left:8px;line-height:10px}
 @media(max-width:1100px){.census{min-width:154px}.census-top{gap:5px}#carrier-total{font-size:9px}#civilian-summary{font-size:8px}}
+
+.audio-settings{border:1px solid #647253;padding:8px;margin:10px 0}.audio-settings legend{padding:0 5px;color:var(--accent)}.audio-settings label{display:flex;align-items:center;justify-content:space-between;gap:10px}.audio-settings input[type=checkbox]{width:auto;accent-color:#b8ce8c}.audio-settings input[type=range]{width:100%;padding:0;accent-color:#b8ce8c}.audio-settings button{width:100%;padding:5px;margin-top:5px}.audio-settings output{color:#cdd9ab}

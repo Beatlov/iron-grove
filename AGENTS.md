@@ -39,7 +39,7 @@ Default campaign still has no strategic opponent/AI, but eleven neutral planets 
 
 ## H14 perspective and building lots
 
-Current refined art uses shared square-grid RTS perspective: depth 2 pixels right / 1 up, light top / dark side; do not shear the world grid. `prism` in art.js renders native pixel faces for buildings, equipment and resource containers. Irregular concrete slabs, short fence sections, gate bollards, drains and utility props stay within each exact footprint, with transparent corners, open central entrances and clear middle side attachment sockets. Fields retain soil. Decorations add no collision or gameplay entities. Keep UNIT_SCALE/foot anchors, mechanics and H9 fallback unchanged. Current menu style is «Поселения · H29»; H14 perspective remains unchanged.
+Current refined art uses shared square-grid RTS perspective: depth 2 pixels right / 1 up, light top / dark side; do not shear the world grid. `prism` in art.js renders native pixel faces for buildings, equipment and resource containers. Irregular concrete slabs, short fence sections, gate bollards, drains and utility props stay within each exact footprint, with transparent corners, open central entrances and clear middle side attachment sockets. Fields retain soil. Decorations add no collision or gameplay entities. Keep UNIT_SCALE/foot anchors, mechanics and H9 fallback unchanged. Current menu style is «Поселения · H30»; H14 perspective remains unchanged.
 
 ## H15 structure management
 
@@ -110,3 +110,11 @@ RTSArt.surfacePalette(kind,seed) supplies immutable deterministic themes: four p
 ## H29 shuffled planet themes
 
 Main planets use RTSArt.planetPalette(campaignSeed,planetId): private seeded Fisher-Yates shuffle of12 entries, three of each four themes. Never use raw map-seed low bits (they repeat in columns). Initial planet participates equally. Default blank key means random campaign seed; explicit same key reproduces layout. Random consecutive parties can share a starting color by chance. Shared surfaceTheme/global rendering must use the same planetPalette; sites retain surfacePalette(kind,seed). Color computation must not allocate maps or advance sim RNG. Palette cache must regenerate deterministically when switching seed, including lab vs campaign. H29 guide/export required.
+
+## H30 audio
+
+Load audio.js before game.js, audio-ui.js after battle-lab-ui.js; Node engine does not import audio. Audio remains a browser presentation adapter, never mutate/await/block game simulation for sounds. RTSAudio.Sound lazily creates Web Audio only after interaction. Initial gain .3; enabled/volume persisted best-effort in iron-grove-sound-v1. Header ♪ and menu sound group stay synchronized. No music/remote assets.
+
+createObserver maintains per-Game WeakMap snapshots and WeakSets for effect/flow objects; emits 16 named cues from actual transitions, not redraws. Baseline a new game before its first actions, consume silent/menu/paused changes, keep lab/campaign state separate. Stop voices on mute/zero gain/hidden/blur; throttle cues by audio time, cap24 sources, clean up sources/gains/filters. Audio timing must not touch sim time or RNG; synth noise has private PRNG. Unsupported/blocked audio or storage errors must leave game playable.
+
+Sound.setSample(event,url) asynchronously decodes a future same-origin audio file after activation. Until loaded or on failure keep procedural cue; setSample(event,null) restores synthesis. All sources share master gain/mute/rate limits. Actual files are future scope. Test with genuine browser Web Audio/OfflineAudioContext as well as Node observer/guardrail tests; no claim of human listening without it. Export H30 game guide.
