@@ -1,4 +1,4 @@
-/* HELIOS H27: brutal industrial art on a unified native pixel grid, with the complete H9 renderer available for comparison. */
+/* HELIOS H28: brutal industrial art on a unified native pixel grid, with the complete H9 renderer available for comparison. */
 (function(root){
 'use strict';
 const legacy=typeof module!=='undefined'?require('./art-legacy.js'):root.RTSArtLegacy;
@@ -44,6 +44,16 @@ function yard(p,w,h,type,c){
  // Drain and service locker are functional edge detail, not a continuous rectangular frame.
  p.r(w-8,18,3,9,c.dark);for(let y=19;y<26;y+=3)p.r(w-8,y,2,1,c.steelLight);
  if(w>=72){prism(p,w-17,8,9,11,c.steel,c.steelLight,c.dark,c.ink);p.r(w-14,13,3,2,c.glow);}
+}
+// Appearance only: never advance the simulation RNG or alter terrain/collision.
+const surfaceSchemes={planet:['#444d43','#5b4940','#5c5541','#514a59'],moon:['#4b5567'],asteroid:['#55483c'],wreck:['#354d53']};
+const surfacePalettes=new Map();
+function surfacePalette(kind='planet',seed=0){
+ const schemes=surfaceSchemes[kind]||surfaceSchemes.planet,index=(seed>>>0)%schemes.length,key=kind+':'+index;
+ if(surfacePalettes.has(key))return surfacePalettes.get(key);
+ const base=schemes[index],shade=offset=>'#'+base.slice(1).match(/../g).map(v=>Math.max(0,Math.min(255,parseInt(v,16)+offset)).toString(16).padStart(2,'0')).join('');
+ const theme=Object.freeze({tiles:Object.freeze([base,shade(2),shade(-2)]),background:shade(-28),dark:shade(-17),speck:shade(27),slab:shade(16),edge:shade(-23),light:shade(34),mini:shade(-8),orb:shade(49)});
+ surfacePalettes.set(key,theme);return theme;
 }
 const UNIT_SCALE=41/48;
 let style='refined';
@@ -247,5 +257,5 @@ function deposit(ctx,e,x,y,time=0){
 }
 function fallen(ctx,e,x,y,age){if(e.type==='drone')return drone(ctx,{...e,moving:false},x,y);if(style==='classic')return legacy.fallen(ctx,e,x,y,age);if(age<.2)return unit(ctx,{...e,moving:false},x,y,0);const c=palettes[e.team===1?1:0],{r,plate}=painter(ctx,x-14,y-5);plate(3,3,10,7,c.sand);plate(11,2,14,8,e.type==='worker'?'#be912d':c.armor);r(18,8,12,4,c.dark);}
 function menuScene(ctx,width,height){if(style==='classic')return legacy.menuScene(ctx,width,height);ctx.fillStyle='#303b36';ctx.fillRect(0,0,width,height);for(let x=0;x<width;x+=24)road(ctx,x,170,24);building(ctx,{type:'base',team:0,size:3},105,100);building(ctx,{type:'factory',team:0,size:4},255,105);building(ctx,{type:'barracks',team:1,size:4},width-100,105);for(const [i,type]of ['worker','soldier','assault','medic','grenadier'].entries())unit(ctx,{type,team:0,facingX:1},120+i*38,230+i%2*8);for(let i=0;i<3;i++)unit(ctx,{type:'soldier',team:1,facingX:-1},width-145+i*36,230);}
-const api={palettes,resources,painter,pixelPainter,perspective,prism,UNIT_SCALE,road,unit,building,buildingIcon,deposit,fallen,menuScene,setStyle,getStyle};if(typeof module!=='undefined')module.exports=api;else root.RTSArt=api;
+const api={palettes,resources,painter,pixelPainter,perspective,prism,UNIT_SCALE,surfacePalette,road,unit,building,buildingIcon,deposit,fallen,menuScene,setStyle,getStyle};if(typeof module!=='undefined')module.exports=api;else root.RTSArt=api;
 })(typeof window!=='undefined'?window:globalThis);

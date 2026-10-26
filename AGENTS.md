@@ -39,7 +39,7 @@ Default campaign still has no strategic opponent/AI, but eleven neutral planets 
 
 ## H14 perspective and building lots
 
-Current refined art uses shared square-grid RTS perspective: depth 2 pixels right / 1 up, light top / dark side; do not shear the world grid. `prism` in art.js renders native pixel faces for buildings, equipment and resource containers. Irregular concrete slabs, short fence sections, gate bollards, drains and utility props stay within each exact footprint, with transparent corners, open central entrances and clear middle side attachment sockets. Fields retain soil. Decorations add no collision or gameplay entities. Keep UNIT_SCALE/foot anchors, mechanics and H9 fallback unchanged. Current menu style is «Поселения · H27»; H14 perspective remains unchanged.
+Current refined art uses shared square-grid RTS perspective: depth 2 pixels right / 1 up, light top / dark side; do not shear the world grid. `prism` in art.js renders native pixel faces for buildings, equipment and resource containers. Irregular concrete slabs, short fence sections, gate bollards, drains and utility props stay within each exact footprint, with transparent corners, open central entrances and clear middle side attachment sockets. Fields retain soil. Decorations add no collision or gameplay entities. Keep UNIT_SCALE/foot anchors, mechanics and H9 fallback unchanged. Current menu style is «Поселения · H28»; H14 perspective remains unchanged.
 
 ## H15 structure management
 
@@ -102,3 +102,7 @@ workforce(team,planet=null) excludes dead and queued people, splits actual resid
 ## H27 worker and building icons
 
 Refined resident retains H26 native size, gait/anchor, tool/cargo, human face and industrial ochre/sand palette. Helmet/goggles/respirator, reinforced vest, angular shoulder pads, gloves, knees/boots make it more brutal without marine-size scaling. H9 world renderer unchanged. Dedicated RTSArt.buildingIcon(ctx,type,team) draws simplified32×32 UI symbols for all19 building types in either style; no yard or fine surface details. game.js icon cache uses these symbols for building buttons/portraits, not scaled world lots. Detailed world geometry, mechanics and balance unchanged. Update H27 guide/export.
+
+## H28 world colors
+
+RTSArt.surfacePalette(kind,seed) supplies immutable deterministic themes: four planet variants by seed, blue-gray moon, stone-brown asteroid, steel-teal wreck. surfaceTheme(sim,p) resolves site kind from that simulation; shared drawSurface uses it in campaign/lab, both styles. Same theme drives minimap/global body colors. Ownership is a separate outer ring, not a replacement surface color; inactive sites dim. Never create maps just to draw the galaxy: derive absent planet seed from existing generator formula; site themes currently have one variant. Do not use campaign RNG or alter collision/entities/resources. Recolor existing ground patterns only; different decorations are future scope. H9 sprite renderer unchanged, ground palettes are shared. Export H28 guide.
