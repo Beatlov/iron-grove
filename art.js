@@ -1,4 +1,4 @@
-/* HELIOS H28: brutal industrial art on a unified native pixel grid, with the complete H9 renderer available for comparison. */
+/* HELIOS H29: brutal industrial art on a unified native pixel grid, with the complete H9 renderer available for comparison. */
 (function(root){
 'use strict';
 const legacy=typeof module!=='undefined'?require('./art-legacy.js'):root.RTSArtLegacy;
@@ -48,12 +48,26 @@ function yard(p,w,h,type,c){
 // Appearance only: never advance the simulation RNG or alter terrain/collision.
 const surfaceSchemes={planet:['#444d43','#5b4940','#5c5541','#514a59'],moon:['#4b5567'],asteroid:['#55483c'],wreck:['#354d53']};
 const surfacePalettes=new Map();
-function surfacePalette(kind='planet',seed=0){
- const schemes=surfaceSchemes[kind]||surfaceSchemes.planet,index=(seed>>>0)%schemes.length,key=kind+':'+index;
+function surfacePaletteAt(kind,index){
+ const schemes=surfaceSchemes[kind]||surfaceSchemes.planet,key=kind+':'+index;
  if(surfacePalettes.has(key))return surfacePalettes.get(key);
  const base=schemes[index],shade=offset=>'#'+base.slice(1).match(/../g).map(v=>Math.max(0,Math.min(255,parseInt(v,16)+offset)).toString(16).padStart(2,'0')).join('');
  const theme=Object.freeze({tiles:Object.freeze([base,shade(2),shade(-2)]),background:shade(-28),dark:shade(-17),speck:shade(27),slab:shade(16),edge:shade(-23),light:shade(34),mini:shade(-8),orb:shade(49)});
  surfacePalettes.set(key,theme);return theme;
+}
+function surfacePalette(kind='planet',seed=0){
+ let mixed=seed>>>0;mixed=Math.imul(mixed^(mixed>>>16),0x7feb352d);mixed=Math.imul(mixed^(mixed>>>15),0x846ca68b);mixed=(mixed^(mixed>>>16))>>>0;
+ return surfacePaletteAt(kind,mixed%(surfaceSchemes[kind]||surfaceSchemes.planet).length);
+}
+let planetColorSeed=null,planetColorOrder=[];
+function planetPalette(seed,id){
+ seed=seed>>>0;if(planetColorSeed!==seed){
+  // Shuffle a balanced bag with a private PRNG; world generation and combat RNG stay untouched.
+  const order=Array.from({length:12},(_,i)=>i%4);let random=seed^0x9e3779b9;
+  for(let i=order.length-1;i>0;i--){random=(random+0x6d2b79f5)|0;let n=Math.imul(random^(random>>>15),1|random);n=(n+Math.imul(n^(n>>>7),61|n))^n;const j=Math.floor(((n^(n>>>14))>>>0)/4294967296*(i+1));[order[i],order[j]]=[order[j],order[i]];}
+  planetColorSeed=seed;planetColorOrder=order;
+ }
+ return surfacePaletteAt('planet',planetColorOrder[id%planetColorOrder.length]);
 }
 const UNIT_SCALE=41/48;
 let style='refined';
@@ -257,5 +271,5 @@ function deposit(ctx,e,x,y,time=0){
 }
 function fallen(ctx,e,x,y,age){if(e.type==='drone')return drone(ctx,{...e,moving:false},x,y);if(style==='classic')return legacy.fallen(ctx,e,x,y,age);if(age<.2)return unit(ctx,{...e,moving:false},x,y,0);const c=palettes[e.team===1?1:0],{r,plate}=painter(ctx,x-14,y-5);plate(3,3,10,7,c.sand);plate(11,2,14,8,e.type==='worker'?'#be912d':c.armor);r(18,8,12,4,c.dark);}
 function menuScene(ctx,width,height){if(style==='classic')return legacy.menuScene(ctx,width,height);ctx.fillStyle='#303b36';ctx.fillRect(0,0,width,height);for(let x=0;x<width;x+=24)road(ctx,x,170,24);building(ctx,{type:'base',team:0,size:3},105,100);building(ctx,{type:'factory',team:0,size:4},255,105);building(ctx,{type:'barracks',team:1,size:4},width-100,105);for(const [i,type]of ['worker','soldier','assault','medic','grenadier'].entries())unit(ctx,{type,team:0,facingX:1},120+i*38,230+i%2*8);for(let i=0;i<3;i++)unit(ctx,{type:'soldier',team:1,facingX:-1},width-145+i*36,230);}
-const api={palettes,resources,painter,pixelPainter,perspective,prism,UNIT_SCALE,surfacePalette,road,unit,building,buildingIcon,deposit,fallen,menuScene,setStyle,getStyle};if(typeof module!=='undefined')module.exports=api;else root.RTSArt=api;
+const api={palettes,resources,painter,pixelPainter,perspective,prism,UNIT_SCALE,surfacePalette,planetPalette,road,unit,building,buildingIcon,deposit,fallen,menuScene,setStyle,getStyle};if(typeof module!=='undefined')module.exports=api;else root.RTSArt=api;
 })(typeof window!=='undefined'?window:globalThis);

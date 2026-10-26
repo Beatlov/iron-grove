@@ -34,3 +34,11 @@ test('both graphic styles preserve simulation and H9 remains an exact renderer f
 test('geometry scales on one native grid with one-pixel outlines rather than scaling the drawing context',()=>{
  for(const scale of [41/48,1,2]){const calls=[],c=new Proxy({fillRect:(...a)=>calls.push(a),scale:()=>assert.fail('native pixel painter must not scale the context')},{get:(t,k)=>k in t?t[k]:()=>{},set:()=>true});const p=art.pixelPainter(c,10.3,20.7,scale);p.r(0,0,5,4,'#111');p.r(5,0,5,4,'#222');assert.equal(calls[0][0]+calls[0][2],calls[1][0],'adjacent panels meet without resampling gaps');p.line(1,1,8,1,'#333');p.poly([[0,0],[10,0],[10,6]],'#444');p.plate(1,1,8,8,'#555');assert.ok(calls.every(a=>a.every(Number.isInteger)));assert.ok(calls.some(a=>a[2]===1&&a[3]===1),'one native pixel remains available at every geometry size');}
 });
+test('planet colors are shuffled across the whole galaxy and vary with the campaign seed including the capital',()=>{
+ const order=seed=>Array.from({length:12},(_,id)=>art.planetPalette(seed,id).tiles[0]);
+ const first=order(42),next=order(43);assert.notDeepEqual(first,next);assert.notEqual(first[0],next[0]);
+ assert.equal(new Set(first).size,4);for(const color of new Set(first))assert.equal(first.filter(c=>c===color).length,3);
+ assert.ok(Array.from({length:4},(_,col)=>new Set([first[col],first[col+4],first[col+8]]).size).some(n=>n>1),'colors must not follow galaxy columns');
+ assert.deepEqual(order(42),first,'opening another campaign cannot change the original palette');
+ assert.equal(new Set(Array.from({length:24},(_,seed)=>order(seed)[0])).size,4,'the starting planet has no fixed color');
+});

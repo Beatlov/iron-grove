@@ -39,7 +39,7 @@ Default campaign still has no strategic opponent/AI, but eleven neutral planets 
 
 ## H14 perspective and building lots
 
-Current refined art uses shared square-grid RTS perspective: depth 2 pixels right / 1 up, light top / dark side; do not shear the world grid. `prism` in art.js renders native pixel faces for buildings, equipment and resource containers. Irregular concrete slabs, short fence sections, gate bollards, drains and utility props stay within each exact footprint, with transparent corners, open central entrances and clear middle side attachment sockets. Fields retain soil. Decorations add no collision or gameplay entities. Keep UNIT_SCALE/foot anchors, mechanics and H9 fallback unchanged. Current menu style is «Поселения · H28»; H14 perspective remains unchanged.
+Current refined art uses shared square-grid RTS perspective: depth 2 pixels right / 1 up, light top / dark side; do not shear the world grid. `prism` in art.js renders native pixel faces for buildings, equipment and resource containers. Irregular concrete slabs, short fence sections, gate bollards, drains and utility props stay within each exact footprint, with transparent corners, open central entrances and clear middle side attachment sockets. Fields retain soil. Decorations add no collision or gameplay entities. Keep UNIT_SCALE/foot anchors, mechanics and H9 fallback unchanged. Current menu style is «Поселения · H29»; H14 perspective remains unchanged.
 
 ## H15 structure management
 
@@ -106,3 +106,7 @@ Refined resident retains H26 native size, gait/anchor, tool/cargo, human face an
 ## H28 world colors
 
 RTSArt.surfacePalette(kind,seed) supplies immutable deterministic themes: four planet variants by seed, blue-gray moon, stone-brown asteroid, steel-teal wreck. surfaceTheme(sim,p) resolves site kind from that simulation; shared drawSurface uses it in campaign/lab, both styles. Same theme drives minimap/global body colors. Ownership is a separate outer ring, not a replacement surface color; inactive sites dim. Never create maps just to draw the galaxy: derive absent planet seed from existing generator formula; site themes currently have one variant. Do not use campaign RNG or alter collision/entities/resources. Recolor existing ground patterns only; different decorations are future scope. H9 sprite renderer unchanged, ground palettes are shared. Export H28 guide.
+
+## H29 shuffled planet themes
+
+Main planets use RTSArt.planetPalette(campaignSeed,planetId): private seeded Fisher-Yates shuffle of12 entries, three of each four themes. Never use raw map-seed low bits (they repeat in columns). Initial planet participates equally. Default blank key means random campaign seed; explicit same key reproduces layout. Random consecutive parties can share a starting color by chance. Shared surfaceTheme/global rendering must use the same planetPalette; sites retain surfacePalette(kind,seed). Color computation must not allocate maps or advance sim RNG. Palette cache must regenerate deterministically when switching seed, including lab vs campaign. H29 guide/export required.
