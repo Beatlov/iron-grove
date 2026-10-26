@@ -39,7 +39,7 @@ Default campaign still has no strategic opponent/AI, but eleven neutral planets 
 
 ## H14 perspective and building lots
 
-Current refined art uses shared square-grid RTS perspective: depth 2 pixels right / 1 up, light top / dark side; do not shear the world grid. `prism` in art.js renders native pixel faces for buildings, equipment and resource containers. Irregular concrete slabs, short fence sections, gate bollards, drains and utility props stay within each exact footprint, with transparent corners, open central entrances and clear middle side attachment sockets. Fields retain soil. Decorations add no collision or gameplay entities. Keep UNIT_SCALE/foot anchors, mechanics and H9 fallback unchanged. Current menu style is «Поселения · H33»; H14 perspective remains unchanged.
+Current refined art uses shared square-grid RTS perspective: depth 2 pixels right / 1 up, light top / dark side; do not shear the world grid. `prism` in art.js renders native pixel faces for buildings, equipment and resource containers. Irregular concrete slabs, short fence sections, gate bollards, drains and utility props stay within each exact footprint, with transparent corners, open central entrances and clear middle side attachment sockets. Fields retain soil. Decorations add no collision or gameplay entities. Keep UNIT_SCALE/foot anchors, mechanics and H9 fallback unchanged. Current menu style is «Поселения · H34»; H14 perspective remains unchanged.
 
 ## H15 structure management
 
@@ -146,3 +146,15 @@ workplaces(b) is pure stable indexed view; assign/unassign optional slot targets
 Road UI: first click anchor, pointer preview without drag, second click locks, repeat endpoint builds/removes; confirm button/Enter only after lock. Fixed other click adjusts endpoint. RMB/clear resets plan but keeps road tool; Esc exits. Atomic paid engine rules unchanged.
 
 Header has basic8/advanced6 resource rows and only three census icons: free residents, used population/cap, drones/cap. All three icon bounds comparable; population is group-of-people. Hover/focus population popup reconciles staff, military/training, free plus nonzero other busy/hiring/colony reservations. No purchased-residents counter. H33 has242 Node tests, real-browser crop/card/queue/roads/census and battle/lab regression validation. Export H33 guide.
+
+## H34 shared farmers and waypoint UI (current overrides)
+
+Greenhouse/incubator have NO slots; farm's two shared workers sow/harvest all three crop types through exclusive u.field claims. Preserve individual growth/yields/buffers and original field-food processing; full food buffer must not block bio crops. Bio raw carry packs into that crop building and survives unassignment/full storage. Workers return to farm duties; no duplicate staffing/population. Production/growth art remains distinct, no new assets.
+
+#card-queues is a separate sibling ABOVE .selection-panel inside selection-console, positioned outside the card without group labels (aria labels allowed); preserve cancellation/refunds. + .workplace-hire at right of slots purchases resident at nearest operational same-planet core via existing paid 8s hire queue, not instant resident or automatic assignment. Disable correctly for process rights, owner, limits, funds, missing core or full queue. Base original hiring button remains.
+
+All header counters share horizontal line when width permits; basic8/advanced6 separated by vertical border, grouped wrapping only when needed. Keep population popup reconciled and map label/view controls below measured actual header.
+
+Road roadPoints list accumulates clicked anchors; pointer preview only adds a temporary last leg. Repeating last clicked anchor or Enter/button confirms anchored segments only. RMB with plan resets but stays tool, RMB without plan exits. No FROM/TO world labels. Removal shares waypoint UI; engine atomic costs/dedup unchanged. Preserve native style/offline/audio/battle. Update/export H34 guide after validation.
+
+H34 validation:243 Node tests passed; real Chromium shared-farmer three-crop delivery, timed local hire shortcut, queues outside card, multi-point roads/anchored-only confirmation/two RMB/removal, grouped responsive header at five desktop sizes; battle/raid/defense/lab regression passed with zero JS errors.

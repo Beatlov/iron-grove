@@ -208,3 +208,20 @@ canvas{display:block;image-rendering:pixelated;touch-action:none}
 .card-production[hidden],.card-storage[hidden]{display:none}.card-queues{margin-top:7px;display:flex;flex-direction:column;gap:6px}.card-queues[hidden]{display:none}.queue-label{display:block;color:#b8c7a1;font:9px monospace;margin:0 0 3px}.queue-row{display:flex;gap:5px;overflow-x:auto;max-width:100%;padding:2px;scrollbar-width:thin}.queue-order{position:relative;width:51px;height:57px;min-height:57px;flex:0 0 51px;padding:1px;display:flex;flex-direction:column;align-items:center;background:#1b2b22;border:1px solid #6c805a;box-shadow:none}.queue-order.active{border:2px solid #e1c78b;background:#53613b66}.queue-order canvas{width:32px;height:32px;image-rendering:pixelated;pointer-events:none}.queue-state{font:7px monospace;white-space:nowrap;color:#e0e5cc;pointer-events:none}.queue-progress{position:absolute;bottom:2px;left:2px;right:2px;height:3px;background:#122017;pointer-events:none}.queue-progress>span{display:block;height:100%;background:#b3cf87;max-width:100%}.queue-order:hover{border-color:#e1a295}.population-tooltip{position:fixed;z-index:30;width:240px;max-width:calc(100vw - 16px);padding:11px 13px;background:#202d24fa;border:1px solid #8b9b70;box-shadow:0 5px 20px #0008;pointer-events:none;font:11px/1.45 monospace;color:#d9dfc8}.population-tooltip strong{color:#f0e8cb}.population-tooltip p{margin:5px 0 0}
 #details{max-height:38px!important}.selection-console{max-height:calc(100dvh - 104px)}.recipe-details{gap:1px}.recipe-details .recipe-row{font-size:10px}.recipe-details .recipe-chip canvas{width:18px;height:19px}.recipe-details .recipe-chip strong{font-size:10px}
 @media(max-width:1250px){.topbar{height:62px;min-height:62px}.resource-row{gap:7px;min-height:22px}.resource-icon{width:19px;height:22px}.census{gap:8px}.economy-bar{gap:14px}.census-counter canvas{width:24px;height:26px}.mapbar{top:73px}.view-controls{top:72px}}
+
+/* H34: one-line economy groups, external queues and worker purchase shortcut. */
+.topbar{height:auto;min-height:42px;flex-wrap:wrap;align-content:center;row-gap:4px}
+.economy-bar{flex-wrap:wrap;flex:1 1 auto;gap:10px 14px}
+#resources{flex-direction:row;flex-wrap:wrap;gap:10px 14px;align-items:center}
+.resource-row{flex-wrap:nowrap;gap:8px;min-height:24px;flex-shrink:0}
+.resource-row+.resource-row{padding-top:0;border-top:0;border-left:1px solid #80926166;padding-left:14px}
+.census{flex-wrap:nowrap;flex-shrink:0;gap:10px}.resource-icon{width:20px;height:23px}
+.census-counter canvas{width:24px;height:26px}.mapbar{top:56px}.view-controls{top:55px}
+.selection-console{overflow:visible}.selection-panel{overflow-y:auto;max-height:calc(100dvh - 180px)}
+.card-queues{position:absolute;bottom:calc(100% + 7px);left:0;right:0;margin:0;flex-direction:row;align-items:flex-end;gap:8px;max-height:70px;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
+.queue-group{flex:0 0 auto}.queue-row{overflow:visible}.queue-label{display:none}
+.workplace-hire{width:30px;height:30px;min-height:30px;flex:0 0 30px;margin-left:4px;padding:0;font:700 23px monospace;color:#c5dc9c;border:1px solid #819365;background:#26382bd9;box-shadow:none}
+.workplace-hire:hover{background:#536940}.workplace-hire:disabled{opacity:.4}
+@media(max-width:1250px){.resource-row{gap:5px}.economy-bar{gap:7px 10px}#resources{gap:7px 10px}.resource-row+.resource-row{padding-left:10px}.census{gap:6px}.resource-icon{width:18px;height:22px}.census-counter canvas{width:22px;height:24px}}
+
+#resources{flex:0 1 auto;min-width:0;max-width:100%}.queue-group+.queue-group{border-left:1px solid #80926166;padding-left:8px}

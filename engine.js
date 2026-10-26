@@ -1,4 +1,4 @@
-/* HELIOS H33: planetary economies, structure management, campaign fleets and automatic battles. */
+/* HELIOS H34: planetary economies, structure management, campaign fleets and automatic battles. */
 (function(root){
 'use strict';
 const W=144,H=96,resources=['food','tokens','minerals','crystals','gas','sulfur','weapons','ammo','armor','explosives','medicines','herbs','mycelium','psiomycin'];
@@ -14,8 +14,8 @@ const stats={
  warehouse:{hp:450,size:3,capacity:5000,carrierSlots:4,buildTime:14,cost:{minerals:50,tokens:30,crystals:10}},
  farm:{hp:350,size:3,buildTime:14,cost:{minerals:25},resource:'food',slots:2},
  field:{hp:180,size:2,buildTime:8,cost:{minerals:8},addon:'farm',multiple:true,field:true,radius:9},
- greenhouse:{hp:240,size:2,buildTime:12,cost:{minerals:18,tokens:10,crystals:4},addon:'farm',multiple:true,resource:'herbs',slots:1,bio:true,cycle:12,yield:4},
- incubator:{hp:260,size:2,buildTime:14,cost:{minerals:22,tokens:15,crystals:6},addon:'farm',multiple:true,resource:'mycelium',slots:1,bio:true,cycle:14,yield:2},
+ greenhouse:{hp:240,size:2,buildTime:12,cost:{minerals:18,tokens:10,crystals:4},addon:'farm',multiple:true,resource:'herbs',bio:true,cycle:12,yield:4},
+ incubator:{hp:260,size:2,buildTime:14,cost:{minerals:22,tokens:15,crystals:6},addon:'farm',multiple:true,resource:'mycelium',bio:true,cycle:14,yield:2},
  ironmine:{hp:400,size:2,buildTime:18,cost:{minerals:25},resource:'minerals',slots:2,collector:true,radius:8,load:6,gatherTime:3,packTime:.75},
  goldmine:{hp:400,size:2,buildTime:18,cost:{minerals:30},resource:'crystals',slots:2,collector:true,radius:8,load:4,gatherTime:3.5,packTime:.75},
  gasstation:{hp:450,size:2,buildTime:20,cost:{minerals:40,tokens:30,crystals:8},resource:'gas',slots:2,extractor:true,rate:.75},
@@ -288,24 +288,18 @@ class Game{
     if(waiting||!this.productionNeeded(b)){if(u.inside!==b.id&&this.walkTo(u,b,dt)){u.inside=b.id;u.path=[];}return;}
     u.inside=null;if(this.walkTo(u,source,dt)){u.action+=dt;if(u.action>=stats[b.type].gatherTime){const amount=Math.min(stats[b.type].load,source.amount);source.amount-=amount;u.carry={resource:stats[b.type].resource,amount,raw:true,station:b.id};u.phase=null;u.action=0;u.path=[];u.gasSource=null;}}return;
    }
-   if(stats[b.type]?.bio){const s=stats[b.type],host=this.get(b.parent);if(!this.operational(host)||host.team!==u.team)return;
-    if(b.fieldStage==='growing'||b.buffer+s.yield>60||b.fieldStage==='sowing'&&!this.productionNeeded(b)){if(u.inside!==b.id&&this.walkTo(u,b,dt)){u.inside=b.id;u.action=0;}return;}
-    this.leaveInterior(u);if(!this.walkTo(u,b,dt))return;u.action+=dt;
-    if(b.fieldStage==='sowing'){b.fieldWork=Math.min(SOW_TIME,b.fieldWork+dt);if(b.fieldWork>=SOW_TIME-1e-8){b.fieldStage='growing';b.growth=0;b.grown=0;b.bioProgress=0;u.action=0;}return;}
-    if(b.fieldStage==='harvest'&&b.crop>=s.yield&&u.action>=HARVEST_TIME){b.crop-=s.yield;this.resetField(b);u.carry={resource:s.resource,amount:s.yield,raw:true,bio:true,station:b.id};u.phase='bio-return';u.action=0;u.path=[];}return;
-   }
    if(b.type==='farm'){
     if(u.phase==='process'){u.action+=dt;if(u.action>=FOOD_PROCESS_TIME&&b.buffer<=56){b.buffer+=4;u.phase=null;u.field=null;u.action=0;u.inside=null;}return;}
     if(u.phase==='return'){if(this.walkTo(u,b,dt)){u.phase='process';u.inside=b.id;u.action=0;u.path=[];}return;}
-    if(b.buffer+4>60||!this.productionNeeded(b)){u.field=null;u.path=[];u.action=0;return;}
-    const fields=this.alive(u.planet).filter(f=>f.type==='field'&&f.team===u.team&&this.operational(f)&&dist(f,b)<=9&&(!f.parent||f.parent===b.id)&&!this.claimed(u,'field',f.id));
-    const harvestable=f=>fields.includes(f)&&f.crop>=4&&(!b.waitForRipe||f.fieldStage==='harvest');
-    let f=this.get(u.field);if(!harvestable(f)&&!fields.some(e=>e===f&&f.fieldStage==='sowing')){f=fields.filter(harvestable).sort((a,c)=>dist(a,u)-dist(c,u))[0]||fields.filter(e=>e.fieldStage==='sowing').sort((a,c)=>dist(a,u)-dist(c,u))[0];if(u.field!==f?.id){u.path=[];u.retry=0;}u.field=f?.id;u.action=0;}
+    const fields=this.alive(u.planet).filter(f=>(f.type==='field'||stats[f.type]?.bio)&&f.team===u.team&&this.operational(f)&&dist(f,b)<=9&&(!f.parent||f.parent===b.id)&&!this.claimed(u,'field',f.id));
+    const yieldOf=f=>stats[f.type]?.bio?stats[f.type].yield:FIELD_YIELD,available=f=>(stats[f.type]?.bio?f.buffer+yieldOf(f)<=60&&this.productionNeeded(f):b.buffer+FIELD_YIELD<=60&&this.productionNeeded(b));
+    const harvestable=f=>fields.includes(f)&&available(f)&&f.crop>=yieldOf(f)&&(!b.waitForRipe||f.fieldStage==='harvest');
+    let f=this.get(u.field);if(!harvestable(f)&&!fields.some(e=>e===f&&f.fieldStage==='sowing'&&available(f))){f=fields.filter(harvestable).sort((a,c)=>dist(a,u)-dist(c,u))[0]||fields.filter(e=>e.fieldStage==='sowing'&&available(e)).sort((a,c)=>dist(a,u)-dist(c,u))[0];if(u.field!==f?.id){u.path=[];u.retry=0;}u.field=f?.id;u.action=0;}
     if(!f){if(u.inside!==b.id&&this.walkTo(u,b,dt)){u.inside=b.id;u.path=[];}return;}
     u.inside=null;
     if(this.walkTo(u,f,dt)){
      if(f.fieldStage==='sowing'){f.fieldWork=Math.min(SOW_TIME,f.fieldWork+dt);if(f.fieldWork>=SOW_TIME-1e-8){f.fieldStage='growing';f.fieldWork=SOW_TIME;f.growth=0;f.grown=0;u.field=null;u.path=[];u.action=0;}return;}
-     if(harvestable(f)){u.action+=dt;if(u.action>=HARVEST_TIME){f.crop-=4;if(f.fieldStage==='harvest'&&f.crop===0)this.resetField(f);u.action=0;u.phase='return';u.path=[];}}}
+     if(harvestable(f)){u.action+=dt;if(u.action>=HARVEST_TIME){const amount=yieldOf(f);f.crop-=amount;if(f.fieldStage==='harvest'&&f.crop===0)this.resetField(f);u.action=0;u.path=[];if(stats[f.type]?.bio){u.carry={resource:stats[f.type].resource,amount,raw:true,bio:true,station:f.id};u.field=null;u.phase='bio-return';}else u.phase='return';}}}
     return;
    }
    if(u.inside===b.id)return;if(this.walkTo(u,b,dt)){u.inside=b.id;u.path=[];}return;

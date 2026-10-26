@@ -1,4 +1,4 @@
-/* HELIOS H33: brutal industrial art on a unified native pixel grid, with the complete H9 renderer available for comparison. */
+/* HELIOS H34: brutal industrial art on a unified native pixel grid, with the complete H9 renderer available for comparison. */
 (function(root){
 'use strict';
 const legacy=typeof module!=='undefined'?require('./art-legacy.js'):root.RTSArtLegacy;
