@@ -5,9 +5,10 @@ const art=require('../art.js');
 test('drawing factions, work, combat and corpse frames leaves the simulation intact and uses whole pixels',()=>{
  const g=new Game(42,{ai:false}),calls=[];
  const c=new Proxy({fillRect:(...args)=>calls.push(args)},{get:(target,key)=>key in target?target[key]:()=>{},set:(target,key,value)=>{target[key]=value;return true;}});
+ for(const type of ['residents','freeResidents','population','carriers'])art.counterIcon(c,type);
  const before=JSON.stringify(g);
  for(const team of [0,1,2])for(const rank of [1,2,3])for(const type of ['worker','drone','soldier','assault','medic','grenadier','psyker','xeno','robot','demon','pirate']){
-  const e={type,team,rank,id:1,moving:true,facingX:-1,facingY:-1,walkDistance:2.3,cool:1.9,carry:{resource:'metal'}};
+  const e={type,team,rank,id:1,moving:true,facingX:-1,facingY:-1,walkDistance:2.3,cool:1.9,carry:{resource:'minerals'}};
   const snapshot=JSON.stringify(e);art.unit(c,e,20.3,40.7,12,{working:true});art.fallen(c,e,25,40,.1);art.fallen(c,e,25,40,1);assert.equal(JSON.stringify(e),snapshot);
  }
  for(const e of g.visible()){
@@ -26,7 +27,7 @@ test('drawing factions, work, combat and corpse frames leaves the simulation int
 test('both graphic styles preserve simulation and H9 remains an exact renderer fallback',()=>{
  const classic=require('../art-legacy.js'),g=new Game(42,{ai:false}),before=JSON.stringify(g);
  function calls(draw){const out=[],c=new Proxy({fillRect:(...a)=>out.push(a)},{get:(t,k)=>k in t?t[k]:()=>{},set:()=>true});draw(c);return out;}
- const e={type:'worker',team:0,moving:true,walkDistance:1.2,facingX:1,carry:{resource:'metal'}};
+ const e={type:'worker',team:0,moving:true,walkDistance:1.2,facingX:1,carry:{resource:'minerals'}};
  art.setStyle('classic');const old=calls(c=>art.unit(c,e,40,50,2));assert.deepEqual(old,calls(c=>classic.unit(c,e,40,50,2)));
  art.setStyle('refined');const current=calls(c=>art.unit(c,e,40,50,2));assert.notDeepEqual(current,old);
  assert.equal(art.setStyle('invalid'),false);assert.equal(art.getStyle(),'refined');assert.equal(JSON.stringify(g),before);

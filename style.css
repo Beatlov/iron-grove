@@ -142,3 +142,36 @@ canvas{display:block;image-rendering:pixelated;touch-action:none}
 @media(max-width:1100px){.census{min-width:154px}.census-top{gap:5px}#carrier-total{font-size:9px}#civilian-summary{font-size:8px}}
 
 .audio-settings{border:1px solid #647253;padding:8px;margin:10px 0}.audio-settings legend{padding:0 5px;color:var(--accent)}.audio-settings label{display:flex;align-items:center;justify-content:space-between;gap:10px}.audio-settings input[type=checkbox]{width:auto;accent-color:#b8ce8c}.audio-settings input[type=range]{width:100%;padding:0;accent-color:#b8ce8c}.audio-settings button{width:100%;padding:5px;margin-top:5px}.audio-settings output{color:#cdd9ab}
+
+/* H31: compact accounting and independent floating consoles over the world. */
+#app{display:block;padding:0;background:transparent}
+.topbar{position:absolute;inset:4px 6px auto;min-height:42px;height:auto;padding:5px 7px;gap:8px;z-index:5;background:#233025dd}
+.economy-bar{flex:1;gap:12px;min-width:0;justify-content:flex-start}
+#resources{gap:7px;flex-shrink:0}.resource{gap:2px}.resource-label{display:none}.resource-icon{width:22px;height:26px}.resource-value{font:700 12px monospace}
+.census{display:flex;gap:10px;align-items:center;min-width:0;padding-left:10px;border-left:1px solid #91a27566}
+.census-counter{display:flex;align-items:center;white-space:nowrap;gap:2px;cursor:help}.census-counter canvas{width:24px;height:28px;image-rendering:pixelated}.census-counter strong{font:700 12px monospace;color:#f0e8c8}.census-counter small{font:10px monospace;color:#acbb99}
+.mapbar{top:55px;left:14px;right:auto;background:none;border:0;padding:0;box-shadow:none;font:700 12px monospace;text-shadow:1px 1px #172018}
+#territory-score{display:none}.view-controls{top:53px;right:10px}
+.command-deck{position:absolute;inset:auto 0 0;min-height:0;height:0;display:block;border:0;padding:0;background:none;box-shadow:none;pointer-events:none;z-index:3}
+.command-deck>*{pointer-events:auto}
+.minimap-panel{position:absolute;bottom:10px;left:10px;width:204px;height:auto;display:flex;gap:6px;padding:7px;background:#223127e8;border:1px solid #7d8d65}
+.planet-nav{display:flex;align-items:center;gap:4px;min-height:24px}.planet-nav select{flex:1;width:0;min-width:0;padding:3px;font:11px monospace}.planet-nav button{padding:2px 6px;font-size:13px}
+#minimap{display:block;width:100%;height:auto;aspect-ratio:3/2}.speed-controls{height:24px;gap:5px}.speed-button svg{width:26px;height:17px}
+.build-ribbon{position:absolute;bottom:10px;right:10px;width:302px;max-height:240px;display:grid;grid-template-columns:repeat(5,54px);grid-auto-rows:54px;align-content:end;gap:6px;padding:0;overflow:visible;background:none;border:0;box-shadow:none}
+.build-ribbon .command-button{width:54px;height:54px;min-height:54px;flex:none;border:1px solid #b0c28d44;background:#1e2b2144;box-shadow:none;padding:3px}
+.build-ribbon .command-button:hover{background:#536745aa;border-color:#d5dfac}.build-ribbon .command-icon{width:46px;height:46px;image-rendering:pixelated}.build-ribbon .command-name{display:none}
+.selection-console{position:absolute;bottom:204px;right:10px;width:404px;max-height:calc(100dvh - 285px);overflow:auto;display:flex;flex-direction:column;gap:4px;pointer-events:auto}
+.selection-console[hidden]{display:none}.selection-panel{padding:8px;background:#223127ed}.commands-panel{padding:6px;background:#223127ed;max-height:none}
+.selection-panel .console-heading,.commands-panel .console-heading,.selection-help,#command-hint{display:none}.selection-heading{align-items:flex-start}.portrait-frame{width:58px;height:64px;flex:0 0 58px}#portrait{width:56px;height:56px}
+#selection{font:700 12px monospace;margin:0 0 3px}#details{font:10px/1.35 monospace;max-height:86px!important;overflow:auto}.selection-panel:has(#carrier-info:not([hidden])) #details{max-height:70px!important}
+.command-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-auto-rows:44px;gap:4px;height:auto}.command-grid .command-icon{width:32px;height:32px}.command-grid .command-name{display:none}.empty-slot{display:none}
+.inventory-grid{grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}.inventory-item{padding:1px;gap:1px}.inventory-item canvas{width:17px;height:17px}.inventory-item strong{font:9px monospace}
+#message{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);padding:0;border:0}
+.road-plan{bottom:210px}
+@media(max-width:1250px){.topbar{gap:4px;padding:4px}.economy-bar{gap:7px}#resources{gap:3px}.resource-icon{width:17px;height:23px}.resource-value{font-size:10px}.census{gap:4px;padding-left:5px}.census-counter canvas{width:19px;height:24px}.census-counter strong{font-size:10px}.census-counter small{font-size:9px}.top-controls{gap:3px}.top-controls button{font-size:9px;padding:4px}#clock{font-size:10px;min-width:32px}}
+@media(max-width:1050px){#resources{gap:2px}.resource-icon{width:15px}.resource-value{font-size:9px}.census{gap:3px}.census-counter canvas{width:17px}.census-counter strong{font-size:9px}.census-counter small{font-size:8px}.economy-bar{gap:5px}.top-controls button{padding:3px}.minimap-panel{width:194px}.build-ribbon{width:282px;grid-template-columns:repeat(5,50px);grid-auto-rows:50px}.build-ribbon .command-button{width:50px;height:50px;min-height:50px}.build-ribbon .command-icon{width:42px;height:42px}.selection-console{width:370px;bottom:192px;max-height:calc(100dvh - 272px)}}
+
+/* Counter row overrides the previous two-line census layout. */
+.census{flex-direction:row}.topbar{height:42px}.resource-label{display:none!important}
+
+.commands-panel{display:block;flex-shrink:0}.selection-panel{flex-shrink:0}.command-grid{grid-template-rows:none;grid-auto-rows:44px}.command-grid .command-button{min-height:44px}

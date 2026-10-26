@@ -1,7 +1,7 @@
 /* HELIOS H3. Native pixel artwork only; this module never advances simulation. */
 (function(root){
 'use strict';
-const resources={food:'#9bd34f',money:'#ddc779',metal:'#8daab8',crystals:'#c48bcc',gas:'#72c7bd',sulfur:'#d6c85c',weapons:'#c7a376',ammo:'#d8a85c',armor:'#8dabc2',explosives:'#d48162',medicines:'#b8dbc2'};
+const resources={food:'#9bd34f',tokens:'#ddc779',minerals:'#8daab8',crystals:'#c48bcc',gas:'#72c7bd',sulfur:'#d6c85c',weapons:'#c7a376',ammo:'#d8a85c',armor:'#8dabc2',explosives:'#d48162',medicines:'#b8dbc2'};
 const palettes=[
  {ink:'#171b1c',dark:'#303a2c',shade:'#465733',armor:'#718846',light:'#94a760',sand:'#ddc79b',cream:'#f0dcad',steel:'#626a70',steelLight:'#9ca3a0',pack:'#8e6643',glow:'#9ded32',hot:'#dcb76d'},
  {ink:'#1b191d',dark:'#332b30',shade:'#57343a',armor:'#8b4444',light:'#b55b4c',sand:'#b9a080',cream:'#ddc5a0',steel:'#565361',steelLight:'#8e8690',pack:'#695049',glow:'#ffb34c',hot:'#ef7644'}
@@ -75,7 +75,7 @@ function deposit(ctx,e,x,y,time=0){
   poly([[1,18],[4,7],[9,5],[10,1],[16,6],[20,9],[23,20]],'#242b2b');r(5,7,5,10,'#7c8177');r(6,8,2,7,'#bac0a1');line(11,5,20,16,'#b98b58',3);r(11,11,7,6,'#455944');r(12,12,5,2,'#889d6d');r(2,18,8,3,'#9f764c');r(17,17,6,3,'#59616a');
  }else if(e.resource==='regolith'){
   poly([[0,20],[2,12],[7,11],[8,4],[16,3],[19,10],[23,14],[24,21]],'#444844');poly([[2,19],[3,13],[9,13],[10,6],[16,5],[18,12],[22,15],[22,19]],'#969386');r(10,6,6,2,'#c3bca5');r(4,14,5,2,'#bcb6a0');r(12,14,6,5,'#757569');r(2,20,21,2,'#555c54');
- }else if(e.resource==='metal'){
+ }else if(e.resource==='minerals'){
   poly([[1,19],[4,9],[7,8],[9,0],[16,3],[19,11],[23,16],[22,21]],'#303b3d');poly([[4,18],[6,10],[9,9],[11,3],[16,5],[17,13],[21,17],[20,19]],'#687f88');line(11,4,13,13,'#c6cbbc',2);r(6,12,3,3,'#abc4c8');r(15,14,4,2,'#9cb1b4');r(3,20,17,2,'#414f54');
  }else if(e.resource==='gas'){
   if(e.type==='deposit'){poly([[1,20],[3,14],[8,10],[17,11],[23,18],[21,22]],'#4b5750');r(6,15,13,5,'#202d2b');r(8,16,9,2,'#416e66');const drift=Math.floor(time*2)%3;r(8,10-drift,5,4,'#6dafa2');r(12,5-drift,5,5,'#88c4b3');r(9,1-drift,4,3,'#a2c8b488');}
@@ -87,7 +87,7 @@ function deposit(ctx,e,x,y,time=0){
  }else if(e.resource==='medicines'){plate(3,8,19,14,'#acc3ab');r(5,10,15,10,c);r(11,10,4,10,'#4f875b');r(8,13,10,4,'#4f875b');r(9,5,8,3,'#526b59');
  }else if(e.resource==='food'){
   plate(6,4,14,18,'#75846b');r(8,7,10,11,'#aad06d');r(9,8,2,8,'#e3e9a4');r(7,3,12,4,'#c2c2a8');r(8,18,10,3,'#495945');
- }else if(e.resource==='money'){plate(3,7,20,14,'#827447');r(5,9,16,8,'#d8c478');r(10,10,6,6,'#7e8050');r(12,9,2,8,'#f0df98');}else if(e.resource==='weapons'){plate(2,11,22,6,c||'#6d7472');r(4,12,15,2,'#b3bab0');r(10,16,4,5,'#343b39');r(20,12,6,4,'#303735');r(6,13,2,2,'#b3cb80');}else{
+ }else if(e.resource==='tokens'){plate(3,7,20,14,'#827447');r(5,9,16,8,'#d8c478');r(10,10,6,6,'#7e8050');r(12,9,2,8,'#f0df98');}else if(e.resource==='weapons'){plate(2,11,22,6,c||'#6d7472');r(4,12,15,2,'#b3bab0');r(10,16,4,5,'#343b39');r(20,12,6,4,'#303735');r(6,13,2,2,'#b3cb80');}else{
   r(2,19,21,3,'#52465c');for(const [dx,dy,h]of [[3,19,12],[14,19,17],[8,17,23]]){poly([[dx,dy],[dx-1,dy-h+5],[dx+2,dy-h],[dx+5,dy-h+5],[dx+4,dy]],'#594967');poly([[dx+1,dy-1],[dx+1,dy-h+5],[dx+2,dy-h+2],[dx+4,dy-h+5],[dx+3,dy]],c);line(dx+2,dy-h+5,dx+2,dy-3,'#e3b5dc');}
  }
 }
@@ -126,7 +126,7 @@ function buildingSprite(ctx,e,x,y,time=0,state={}){
  }else if(e.type==='farm'){
   for(const [dx,dy]of [[1,7],[9,3],[17,7]]){plate(dx,dy,7,14,steel);r(dx+1,dy+2,5,9,c.shade);r(dx+2,dy+3,3,7,resources.food);r(dx+2,dy+3,1,6,c.cream);r(dx,dy,7,2,trim);r(dx+1,dy+11,5,2,c.steelLight);}r(1,22,22,1,c.pack);
  }else if(e.type==='ironmine'){
-  panel(5,8,18,15);plate(9,12,10,11,edge);r(11,14,6,8,'#af6c3d');r(12,17,4,5,'#efb465');r(13,19,2,3,c.cream);for(const [dx,dy]of [[1,2],[17,-1]]){r(dx,dy,5,12,edge);r(dx+1,dy+1,3,10,steel);r(dx,dy-1,5,2,trim);}r(1,19,6,3,resources.metal);
+  panel(5,8,18,15);plate(9,12,10,11,edge);r(11,14,6,8,'#af6c3d');r(12,17,4,5,'#efb465');r(13,19,2,3,c.cream);for(const [dx,dy]of [[1,2],[17,-1]]){r(dx,dy,5,12,edge);r(dx+1,dy+1,3,10,steel);r(dx,dy-1,5,2,trim);}r(1,19,6,3,resources.minerals);
  }else if(e.type==='goldmine'){
   panel(2,16,20,7);for(const side of [-1,1]){line(12+side*8,17,12+side*6,4,steel,2);r(12+side*6,5,2,4,resources.crystals);}poly([[10,14],[9,6],[12,0],[15,6],[14,14]],edge);poly([[11,12],[10,6],[12,2],[14,6],[13,12]],resources.crystals);r(11,5,1,6,'#e4c5e3');r(9,19,6,1,resources.crystals);
  }else if(['gasstation','sulfurstation'].includes(e.type)){
@@ -138,7 +138,7 @@ function buildingSprite(ctx,e,x,y,time=0,state={}){
    if(e.type==='chemical'){r(5,11,4,8,resources.medicines);r(15,8,4,11,resources.gas);r(10,13,4,4,c.glow);}
  }else if(['weaponshop','ammoshop','armorshop','explosiveshop','medicineshop'].includes(e.type)){
   panel(0,6,24,17);r(3,10,18,10,c.ink);r(4,11,16,4,c.steel);r(6,12,12,1,c.steelLight);r(9,15,5,7,c.pack);r(2,2,7,6,c.steel);r(3,1,5,2,c.sand);r(16,5,5,3,c.glow);r(16,18,6,2,c.hot);const mark={weaponshop:'weapons',ammoshop:'ammo',armorshop:'armor',explosiveshop:'explosives',medicineshop:'medicines'}[e.type];r(5,16,5,4,resources[mark]);if(e.type==='medicineshop'){r(15,10,3,7,resources.medicines);r(13,12,7,3,resources.medicines);}
- }else if(e.type==='guild'){
+ }else if(e.type==='cryptofarm'){
   panel(1,6,22,17);panel(4,1,16,7);r(6,3,12,2,c.sand);r(10,8,5,14,c.ink);r(11,10,3,11,c.sand);r(3,12,5,6,c.steel);r(16,12,5,6,c.steel);r(4,13,3,2,c.glow);r(17,13,3,2,c.glow);r(2,20,20,2,c.pack);
  }else if(e.type==='barracks'){
   panel(0,8,24,14);plate(4,11,16,12,edge);r(6,12,12,9,c.steel);for(let i=0;i<4;i++)r(6,13+i*2,12,1,c.shade);r(3,21,18,2,trim);r(10,21,4,2,c.hot);panel(3,2,18,7);r(5,4,14,2,edge);r(7,4,10,1,signal);r(1,11,2,9,c.sand);r(21,11,2,9,c.sand);
@@ -148,7 +148,7 @@ function buildingSprite(ctx,e,x,y,time=0,state={}){
   plate(5,19,14,5,neutral?steel:c.shade);plate(8,16,8,5,trim);r(11,-2,2,20,c.steelLight);r(11,0,1,16,signal);line(7,4,17,4,steel,2);line(7,4,5,-1,c.steelLight);line(17,4,19,-1,c.steelLight);r(10,-5,4,4,edge);r(11,-4,2,2,signal);r(8,17,8,1,signal);
  }
  if(demon&&e.type!=='base'&&e.type!=='outpost'){
-  // Demonic architecture is armored metal with horn brackets, never organic tentacles.
+  // Demonic architecture is armored minerals with horn brackets, never organic tentacles.
   poly([[1,10],[0,3],[3,5],[5,9]],trim);poly([[19,9],[23,3],[23,8],[22,12]],trim);if(['barracks','house'].includes(e.type))skull(10,6);r(2,s-3,2,1,c.hot);r(s-4,s-3,2,1,c.hot);
  }
 

@@ -7,14 +7,14 @@ function install(api){
  Object.assign(stats.assault,{damageType:'cutting',weaknesses:{mental:1.35}});
  Object.assign(stats.grenadier,{damageType:'explosive',splash:2.3,weaknesses:{firearm:1.35,cutting:1.35}});
  Object.assign(stats.medic,{immunities:['mental']});
- stats.psyker={hp:115,speed:2.5,size:1,damage:26,range:6,armor:1,military:true,trainTime:18,food:1,money:2,damageType:'mental',weaknesses:{explosive:1.35}};
- unitCosts.psyker={weapons:1,medicines:2,armor:1,money:55};
+ stats.psyker={hp:115,speed:2.5,size:1,damage:26,range:6,armor:1,military:true,trainTime:18,food:1,tokens:2,damageType:'mental',weaknesses:{explosive:1.35}};
+ unitCosts.psyker={psiomycin:2,armor:1,tokens:55};
  stats.xeno={hp:95,speed:3.2,size:1,damage:15,range:1.25,armor:1,damageType:'cutting',enemy:true,weaknesses:{explosive:1.25}};
  stats.robot={hp:130,speed:1.9,size:1,damage:13,range:4.5,armor:5,damageType:'firearm',enemy:true};
  stats.demon={hp:115,speed:2.5,size:1,damage:16,range:4,armor:2,damageType:'mental',enemy:true};
  stats.pirate={hp:105,speed:2.5,size:1,damage:14,range:5,armor:2,damageType:'firearm',enemy:true};
  const factions={xenos:{name:'Ксеносы',type:'xeno'},robots:{name:'Роботы',type:'robot'},demons:{name:'Демоны',type:'demon'},pirates:{name:'Пираты',type:'pirate'}};
- const ranks=[0,40,110],siteTypes={asteroid:{name:'Астероид',reward:{metal:60,crystals:20,money:30}},moon:{name:'Малая планета',reward:{food:80,sulfur:20,gas:16}},wreck:{name:'Обломки корабля',reward:{weapons:3,ammo:4,armor:2,money:40}}};
+ const ranks=[0,40,110],siteTypes={asteroid:{name:'Астероид',reward:{minerals:60,crystals:20,tokens:30}},moon:{name:'Малая планета',reward:{food:80,sulfur:20,gas:16}},wreck:{name:'Обломки корабля',reward:{weapons:3,ammo:4,armor:2,tokens:40}}};
  Object.assign(api,{factions,rankThresholds:ranks,siteTypes});
  const oldArrive=Game.prototype.arrive;
  Object.assign(Game.prototype,{
@@ -62,7 +62,7 @@ function install(api){
    const battle=this.startBattle(e.planet,e.team,troops,defenders,towers,{from:e.from,site:e.site,generation:e.generation,laboratory:!!e.laboratory});if(battle)this.pendingEncounters=this.pendingEncounters.filter(v=>v!==e);return battle;
   },
   siteSurface(id){const site=this.site(id);if(!site)return null;const key='site:'+id;if(this.maps[key])return this.maps[key];const parent=this.planet(site.planet),width=site.kind==='moon'?112:96,height=site.kind==='moon'?80:64,p={id:key,width,height,seed:(parent.seed^Math.imul(id,2654435761))>>>0,roads:new Set(),entities:[],terrain:Array.from({length:H},(_,y)=>Array.from({length:W},(_,x)=>+(x<1||y<1||x>=width-1||y>=height-1)))};this.maps[key]=p;
-   for(let i=0;i<8;i++){const n=(Math.imul(i+1,1664525)^p.seed)>>>0,e=this.add('deposit',-1,10+n%(width-20),10+(n>>>8)%(height-20),key);e.resource=i%2?'metal':'crystals';e.amount=1200;}return p;
+   for(let i=0;i<8;i++){const n=(Math.imul(i+1,1664525)^p.seed)>>>0,e=this.add('deposit',-1,10+n%(width-20),10+(n>>>8)%(height-20),key);e.resource=i%2?'minerals':'crystals';e.amount=1200;}return p;
   },
   battleSurface(b=this.activeBattle()){return b?this.planet(b.mapId??b.planet):this.planet();},
   canManageProcesses(team=0){const b=this.activeBattle();return !b||!b.done&&b.defender===team&&!b.site;},
