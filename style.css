@@ -175,3 +175,27 @@ canvas{display:block;image-rendering:pixelated;touch-action:none}
 .census{flex-direction:row}.topbar{height:42px}.resource-label{display:none!important}
 
 .commands-panel{display:block;flex-shrink:0}.selection-panel{flex-shrink:0}.command-grid{grid-template-rows:none;grid-auto-rows:44px}.command-grid .command-button{min-height:44px}
+
+/* H32: main actions right, one building strip above; object card beside the minimap. */
+.minimap-panel{width:230px}
+.main-commands{position:absolute;right:10px;bottom:10px;display:flex;gap:8px;background:none;pointer-events:auto}
+.primary-command{position:relative;width:66px;height:66px;min-height:66px;padding:4px;background:#20302744;border:1px solid #a6ba7a55;box-shadow:none}
+.primary-command canvas{width:56px;height:56px;image-rendering:pixelated;pointer-events:none}.primary-command[aria-expanded=true]{border-color:#e0d1a3;background:#526b3b88}
+#army-badge{position:absolute;right:5px;bottom:3px;font:700 11px monospace;color:#eee5c6;pointer-events:none}
+.build-ribbon{bottom:86px;right:10px;display:flex;flex-direction:row;flex-wrap:nowrap;align-items:center;gap:5px;width:max-content;max-width:calc(100vw - 28px);max-height:none;overflow-x:auto;overflow-y:hidden;padding:2px;grid-template-columns:none;scrollbar-width:thin;background:none}
+.build-ribbon[hidden]{display:none}.build-ribbon .command-button{width:50px;height:50px;min-height:50px;flex:0 0 50px}.build-ribbon .command-icon{width:44px;height:44px}
+.selection-console{left:252px;right:auto;bottom:10px;width:400px;max-width:calc(100vw - 508px);max-height:calc(100dvh - 90px)}
+.card-actions{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 7px;padding-bottom:6px;border-bottom:1px solid #71845b55}.card-actions[hidden]{display:none}.card-actions .command-button{width:42px;height:42px;min-height:42px;flex:0 0 42px}.card-actions .command-icon{width:34px;height:34px}.card-actions .command-name{display:none}
+.command-grid{grid-template-columns:repeat(7,minmax(0,1fr))}.recipe-details{display:flex;flex-direction:column;gap:3px;margin-top:5px}.recipe-details[hidden]{display:none}
+.recipe-row{display:flex;flex-wrap:wrap;gap:4px 7px;align-items:center;font:11px/1.35 monospace}
+.recipe-label{color:#b4c0a4;font:10px/1.35 monospace;margin-right:3px}.recipe-chip{display:inline-flex;align-items:center;gap:3px;white-space:nowrap;padding:1px 2px}
+.recipe-chip canvas{width:21px;height:22px;image-rendering:pixelated;flex-shrink:0}.recipe-chip strong{font:700 11px monospace;color:inherit}.recipe-chip.enough{color:#f2f0e7}.recipe-chip.missing{color:#e6a09a}
+.recipe-tooltip{position:fixed;z-index:30;width:310px;max-width:calc(100vw - 16px);max-height:calc(100dvh - 16px);overflow:hidden;pointer-events:none;padding:11px 13px;background:#202d24fa;border:1px solid #8d9c70;border-top:2px solid #d1bd86;box-shadow:0 5px 20px #0008}
+.recipe-tooltip-title{display:block;font:700 12px monospace;color:#eee3c4;margin-bottom:7px}.recipe-tooltip .recipe-row{margin-top:4px}.recipe-tooltip-note{margin:7px 0 0;color:#c2c8ac;font:10px/1.4 Arial}
+#road-summary{white-space:normal;min-width:100px}.road-plan{bottom:150px}.road-plan .recipe-row{margin-top:3px}
+.roster-cost{margin:5px 0}.roster-cost .recipe-chip canvas{width:18px;height:20px}.roster-cost .recipe-chip strong{font-size:10px}
+.help-recipes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px 0}.help-recipes section{padding:8px;border:1px solid #62734e;background:#243329}.help-recipes strong{font-size:11px}.help-recipes .recipe-row{margin-top:5px}
+@media(max-width:1100px){.minimap-panel{width:218px}.selection-console{left:240px;width:370px;max-width:calc(100vw - 482px)}.primary-command{width:62px;height:62px;min-height:62px}.primary-command canvas{width:52px;height:52px}.build-ribbon{bottom:82px;gap:4px}.build-ribbon .command-button{width:48px;height:48px;min-height:48px;flex-basis:48px}.build-ribbon .command-icon{width:42px;height:42px}.recipe-row{gap:3px 5px}.card-actions .command-button{width:40px;height:40px;min-height:40px;flex-basis:40px}}
+/* Floating action/build icons have no permanent backing plate. */
+.primary-command,.primary-command[aria-expanded=true],.build-ribbon .command-button{background:transparent;box-shadow:none}
+.primary-command:hover,.build-ribbon .command-button:hover{background:#40563c55}
