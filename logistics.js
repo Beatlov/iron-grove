@@ -1,4 +1,4 @@
-/* HELIOS H26: production-first delivery, nearest stores and visible field workers. */
+/* HELIOS H33: production-first delivery, nearest stores and visible field workers. */
 (function(root){
 'use strict';
 function install(api){
@@ -9,7 +9,7 @@ function install(api){
  Object.assign(Game.prototype,{
   workerHome(u){return this.alive(u.planet).filter(b=>b.type==='base'&&b.team===u.team&&this.ready(b)).sort((a,b)=>dist(a,u)-dist(b,u))[0]||null;},
   freeWorkers(team=0,planet=this.activePlanet){return this.alive(planet).filter(u=>u.type==='worker'&&u.team===team&&!u.job&&!u.building&&!u.carry);},
-  workerVisible(u){return !u.inside&&(!!u.building||!!u.returning||!!u.job&&(u.arrivedJob!==u.job||this.get(u.job)?.type==='farm'||!!stats[this.get(u.job)?.type]?.collector));},
+  workerVisible(u){return !u.inside&&(!!u.carry?.bio||!!u.building||!!u.returning||!!u.job&&(u.arrivedJob!==u.job||this.get(u.job)?.type==='farm'||!!stats[this.get(u.job)?.type]?.bio||!!stats[this.get(u.job)?.type]?.collector));},
   leaveInterior(u){if(!u.inside)return;const b=this.get(u.inside);if(b)Object.assign(u,this.freeNear(b));u.inside=null;u.returning=false;u.path=[];u.retry=0;},
   returnHome(u,dt){const home=this.workerHome(u);if(!home){u.inside=null;u.returning=false;u.path=[];return;}u.home=home.id;if(u.inside===home.id){u.returning=false;return;}if(u.inside)this.leaveInterior(u);u.returning=true;if(this.walkTo(u,home,dt)){u.inside=home.id;u.returning=false;u.path=[];}},
   carriers(b){return this.alive(b.planet).filter(d=>d.type==='drone'&&d.home===b.id&&d.team===b.team);},
@@ -20,7 +20,7 @@ function install(api){
 
   },
   spawnCarrier(b){const point=this.freeNear(b),d=this.add('drone',b.team,point.x,point.y,b.planet);d.home=b.id;d.inside=b.id;return d;},
-  buyDrone(id,team=0){const b=this.get(id);if(this.result||!this.canManageProcesses(team)||!this.operational(b)||b.team!==team||this.regions[b.planet]?.owner!==team||!stats[b.type]?.carrierSlots||this.carriers(b).length+b.droneQueue.length>=stats[b.type].carrierSlots||!this.pay(droneCost,team))return false;b.droneQueue.push({left:DRONE_TIME});this.message='Заказ грузового дрона: 30 токенов + 12 минералов, сборка 6 с. Содержание: 1 минерал / 10 с.';return true;},
+  buyDrone(id,team=0){const b=this.get(id);if(this.result||!this.canManageProcesses(team)||!this.operational(b)||b.team!==team||this.regions[b.planet]?.owner!==team||!stats[b.type]?.carrierSlots||this.carriers(b).length+b.droneQueue.length>=stats[b.type].carrierSlots||!this.pay(droneCost,team))return false;b.droneQueue.push({id:this.nextId++,left:DRONE_TIME});this.message='Заказ грузового дрона: 30 токенов + 12 минералов, сборка 6 с. Содержание: 1 минерал / 10 с.';return true;},
   cancelDrones(b,captured=false){for(const q of b.droneQueue)for(const [r,n]of Object.entries(droneCost)){if(!captured)this.refund(r,n,b.team);else{let left=n;for(const store of this.storages(b.team).filter(s=>s.planet!==b.planet))left-=this.deposit(store,r,left);this.teams[b.team].pending[r]+=left;}}b.droneQueue=[];},
   transportClaims(d){return this.alive(d.planet).filter(e=>e.type==='drone'&&e.team===d.team&&e.id!==d.id);},
   incoming(d,to,r=null){return this.transportClaims(d).reduce((n,c)=>n+(c.carry?.to===to&&(!r||c.carry.resource===r)?c.carry.amount:0)+(c.task?.to===to&&(!r||c.task.resource===r)?c.task.amount:0),0);},
