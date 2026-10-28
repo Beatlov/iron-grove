@@ -1,0 +1,30 @@
+{
+  "version": "H36",
+  "scope": "Two outdoor crystal workers, two reachable finite deposits, 60s warmup and 300s sample, real carrying/packing/drone deliveries. Roads pave passable cells in the service area. Not a complete campaign balance model.",
+  "runs": [
+    {
+      "postX": 80,
+      "roads": false,
+      "workerCount": 2,
+      "sampleSeconds": 300,
+      "rawPerMinute": 86.4,
+      "deliveredPerMinute": 87.2
+    },
+    {
+      "postX": 80,
+      "roads": true,
+      "workerCount": 2,
+      "sampleSeconds": 300,
+      "rawPerMinute": 102.4,
+      "deliveredPerMinute": 102.4
+    },
+    {
+      "postX": 76,
+      "roads": true,
+      "workerCount": 2,
+      "sampleSeconds": 300,
+      "rawPerMinute": 70.4,
+      "deliveredPerMinute": 72
+    }
+  ]
+}

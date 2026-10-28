@@ -220,8 +220,8 @@ canvas{display:block;image-rendering:pixelated;touch-action:none}
 .selection-console{overflow:visible}.selection-panel{overflow-y:auto;max-height:calc(100dvh - 180px)}
 .card-queues{position:absolute;bottom:calc(100% + 7px);left:0;right:0;margin:0;flex-direction:row;align-items:flex-end;gap:8px;max-height:70px;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
 .queue-group{flex:0 0 auto}.queue-row{overflow:visible}.queue-label{display:none}
-.workplace-hire{width:30px;height:30px;min-height:30px;flex:0 0 30px;margin-left:4px;padding:0;font:700 23px monospace;color:#c5dc9c;border:1px solid #819365;background:#26382bd9;box-shadow:none}
-.workplace-hire:hover{background:#536940}.workplace-hire:disabled{opacity:.4}
+.workplace-add{width:30px;height:30px;min-height:30px;flex:0 0 30px;margin-left:4px;padding:0;font:700 23px monospace;color:#c5dc9c;border:1px solid #819365;background:#26382bd9;box-shadow:none}
+.workplace-add:hover{background:#536940}.workplace-add:disabled{opacity:.4}
 @media(max-width:1250px){.resource-row{gap:5px}.economy-bar{gap:7px 10px}#resources{gap:7px 10px}.resource-row+.resource-row{padding-left:10px}.census{gap:6px}.resource-icon{width:18px;height:22px}.census-counter canvas{width:22px;height:24px}}
 
 #resources{flex:0 1 auto;min-width:0;max-width:100%}.queue-group+.queue-group{border-left:1px solid #80926166;padding-left:8px}

@@ -1,4 +1,4 @@
-/* HELIOS H36: brutal industrial art on a unified native pixel grid, with the complete H9 renderer available for comparison. */
+/* HELIOS H37: brutal industrial art on a unified native pixel grid, with the complete H9 renderer available for comparison. */
 (function(root){
 'use strict';
 const legacy=typeof module!=='undefined'?require('./art-legacy.js'):root.RTSArtLegacy;
@@ -159,8 +159,8 @@ function buildingIcon(ctx,type,team=0){
  switch(type){
  case 'base':poly([[8,5],[23,5],[28,11],[28,25],[4,25],[4,11]],c.ink);r(7,11,18,12,c.armor);r(10,7,12,5,c.light);gate(12,16,8,10);r(14,9,4,2,c.glow);break;
  case 'house':hall(4,8,15,18);hall(18,13,10,13);r(7,14,4,4,c.sand);r(13,14,3,4,c.sand);gate(21,20,4,6);break;
- case 'generator':hall(5,9,22,17);for(let x=9;x<25;x+=6){gate(x,12,4,11);r(x+1,14,2,6,c.hot);}plate(2,5,7,9,c.steel);r(4,4,3,5,c.sand);break;
- case 'gasplant':tank(3,8,10,18,'#78b8a3');hall(13,13,16,13);r(16,16,10,3,c.hot);plate(18,3,6,11,c.steel);r(18,3,6,2,c.sand);break;
+ case 'generator':hall(5,9,22,17);for(let x=9;x<25;x+=6){gate(x,12,4,11);r(x+1,14,2,6,resources.crystals);}plate(2,5,7,9,c.steel);r(4,4,3,5,c.sand);break;
+ case 'largegenerator':tank(3,8,10,18,resources.crystals);hall(13,13,16,13);r(16,16,10,3,c.hot);plate(18,3,6,11,c.steel);r(18,3,6,2,c.sand);break;
  case 'warehouse':hall(4,7,22,20);gate(8,15,11,12);plate(21,20,8,7,c.sand);break;
  case 'farm':tank(5,6,10,20,c.glow);tank(17,6,10,20,c.glow);r(14,21,4,3,c.steelLight);break;
  case 'field':plate(4,6,24,21,c.pack);for(let y=10;y<=22;y+=6)r(7,y,18,3,c.light);break;
@@ -185,7 +185,7 @@ function buildingIcon(ctx,type,team=0){
  }
 }
 function building(ctx,e,x,y,time=0,state={}){
- if(style==='classic'&&!['cryptofarm','greenhouse','incubator','psishop','generator','gasplant'].includes(e.type))return legacy.building(ctx,e,x,y,time,state);
+ if(style==='classic'&&!['cryptofarm','greenhouse','incubator','psishop','generator','largegenerator'].includes(e.type))return legacy.building(ctx,e,x,y,time,state);
  const width=(e.width||e.size||2)*24,height=(e.height||e.size||2)*24,c=palettes[e.team===1?1:0],signal=c.glow,ox=Math.round(x-width/2),oy=Math.round(y-height/2);
  ctx.save();ctx.beginPath();ctx.rect(ox,oy,width,height);ctx.clip();
  const {r,plate,line,poly}=pixelPainter(ctx,ox,oy,2),w=width/2,h=height/2;
@@ -204,8 +204,8 @@ function building(ctx,e,x,y,time=0,state={}){
  if(type==='field'){r(2,3,w-4,h-7,'#403a28');for(let i=0;i<4;i++){r(3,5+i*4,w-6,2,'#67613b');if(e.fieldStage!=='sowing'&&(e.crop||0)>i){for(let j=0;j<4;j++)r(4+j*4,4+i*4,2,3,e.fieldStage==='growing'?'#73894b':'#c1be68');}}r(1,h-5,w-2,2,c.steel);}
  else if(type==='base'){block(5,19,14,18);block(w-17,16,12,22,c.steel);poly([[10,9],[w-15,9],[w-6,18],[w-6,h-15],[w/2,h-7],[10,h-15],[5,18]],c.ink);poly([[11,10],[w-16,10],[w-8,19],[w-8,h-17],[w/2,h-10],[11,h-17],[7,19]],c.armor);poly([[11,11],[w-16,11],[w-9,18],[10,18]],c.light);door(w/2-5,h-22,10,13);block(w/2-9,7,16,9,c.steel);r(w/2-5,10,8,2,signal);line(w-13,4,w-13,14,c.steelLight,2);poly([[w-20,3],[w-6,3],[w-9,7],[w-17,7]],c.sand);r(w-13,0,1,4,c.hot);}
  else if(type==='house'){block(4,5,w-13,12);block(12,16,w-16,13);block(3,20,8,9,c.steel);for(const [px,py]of [[7,9],[15,9],[17,20],[25,20]]){r(px,py,5,4,c.dark);r(px+1,py+1,3,2,c.sand);}door(6,h-16,5,10);r(2,h-7,12,2,c.steel);r(w-10,11,7,2,c.sand);r(w-9,13,1,10,c.steelLight);}
- else if(type==='generator'){block(4,10,w-8,h-18,c.steel);for(let i=0;i<3;i++){block(6+i*8,7,6,18);for(let j=0;j<4;j++)r(7+i*8,11+j*3,4,1,c.dark);r(8+i*8,12+(state.operating?Math.floor(time*4)%3:0),2,2,c.hot);}tank(3,3,6,10,c.steel);line(7,h-9,w-5,h-9,c.sand,2);r(w-7,7,2,7,c.steelLight);}
- else if(type==='gasplant'){block(15,17,w-20,h-25,c.steel);tank(4,12,10,24,resources.gas);tank(15,4,9,17,c.steel);block(w-17,5,8,20);r(w-16,6,6,2,c.sand);for(let i=0;i<4;i++)r(19+i*5,24,3,6,state.operating&&Math.floor(time*3+i)%2?c.hot:c.dark);line(9,11,26,11,c.steelLight,2);line(9,11,9,14,c.steelLight,2);door(26,h-16,9,8);}
+ else if(type==='generator'){block(4,10,w-8,h-18,c.steel);for(let i=0;i<3;i++){block(6+i*8,7,6,18);for(let j=0;j<4;j++)r(7+i*8,11+j*3,4,1,c.dark);r(8+i*8,12+(state.operating?Math.floor(time*4)%3:0),2,2,resources.crystals);}tank(3,3,6,10,c.steel);line(7,h-9,w-5,h-9,c.sand,2);r(w-7,7,2,7,c.steelLight);}
+ else if(type==='largegenerator'){block(15,17,w-20,h-25,c.steel);tank(4,12,10,24,resources.crystals);tank(15,4,9,17,c.steel);block(w-17,5,8,20);r(w-16,6,6,2,c.sand);for(let i=0;i<4;i++)r(19+i*5,24,3,6,state.operating&&Math.floor(time*3+i)%2?c.hot:c.dark);line(9,11,26,11,c.steelLight,2);line(9,11,9,14,c.steelLight,2);door(26,h-16,9,8);}
  else if(type==='warehouse'){block(3,8,w-15,h-16,c.steel);door(7,17,w-24,h-25);r(5,10,w-19,3,c.steelLight);block(w-13,16,9,6,c.pack);block(w-13,23,9,6,c.armor);r(w-15,5,2,h-14,c.steel);r(w-15,5,12,2,c.sand);line(w-5,7,w-5,14,c.steelLight);r(w-7,13,4,2,c.ink);r(w-13,h-6,9,1,c.steelLight);}
  else if(type==='farm'){block(3,h-14,w-6,7,c.steel);tank(4,7,12,h-17,'#7d934d');tank(w-16,4,12,h-14,'#91a45a');r(4,h-14,w-8,2,c.steelLight);block(w/2-4,h-14,8,7);r(w/2-2,h-12,4,3,signal);line(9,4,w-9,4,c.steelLight,2);r(w/2-1,4,2,8,c.steel);}
  else if(type==='ironmine'){block(2,4,8,10,c.steel);r(4,7,4,3,c.steelLight);block(11,12,10,8,c.pack);poly([[12,13],[15,8],[18,12],[20,9],[21,16],[12,16]],resources.minerals);r(8,15,13,3,c.dark);for(let i=0;i<4;i++)r(9+i*3,16,1,1,c.steelLight);r(19,6,2,7,c.steel);r(13,5,8,2,c.sand);}
