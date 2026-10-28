@@ -1,0 +1,77 @@
+{
+  "scope": "Prepared isolated real-engine battles, 50/100 per side, all five classes, 50ms fixed step. Timings exclude Canvas/UI and vary by machine.",
+  "runs": [
+    {
+      "perSide": 50,
+      "seed": 7,
+      "battleSeconds": 63.25,
+      "winner": 2,
+      "survivors": 9,
+      "healed": 6032.65447103225,
+      "peakEffects": 48,
+      "p95TickMs": 1.306,
+      "maxTickMs": 7.546,
+      "wallMs": 479
+    },
+    {
+      "perSide": 50,
+      "seed": 42,
+      "battleSeconds": 16.8,
+      "winner": 0,
+      "survivors": 19,
+      "healed": 1394.8325155821656,
+      "peakEffects": 36,
+      "p95TickMs": 7.289,
+      "maxTickMs": 32.821,
+      "wallMs": 575
+    },
+    {
+      "perSide": 50,
+      "seed": 98,
+      "battleSeconds": 18.9,
+      "winner": 2,
+      "survivors": 15,
+      "healed": 1642.2215451715733,
+      "peakEffects": 45,
+      "p95TickMs": 1.333,
+      "maxTickMs": 3.366,
+      "wallMs": 275
+    },
+    {
+      "perSide": 100,
+      "seed": 7,
+      "battleSeconds": 18.25,
+      "winner": 2,
+      "survivors": 37,
+      "healed": 3371.010011455533,
+      "peakEffects": 75,
+      "p95TickMs": 4.358,
+      "maxTickMs": 10.61,
+      "wallMs": 727
+    },
+    {
+      "perSide": 100,
+      "seed": 42,
+      "battleSeconds": 18.3,
+      "winner": 0,
+      "survivors": 34,
+      "healed": 3195.8965290712767,
+      "peakEffects": 71,
+      "p95TickMs": 15.019,
+      "maxTickMs": 38.327,
+      "wallMs": 1459
+    },
+    {
+      "perSide": 100,
+      "seed": 98,
+      "battleSeconds": 33.35,
+      "winner": 2,
+      "survivors": 21,
+      "healed": 6518.444219442959,
+      "peakEffects": 72,
+      "p95TickMs": 3.237,
+      "maxTickMs": 4.067,
+      "wallMs": 699
+    }
+  ]
+}

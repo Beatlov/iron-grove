@@ -1,0 +1,323 @@
+{
+  "scope": "15-minute funded prebuilt industry at one/three colonies. Each has all six workshops, staffed extraction and shared crop plots, six real carriers, one barracks. Recruiting enables existing demand mode on workshops to avoid unlimited output competing with military deliveries. 10k food/tokens are test working capital; warehouses expanded to measure surplus, not saturation. Recruiting uses unchanged real recipes, supply deliveries, prices/timers/population/upkeep. H34 extraction cases use only the prior gas/sulfur rates on the same current simulation for a controlled comparison.",
+  "runs": [
+    {
+      "planets": 1,
+      "recruiting": false,
+      "rateProfile": "H34 extraction",
+      "seconds": 900,
+      "trained": 0,
+      "queued": 0,
+      "stock": {
+        "food": 8380,
+        "tokens": 10808,
+        "minerals": 0,
+        "crystals": 13,
+        "gas": 13,
+        "sulfur": 61,
+        "weapons": 17,
+        "ammo": 21,
+        "armor": 11,
+        "explosives": 20,
+        "medicines": 9,
+        "herbs": 0,
+        "mycelium": 0,
+        "psiomycin": 6
+      },
+      "delta": {
+        "food": -1620,
+        "tokens": 808,
+        "minerals": -300,
+        "crystals": -137,
+        "gas": 13,
+        "sulfur": 61,
+        "weapons": 17,
+        "ammo": 21,
+        "armor": 11,
+        "explosives": 20,
+        "medicines": 9,
+        "herbs": 0,
+        "mycelium": 0,
+        "psiomycin": 6
+      },
+      "buffers": {
+        "gasstation": 60,
+        "sulfurstation": 60,
+        "ironmine": 58,
+        "goldmine": 57,
+        "farm": 60,
+        "greenhouse": 60,
+        "incubator": 60
+      },
+      "shortages": {
+        "food": false,
+        "tokens": false
+      }
+    },
+    {
+      "planets": 1,
+      "recruiting": true,
+      "rateProfile": "H34 extraction",
+      "seconds": 900,
+      "trained": 8,
+      "queued": 3,
+      "stock": {
+        "food": 7868,
+        "tokens": 9918,
+        "minerals": 0,
+        "crystals": 12,
+        "gas": 80,
+        "sulfur": 113,
+        "weapons": 10,
+        "ammo": 10,
+        "armor": 10,
+        "explosives": 6,
+        "medicines": 6,
+        "herbs": 4,
+        "mycelium": 3,
+        "psiomycin": 6
+      },
+      "delta": {
+        "food": -2132,
+        "tokens": -82,
+        "minerals": -300,
+        "crystals": -138,
+        "gas": 80,
+        "sulfur": 113,
+        "weapons": 10,
+        "ammo": 10,
+        "armor": 10,
+        "explosives": 6,
+        "medicines": 6,
+        "herbs": 4,
+        "mycelium": 3,
+        "psiomycin": 6
+      },
+      "buffers": {
+        "gasstation": 60,
+        "sulfurstation": 60,
+        "ironmine": 60,
+        "goldmine": 59,
+        "farm": 60,
+        "greenhouse": 60,
+        "incubator": 59
+      },
+      "shortages": {
+        "food": false,
+        "tokens": false
+      }
+    },
+    {
+      "planets": 3,
+      "recruiting": true,
+      "rateProfile": "H34 extraction",
+      "seconds": 900,
+      "trained": 36,
+      "queued": 9,
+      "stock": {
+        "food": 22947,
+        "tokens": 28560,
+        "minerals": 0,
+        "crystals": 45,
+        "gas": 217,
+        "sulfur": 304,
+        "weapons": 11,
+        "ammo": 29,
+        "armor": 17,
+        "explosives": 18,
+        "medicines": 16,
+        "herbs": 28,
+        "mycelium": 9,
+        "psiomycin": 18
+      },
+      "delta": {
+        "food": -7053,
+        "tokens": -1440,
+        "minerals": -900,
+        "crystals": -405,
+        "gas": 217,
+        "sulfur": 304,
+        "weapons": 11,
+        "ammo": 29,
+        "armor": 17,
+        "explosives": 18,
+        "medicines": 16,
+        "herbs": 28,
+        "mycelium": 9,
+        "psiomycin": 18
+      },
+      "buffers": {
+        "gasstation": 180,
+        "sulfurstation": 180,
+        "ironmine": 175,
+        "goldmine": 178,
+        "farm": 180,
+        "greenhouse": 180,
+        "incubator": 177
+      },
+      "shortages": {
+        "food": false,
+        "tokens": false
+      }
+    },
+    {
+      "planets": 1,
+      "recruiting": false,
+      "rateProfile": "H35 extraction",
+      "seconds": 900,
+      "trained": 0,
+      "queued": 0,
+      "stock": {
+        "food": 8380,
+        "tokens": 10808,
+        "minerals": 0,
+        "crystals": 12,
+        "gas": 48,
+        "sulfur": 16,
+        "weapons": 17,
+        "ammo": 22,
+        "armor": 10,
+        "explosives": 18,
+        "medicines": 7,
+        "herbs": 0,
+        "mycelium": 0,
+        "psiomycin": 4
+      },
+      "delta": {
+        "food": -1620,
+        "tokens": 808,
+        "minerals": -300,
+        "crystals": -138,
+        "gas": 48,
+        "sulfur": 16,
+        "weapons": 17,
+        "ammo": 22,
+        "armor": 10,
+        "explosives": 18,
+        "medicines": 7,
+        "herbs": 0,
+        "mycelium": 0,
+        "psiomycin": 4
+      },
+      "buffers": {
+        "gasstation": 60,
+        "sulfurstation": 60,
+        "ironmine": 56,
+        "goldmine": 57,
+        "farm": 60,
+        "greenhouse": 60,
+        "incubator": 59
+      },
+      "shortages": {
+        "food": false,
+        "tokens": false
+      }
+    },
+    {
+      "planets": 1,
+      "recruiting": true,
+      "rateProfile": "H35 extraction",
+      "seconds": 900,
+      "trained": 10,
+      "queued": 3,
+      "stock": {
+        "food": 7732,
+        "tokens": 9699,
+        "minerals": 0,
+        "crystals": 5,
+        "gas": 48,
+        "sulfur": 39,
+        "weapons": 2,
+        "ammo": 10,
+        "armor": 3,
+        "explosives": 6,
+        "medicines": 4,
+        "herbs": 0,
+        "mycelium": 3,
+        "psiomycin": 6
+      },
+      "delta": {
+        "food": -2268,
+        "tokens": -301,
+        "minerals": -300,
+        "crystals": -145,
+        "gas": 48,
+        "sulfur": 39,
+        "weapons": 2,
+        "ammo": 10,
+        "armor": 3,
+        "explosives": 6,
+        "medicines": 4,
+        "herbs": 0,
+        "mycelium": 3,
+        "psiomycin": 6
+      },
+      "buffers": {
+        "gasstation": 60,
+        "sulfurstation": 60,
+        "ironmine": 58,
+        "goldmine": 59,
+        "farm": 60,
+        "greenhouse": 60,
+        "incubator": 59
+      },
+      "shortages": {
+        "food": false,
+        "tokens": false
+      }
+    },
+    {
+      "planets": 3,
+      "recruiting": true,
+      "rateProfile": "H35 extraction",
+      "seconds": 900,
+      "trained": 33,
+      "queued": 9,
+      "stock": {
+        "food": 23149,
+        "tokens": 28822,
+        "minerals": 0,
+        "crystals": 103,
+        "gas": 275,
+        "sulfur": 114,
+        "weapons": 14,
+        "ammo": 30,
+        "armor": 23,
+        "explosives": 18,
+        "medicines": 17,
+        "herbs": 8,
+        "mycelium": 9,
+        "psiomycin": 18
+      },
+      "delta": {
+        "food": -6851,
+        "tokens": -1178,
+        "minerals": -900,
+        "crystals": -347,
+        "gas": 275,
+        "sulfur": 114,
+        "weapons": 14,
+        "ammo": 30,
+        "armor": 23,
+        "explosives": 18,
+        "medicines": 17,
+        "herbs": 8,
+        "mycelium": 9,
+        "psiomycin": 18
+      },
+      "buffers": {
+        "gasstation": 180,
+        "sulfurstation": 180,
+        "ironmine": 172,
+        "goldmine": 175,
+        "farm": 180,
+        "greenhouse": 180,
+        "incubator": 177
+      },
+      "shortages": {
+        "food": false,
+        "tokens": false
+      }
+    }
+  ]
+}

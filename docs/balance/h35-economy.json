@@ -1,0 +1,326 @@
+{
+  "seed": 42,
+  "scope": "Funded prebuilt gas/sulfur extraction colonies; real travel, carrier delivery and civilian upkeep. Recipe demand is theoretical one staffed workshop per type, not a full campaign playthrough.",
+  "extractionPerMinute": {
+    "gas": 54,
+    "sulfur": 42
+  },
+  "recipeDemandPerMinute": {
+    "minerals": 118.33333333333334,
+    "gas": 37,
+    "sulfur": 40,
+    "crystals": 64.28571428571429,
+    "herbs": 20,
+    "mycelium": 12.857142857142858
+  },
+  "military": {
+    "soldier": {
+      "cost": {
+        "weapons": 2,
+        "ammo": 1,
+        "armor": 1,
+        "tokens": 28
+      },
+      "trainTime": 10,
+      "food": 1,
+      "tokens": 1
+    },
+    "assault": {
+      "cost": {
+        "weapons": 3,
+        "ammo": 1,
+        "armor": 2,
+        "tokens": 38
+      },
+      "trainTime": 14,
+      "food": 1,
+      "tokens": 1.5
+    },
+    "medic": {
+      "cost": {
+        "medicines": 2,
+        "armor": 1,
+        "tokens": 42
+      },
+      "trainTime": 14,
+      "food": 1,
+      "tokens": 1.5
+    },
+    "grenadier": {
+      "cost": {
+        "explosives": 3,
+        "armor": 2,
+        "tokens": 65
+      },
+      "trainTime": 20,
+      "food": 2,
+      "tokens": 2.5
+    },
+    "psyker": {
+      "cost": {
+        "psiomycin": 2,
+        "armor": 1,
+        "tokens": 55
+      },
+      "trainTime": 18,
+      "food": 1,
+      "tokens": 2
+    }
+  },
+  "scenarios": [
+    {
+      "planets": 1,
+      "seconds": 1800,
+      "firstFull": 1506.8,
+      "samples": [
+        {
+          "seconds": 300,
+          "stock": {
+            "food": 1620,
+            "tokens": 680,
+            "minerals": 540,
+            "crystals": 0,
+            "gas": 261,
+            "sulfur": 203,
+            "weapons": 0,
+            "ammo": 0,
+            "armor": 0,
+            "explosives": 0,
+            "medicines": 0,
+            "herbs": 0,
+            "mycelium": 0,
+            "psiomycin": 0
+          },
+          "filled": 0.6607999999999695
+        },
+        {
+          "seconds": 600,
+          "stock": {
+            "food": 1440,
+            "tokens": 860,
+            "minerals": 480,
+            "crystals": 0,
+            "gas": 530,
+            "sulfur": 413,
+            "weapons": 0,
+            "ammo": 0,
+            "armor": 0,
+            "explosives": 0,
+            "medicines": 0,
+            "herbs": 0,
+            "mycelium": 0,
+            "psiomycin": 0
+          },
+          "filled": 0.7445999999999368
+        },
+        {
+          "seconds": 900,
+          "stock": {
+            "food": 1260,
+            "tokens": 1040,
+            "minerals": 420,
+            "crystals": 0,
+            "gas": 800,
+            "sulfur": 622,
+            "weapons": 0,
+            "ammo": 0,
+            "armor": 0,
+            "explosives": 0,
+            "medicines": 0,
+            "herbs": 0,
+            "mycelium": 0,
+            "psiomycin": 0
+          },
+          "filled": 0.828399999999904
+        },
+        {
+          "seconds": 1200,
+          "stock": {
+            "food": 1080,
+            "tokens": 1220,
+            "minerals": 360,
+            "crystals": 0,
+            "gas": 1069,
+            "sulfur": 832,
+            "weapons": 0,
+            "ammo": 0,
+            "armor": 0,
+            "explosives": 0,
+            "medicines": 0,
+            "herbs": 0,
+            "mycelium": 0,
+            "psiomycin": 0
+          },
+          "filled": 0.9121999999998712
+        },
+        {
+          "seconds": 1500,
+          "stock": {
+            "food": 900,
+            "tokens": 1400,
+            "minerals": 300,
+            "crystals": 0,
+            "gas": 1338,
+            "sulfur": 1041,
+            "weapons": 0,
+            "ammo": 0,
+            "armor": 0,
+            "explosives": 0,
+            "medicines": 0,
+            "herbs": 0,
+            "mycelium": 0,
+            "psiomycin": 0
+          },
+          "filled": 0.9957999999998385
+        },
+        {
+          "seconds": 1800,
+          "stock": {
+            "food": 720,
+            "tokens": 1497,
+            "minerals": 240,
+            "crystals": 0,
+            "gas": 1407,
+            "sulfur": 1128,
+            "weapons": 0,
+            "ammo": 0,
+            "armor": 0,
+            "explosives": 0,
+            "medicines": 0,
+            "herbs": 0,
+            "mycelium": 0,
+            "psiomycin": 0
+          },
+          "filled": 0.9984
+        }
+      ]
+    },
+    {
+      "planets": 3,
+      "seconds": 1800,
+      "firstFull": null,
+      "samples": [
+        {
+          "seconds": 300,
+          "stock": {
+            "food": 4860,
+            "tokens": 2040,
+            "minerals": 1620,
+            "crystals": 0,
+            "gas": 783,
+            "sulfur": 609,
+            "weapons": 0,
+            "ammo": 0,
+            "armor": 0,
+            "explosives": 0,
+            "medicines": 0,
+            "herbs": 0,
+            "mycelium": 0,
+            "psiomycin": 0
+          },
+          "filled": 0.6607999999999695
+        },
+        {
+          "seconds": 600,
+          "stock": {
+            "food": 4320,
+            "tokens": 2580,
+            "minerals": 1440,
+            "crystals": 0,
+            "gas": 1590,
+            "sulfur": 1239,
+            "weapons": 0,
+            "ammo": 0,
+            "armor": 0,
+            "explosives": 0,
+            "medicines": 0,
+            "herbs": 0,
+            "mycelium": 0,
+            "psiomycin": 0
+          },
+          "filled": 0.7445999999999366
+        },
+        {
+          "seconds": 900,
+          "stock": {
+            "food": 3780,
+            "tokens": 3120,
+            "minerals": 1260,
+            "crystals": 0,
+            "gas": 2400,
+            "sulfur": 1866,
+            "weapons": 0,
+            "ammo": 0,
+            "armor": 0,
+            "explosives": 0,
+            "medicines": 0,
+            "herbs": 0,
+            "mycelium": 0,
+            "psiomycin": 0
+          },
+          "filled": 0.828399999999904
+        },
+        {
+          "seconds": 1200,
+          "stock": {
+            "food": 3240,
+            "tokens": 3660,
+            "minerals": 1080,
+            "crystals": 0,
+            "gas": 2988,
+            "sulfur": 2329,
+            "weapons": 0,
+            "ammo": 0,
+            "armor": 0,
+            "explosives": 0,
+            "medicines": 0,
+            "herbs": 0,
+            "mycelium": 0,
+            "psiomycin": 0
+          },
+          "filled": 0.8864626666665419
+        },
+        {
+          "seconds": 1500,
+          "stock": {
+            "food": 2700,
+            "tokens": 4200,
+            "minerals": 900,
+            "crystals": 0,
+            "gas": 3525,
+            "sulfur": 2748,
+            "weapons": 0,
+            "ammo": 0,
+            "armor": 0,
+            "explosives": 0,
+            "medicines": 0,
+            "herbs": 0,
+            "mycelium": 0,
+            "psiomycin": 0
+          },
+          "filled": 0.9382466666665096
+        },
+        {
+          "seconds": 1800,
+          "stock": {
+            "food": 2160,
+            "tokens": 4740,
+            "minerals": 720,
+            "crystals": 0,
+            "gas": 4064,
+            "sulfur": 3166,
+            "weapons": 0,
+            "ammo": 0,
+            "armor": 0,
+            "explosives": 0,
+            "medicines": 0,
+            "herbs": 0,
+            "mycelium": 0,
+            "psiomycin": 0
+          },
+          "filled": 0.9900466666664768
+        }
+      ]
+    }
+  ]
+}

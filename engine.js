@@ -1,6 +1,7 @@
-/* HELIOS H34: planetary economies, structure management, campaign fleets and automatic battles. */
+/* HELIOS H35: planetary economies, structure management, campaign fleets and automatic battles. */
 (function(root){
 'use strict';
+const balance=typeof module!=='undefined'?require('./balance.js'):root.RTSBalance;
 const W=144,H=96,resources=['food','tokens','minerals','crystals','gas','sulfur','weapons','ammo','armor','explosives','medicines','herbs','mycelium','psiomycin'];
 const resourceTiers={minerals:1,crystals:1,gas:1,sulfur:1,herbs:1,mycelium:1,weapons:2,ammo:2,armor:2,explosives:2,medicines:2,psiomycin:2};
 const stats={
@@ -18,8 +19,8 @@ const stats={
  incubator:{hp:260,size:2,buildTime:14,cost:{minerals:22,tokens:15,crystals:6},addon:'farm',multiple:true,resource:'mycelium',bio:true,cycle:14,yield:2},
  ironmine:{hp:400,size:2,buildTime:18,cost:{minerals:25},resource:'minerals',slots:2,collector:true,radius:8,load:6,gatherTime:3,packTime:.75},
  goldmine:{hp:400,size:2,buildTime:18,cost:{minerals:30},resource:'crystals',slots:2,collector:true,radius:8,load:4,gatherTime:3.5,packTime:.75},
- gasstation:{hp:450,size:2,buildTime:20,cost:{minerals:40,tokens:30,crystals:8},resource:'gas',slots:2,extractor:true,rate:.75},
- sulfurstation:{hp:450,size:2,buildTime:20,cost:{minerals:45,tokens:35,crystals:8},resource:'sulfur',slots:2,extractor:true,rate:.6},
+ gasstation:{hp:450,size:2,buildTime:20,cost:{minerals:40,tokens:30,crystals:8},resource:'gas',slots:2,extractor:true,rate:balance.extraction.gas},
+ sulfurstation:{hp:450,size:2,buildTime:20,cost:{minerals:45,tokens:35,crystals:8},resource:'sulfur',slots:2,extractor:true,rate:balance.extraction.sulfur},
  chemical:{hp:550,size:4,capacity:240,buildTime:22,cost:{minerals:65,tokens:80,crystals:25,gas:10}},
  factory:{hp:550,size:4,capacity:240,buildTime:22,cost:{minerals:80,tokens:65,crystals:20}},
  weaponshop:{hp:300,size:2,buildTime:12,cost:{minerals:25,tokens:25,gas:5},addon:'factory',resource:'weapons',slots:1,recipe:{minerals:9,gas:3},cycle:12},
@@ -138,7 +139,7 @@ class Game{
  pay(cost,team=0){if(!this.affordable(cost,team))return false;for(const [r,n]of Object.entries(cost))this.withdraw(r,n,team);return true;}
  ready(e){return !!e&&e.hp>0&&e.construction<=0;}
  operational(e){return this.ready(e)&&e.hp>=e.maxHp*.65;}
- population(team=0){const all=this.all().filter(e=>e.team===team),workers=all.filter(e=>e.type==='worker').length,soldiers=this.military.filter(u=>u.team===team&&u.hp>0).length,reserved=this.missions.filter(m=>m.team===team&&m.kind==='colony').length*6,hiring=all.filter(e=>e.type==='base').reduce((n,b)=>n+b.hireQueue.length,0),capacity=all.filter(e=>this.ready(e)).reduce((n,e)=>n+(e.type==='base'?6:e.type==='house'?4:0),0);return{workers,soldiers,reserved,hiring,total:workers+soldiers+reserved+hiring,capacity,free:Math.max(0,capacity-workers-soldiers-reserved-hiring)};}
+ population(team=0){const all=this.all().filter(e=>e.team===team),workers=all.filter(e=>e.type==='worker').length,soldiers=this.military.filter(u=>u.team===team&&u.hp>0).length,reserved=this.missions.filter(m=>m.team===team&&m.kind==='colony').length*6,hiring=all.filter(e=>e.type==='base').reduce((n,b)=>n+b.hireQueue.length,0),capacity=all.filter(e=>this.ready(e)).reduce((n,e)=>n+(balance.population[e.type]||0),0);return{workers,soldiers,reserved,hiring,total:workers+soldiers+reserved+hiring,capacity,free:Math.max(0,capacity-workers-soldiers-reserved-hiring)};}
  workforce(team=0,planet=null){const people=this.all().filter(e=>e.type==='worker'&&e.team===team&&(planet===null||e.planet===planet)),free=people.filter(e=>!e.job&&!e.building&&!e.carry).length,staffed=people.filter(e=>!!e.job).length,drones=this.all().filter(e=>e.type==='drone'&&e.team===team&&(planet===null||e.planet===planet));return{total:people.length,free,staffed,busy:people.length-free-staffed,drones:drones.length,hauling:drones.filter(d=>d.task||d.carry).length};}
  army(team=0,planet=this.activePlanet){return this.military.filter(u=>u.team===team&&u.hp>0&&u.location==='reserve'&&u.planet===planet);}
  income(team=0){return this.resourceFlows(team).tokens.income*2;}
@@ -309,7 +310,7 @@ class Game{
   this.returnHome(u,dt);
 
  }
- train(id,team=0,type='soldier'){const b=this.get(id),cost=unitCosts[type];if(this.result||!this.canManageProcesses(team)||!cost||!this.operational(b)||b.team!==team||b.type!=='barracks'||this.regions[b.planet].owner!==team||b.queue.length>=3||this.population(team).free<1||!this.canSupply(type,team,b.planet)||!this.pay({tokens:cost.tokens},team))return false;const u={id:this.nextId++,type,team,planet:b.planet,location:'training',hp:stats[type].hp,maxHp:stats[type].hp,rank:1,xp:0};this.military.push(u);const q={id:u.id,type,left:stats[type].trainTime,reserved:0,delivered:0,deliveries:{},allocations:[]};b.queue.push(q);for(const [r,n]of this.requirements(type))this.reserveMaterial(q,b,r,n);return true;}
+ train(id,team=0,type='soldier'){const b=this.get(id),cost=unitCosts[type];if(this.result||!this.canManageProcesses(team)||!cost||!this.operational(b)||b.team!==team||b.type!=='barracks'||this.regions[b.planet].owner!==team||b.queue.length>=3||this.population(team).free<1||!this.canSupply(type,team,b.planet)||!this.pay({tokens:cost.tokens},team))return false;const u={id:this.nextId++,type,team,planet:b.planet,location:'training',hp:stats[type].hp,maxHp:stats[type].hp};this.military.push(u);const q={id:u.id,type,left:stats[type].trainTime,reserved:0,delivered:0,deliveries:{},allocations:[]};b.queue.push(q);for(const [r,n]of this.requirements(type))this.reserveMaterial(q,b,r,n);return true;}
  supplyOrder(b,id,team){return b?.team===team&&this.ready(b)&&b.type==='barracks'&&this.military.some(u=>u.id===id&&u.hp>0&&u.team===team&&u.location==='training')?b.queue.find(q=>q.id===id):null;}
  cancelTraining(b,q){q.allocations=[];q.reserved=0;for(const [r,n]of Object.entries(q.deliveries))this.refund(r,n,b.team);q.deliveries={};q.delivered=0;const unit=this.military.find(u=>u.id===q.id);if(unit)unit.hp=0;}
  canCapture(id,team=0){const r=this.regions[id];return !!r&&r.owner!==team&&r.neighbors.some(n=>this.regions[n].owner===team);}
@@ -355,10 +356,10 @@ class Game{
   for(const r of this.regions)if(r.owner>=0)this.credit('tokens',12/20*dt,r.owner,r.id);
   const arrivals=[];for(const m of this.missions){m.left-=dt;if(m.left<=0)arrivals.push(m);}this.missions=this.missions.filter(m=>m.left>0);for(const m of arrivals)this.arrive(m);
   for(const b of this.battles)this.battleTick(b,dt);
-  if(this.economyClock>=10){this.economyClock-=10;for(const team of [0,1]){const s=this.stock(team),u=this.upkeep(team),t=this.teams[team];t.hungry=s.food<u.food;t.unpaid=s.tokens<u.tokens;s.food=Math.max(0,s.food-u.food);s.tokens=Math.max(0,s.tokens-u.tokens);t.unmaintained=s.minerals<u.minerals;const drones=this.all().filter(e=>e.team===team&&e.type==='drone');for(const d of drones){if(this.stock(team).minerals>=DRONE_MINERAL_UPKEEP)this.withdraw('minerals',DRONE_MINERAL_UPKEEP,team);else d.hp=Math.max(0,d.hp-5);}if(t.hungry)for(const e of this.all().filter(e=>e.team===team&&e.type==='worker'))e.hp-=5;}}
+  if(this.economyClock>=10-1e-8){this.economyClock=Math.max(0,this.economyClock-10);for(const team of [0,1]){const s=this.stock(team),u=this.upkeep(team),t=this.teams[team];t.hungry=s.food<u.food;t.unpaid=s.tokens<u.tokens;s.food=Math.max(0,s.food-u.food);s.tokens=Math.max(0,s.tokens-u.tokens);t.unmaintained=s.minerals<u.minerals;const drones=this.all().filter(e=>e.team===team&&e.type==='drone');for(const d of drones){if(this.stock(team).minerals>=DRONE_MINERAL_UPKEEP)this.withdraw('minerals',DRONE_MINERAL_UPKEEP,team);else d.hp=Math.max(0,d.hp-5);}if(t.hungry)for(const e of this.all().filter(e=>e.team===team&&e.type==='worker'))e.hp-=5;}}
   for(const team of [0,1]){const t=this.teams[team];if(t.hungry||t.unpaid){t.desertion+=dt*(t.hungry&&t.unpaid?2:1);if(t.desertion>=30){const u=this.military.find(e=>e.team===team&&e.hp>0&&e.location!=='training');if(u){u.hp=0;for(const b of this.battles){const bu=b.units.find(e=>e.id===u.id);if(bu)bu.hp=0;}if(team===0)this.message='Нехватка снабжения: один боец покинул армию.';}t.desertion=0;}}else t.desertion=0;}
   this.military=this.military.filter(u=>u.hp>0);if(this.aiEnabled&&this.aiClock>=4){this.aiClock=0;this.ai();}
  }
 }
-const api={Game,stats,footprint,placement,W,H,dist,resources,resourceTiers,unitCosts,isMilitary,colonyCost,workerCost,droneCost,DRONE_TIME,DRONE_MINERAL_UPKEEP,weaponRecipe,ROAD_SPEED,FIELD_YIELD,SOW_TIME,GROW_TIME,HIRE_TIME,HARVEST_TIME,FOOD_PROCESS_TIME,GAS_RADIUS,GAS_LOAD,GAS_GATHER_TIME,GAS_PACK_TIME};if(typeof module!=='undefined'){module.exports=api;require('./logistics.js').install(api);require('./combat.js').install(api);require('./battle-lab.js').install(api);}else root.RTS=api;
+const api={balance,Game,stats,footprint,placement,W,H,dist,resources,resourceTiers,unitCosts,isMilitary,colonyCost,workerCost,droneCost,DRONE_TIME,DRONE_MINERAL_UPKEEP,weaponRecipe,ROAD_SPEED,FIELD_YIELD,SOW_TIME,GROW_TIME,HIRE_TIME,HARVEST_TIME,FOOD_PROCESS_TIME,GAS_RADIUS,GAS_LOAD,GAS_GATHER_TIME,GAS_PACK_TIME};if(typeof module!=='undefined'){module.exports=api;require('./logistics.js').install(api);require('./combat.js').install(api);require('./battle-lab.js').install(api);}else root.RTS=api;
 })(typeof window!=='undefined'?window:globalThis);

@@ -225,3 +225,6 @@ canvas{display:block;image-rendering:pixelated;touch-action:none}
 @media(max-width:1250px){.resource-row{gap:5px}.economy-bar{gap:7px 10px}#resources{gap:7px 10px}.resource-row+.resource-row{padding-left:10px}.census{gap:6px}.resource-icon{width:18px;height:22px}.census-counter canvas{width:22px;height:24px}}
 
 #resources{flex:0 1 auto;min-width:0;max-width:100%}.queue-group+.queue-group{border-left:1px solid #80926166;padding-left:8px}
+
+/* H35: unranked battle setup needs only class and headcount. */
+.lab-row{grid-template-columns:40px minmax(70px,1fr) auto}

@@ -1,4 +1,4 @@
-/* HELIOS H34: brutal industrial art on a unified native pixel grid, with the complete H9 renderer available for comparison. */
+/* HELIOS H35: brutal industrial art on a unified native pixel grid, with the complete H9 renderer available for comparison. */
 (function(root){
 'use strict';
 const legacy=typeof module!=='undefined'?require('./art-legacy.js'):root.RTSArtLegacy;
@@ -101,7 +101,7 @@ function resident(ctx,e,x,y,time=0,state={}){
 }
 function unit(ctx,e,x,y,time=0,state={}){
  if(e.type==='drone')return drone(ctx,e,x,y,time);if(e.type==='worker'&&style!=='classic')return resident(ctx,e,x,y,time,state);
- if(style==='classic'&&!['psyker','xeno','robot','demon','pirate'].includes(e.type)&&(e.rank||1)===1)return legacy.unit(ctx,e,x,y,time,state);
+ if(style==='classic'&&!['psyker','xeno','robot','demon','pirate'].includes(e.type))return legacy.unit(ctx,e,x,y,time,state);
  const demon=e.team===1||e.type==='demon',c={...palettes[demon?1:0]},psyker=e.type==='psyker'||e.type==='demon',worker=e.type==='worker',medic=e.type==='medic',assault=e.type==='assault',grenadier=e.type==='grenadier';
  if(psyker){c.glow='#bca0da';c.armor=demon?'#743a43':'#4b4565';c.light='#827695';}
  if(e.type==='pirate'){c.armor='#765438';c.light='#aa8658';c.glow='#d89f49';}
@@ -143,7 +143,6 @@ function unit(ctx,e,x,y,time=0,state={}){
  else{const gx=12-recoil;plate(gx,17,23,7,c.ink);r(gx+2,18,18,3,c.steel);r(gx+4,18,11,1,c.steelLight);r(gx+8,20,5,5,c.dark);r(gx+20,19,4,3,c.dark);r(gx+10,19,2,2,c.glow);r(9,21,5,3,c.sand);r(25-recoil,23,4,2,c.sand);if(grenadier){plate(17,22,10,8,c.ink);r(19,23,6,5,c.steel);r(20,23,4,1,c.hot);r(20,26,4,1,c.hot);}}
  if(e.type==='robot'){plate(10,3,15,11,c.steel);r(14,7,9,3,c.glow);r(9,13,3,7,c.steelLight);r(25,14,3,5,c.steelLight);r(14,14,5,4,c.hot);}
  if(e.type==='pirate'){r(10,5,14,3,'#8b4941');r(11,9,4,3,c.ink);r(5,14,3,2,c.sand);}
- if((e.rank||1)>1){const trim=e.rank===3?'#d9b661':'#c3ccca';r(4,13,7,1,trim);r(25,14,4,1,trim);r(5,16,4,1,trim);if(e.rank===3){r(5,18,4,1,trim);r(13,3,8,1,trim);r(12,22,10,1,trim);}}
  if(back){prism({r,poly,line},11,9,12,11,c.pack,c.sand,c.dark,c.ink);r(12,10,10,3,worker?'#ae7d29':c.sand);r(13,15,8,4,c.pack);}
  ctx.restore();
 }
