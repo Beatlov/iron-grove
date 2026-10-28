@@ -1,6 +1,6 @@
-/* HELIOS H35: shared tuning knobs. Recipes/costs remain in RTS.stats / RTS.unitCosts. */
+/* HELIOS H36: shared tuning knobs. Recipes/costs remain in RTS.stats / RTS.unitCosts. */
 (function(root){
 'use strict';
-const balance=Object.freeze({population:Object.freeze({base:6,house:20}),extraction:Object.freeze({gas:.45,sulfur:.35}),combat:Object.freeze({labLimit:100,maxEffects:80,separation:.65})});
+const balance=Object.freeze({population:Object.freeze({base:6,house:20}),extraction:Object.freeze({gas:.45,sulfur:.35}),power:Object.freeze({sources:Object.freeze({base:{output:20},generator:{output:40},gasplant:{output:100,fuel:'gas',fuelPerPowerSecond:.002,reserve:20}}),loads:Object.freeze({farm:{idle:1,active:4,priority:100},ironmine:{idle:1,active:6,priority:70},goldmine:{idle:1,active:6,priority:70},gasstation:{idle:1,active:8,priority:80},sulfurstation:{idle:1,active:8,priority:70},factory:{idle:2,active:2,priority:50},chemical:{idle:2,active:2,priority:50},weaponshop:{idle:1,active:8,priority:50},ammoshop:{idle:1,active:8,priority:50},armorshop:{idle:1,active:8,priority:50},explosiveshop:{idle:1,active:9,priority:50},medicineshop:{idle:1,active:8,priority:60},psishop:{idle:1,active:8,priority:50},cryptofarm:{idle:1,active:10,priority:10},barracks:{idle:1,active:8,priority:60},tower:{idle:1,active:8,priority:90}})}),combat:Object.freeze({labLimit:100,maxEffects:80,separation:.65})});
 if(typeof module!=='undefined')module.exports=balance;else root.RTSBalance=balance;
 })(typeof window!=='undefined'?window:globalThis);

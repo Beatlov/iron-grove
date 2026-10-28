@@ -6,7 +6,7 @@ test('drawing factions, work, combat and corpse frames leaves the simulation int
  const g=new Game(42,{ai:false}),calls=[];
  const c=new Proxy({fillRect:(...args)=>calls.push(args)},{get:(target,key)=>key in target?target[key]:()=>{},set:(target,key,value)=>{target[key]=value;return true;}});
  for(const type of ['build-menu','army-menu','world-menu'])art.actionIcon(c,type);
- for(const type of ['residents','freeResidents','population','carriers'])art.counterIcon(c,type);
+ for(const type of ['residents','freeResidents','population','carriers','power'])art.counterIcon(c,type);
  const before=JSON.stringify(g);
  for(const team of [0,1,2])for(const rank of [1,2,3])for(const type of ['worker','drone','soldier','assault','medic','grenadier','psyker','xeno','robot','demon','pirate']){
   const e={type,team,rank,id:1,moving:true,facingX:-1,facingY:-1,walkDistance:2.3,cool:1.9,carry:{resource:'minerals'}};

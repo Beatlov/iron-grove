@@ -1,0 +1,298 @@
+{
+  "version": "H36",
+  "scope": "Current gas extraction/recipe budgets plus funded 15-minute one/three-colony industry. Free mix: three normal generators. Gas mix: one normal generator plus a gas plant; fuel starts empty and is delivered by real drones. Economic fixture caveats remain in supply-report.cjs: prepared buildings/food/tokens/expanded stores, demand-mode workshops and unchanged training recipes.",
+  "gasBudget": {
+    "stationPerMinute": 54,
+    "allRecipesPerMinute": 37,
+    "fullGasPlantPerMinute": 12,
+    "oneFullPlantPlusRecipes": 49,
+    "onePlantHeadroom": 5,
+    "twoFullPlantsPlusRecipes": 61
+  },
+  "runs": [
+    {
+      "planets": 1,
+      "recruiting": true,
+      "powerMix": "free",
+      "gasPower": 0,
+      "grids": [
+        {
+          "capacity": 140,
+          "demand": 39,
+          "used": 39,
+          "gasPerMinute": 0,
+          "offline": 0
+        }
+      ],
+      "rateProfile": "H35 extraction",
+      "seconds": 900,
+      "trained": 10,
+      "queued": 3,
+      "stock": {
+        "food": 7732,
+        "tokens": 9699,
+        "minerals": 0,
+        "crystals": 5,
+        "gas": 48,
+        "sulfur": 39,
+        "weapons": 2,
+        "ammo": 10,
+        "armor": 3,
+        "explosives": 6,
+        "medicines": 4,
+        "herbs": 0,
+        "mycelium": 3,
+        "psiomycin": 6
+      },
+      "delta": {
+        "food": -2268,
+        "tokens": -301,
+        "minerals": -300,
+        "crystals": -145,
+        "gas": 48,
+        "sulfur": 39,
+        "weapons": 2,
+        "ammo": 10,
+        "armor": 3,
+        "explosives": 6,
+        "medicines": 4,
+        "herbs": 0,
+        "mycelium": 3,
+        "psiomycin": 6
+      },
+      "buffers": {
+        "gasstation": 60,
+        "sulfurstation": 60,
+        "ironmine": 58,
+        "goldmine": 59,
+        "farm": 60,
+        "greenhouse": 60,
+        "incubator": 59
+      },
+      "shortages": {
+        "food": false,
+        "tokens": false
+      }
+    },
+    {
+      "planets": 1,
+      "recruiting": true,
+      "powerMix": "gas",
+      "gasPower": 4.909399999999914,
+      "grids": [
+        {
+          "capacity": 160,
+          "demand": 34,
+          "used": 34,
+          "gasPerMinute": 0,
+          "offline": 0
+        }
+      ],
+      "rateProfile": "H35 extraction",
+      "seconds": 900,
+      "trained": 6,
+      "queued": 3,
+      "stock": {
+        "food": 7985,
+        "tokens": 10069,
+        "minerals": 0,
+        "crystals": 24,
+        "gas": 50,
+        "sulfur": 42,
+        "weapons": 10,
+        "ammo": 10,
+        "armor": 10,
+        "explosives": 6,
+        "medicines": 6,
+        "herbs": 4,
+        "mycelium": 0,
+        "psiomycin": 6
+      },
+      "delta": {
+        "food": -2015,
+        "tokens": 69,
+        "minerals": -300,
+        "crystals": -126,
+        "gas": 50,
+        "sulfur": 42,
+        "weapons": 10,
+        "ammo": 10,
+        "armor": 10,
+        "explosives": 6,
+        "medicines": 6,
+        "herbs": 4,
+        "mycelium": 0,
+        "psiomycin": 6
+      },
+      "buffers": {
+        "gasstation": 60,
+        "sulfurstation": 60,
+        "ironmine": 60,
+        "goldmine": 57,
+        "farm": 60,
+        "greenhouse": 60,
+        "incubator": 60
+      },
+      "shortages": {
+        "food": false,
+        "tokens": false
+      }
+    },
+    {
+      "planets": 3,
+      "recruiting": true,
+      "powerMix": "free",
+      "gasPower": 0,
+      "grids": [
+        {
+          "capacity": 140,
+          "demand": 39,
+          "used": 39,
+          "gasPerMinute": 0,
+          "offline": 0
+        },
+        {
+          "capacity": 140,
+          "demand": 39,
+          "used": 39,
+          "gasPerMinute": 0,
+          "offline": 0
+        },
+        {
+          "capacity": 140,
+          "demand": 39,
+          "used": 39,
+          "gasPerMinute": 0,
+          "offline": 0
+        }
+      ],
+      "rateProfile": "H35 extraction",
+      "seconds": 900,
+      "trained": 33,
+      "queued": 9,
+      "stock": {
+        "food": 23149,
+        "tokens": 28822,
+        "minerals": 0,
+        "crystals": 103,
+        "gas": 275,
+        "sulfur": 114,
+        "weapons": 14,
+        "ammo": 30,
+        "armor": 23,
+        "explosives": 18,
+        "medicines": 17,
+        "herbs": 8,
+        "mycelium": 9,
+        "psiomycin": 18
+      },
+      "delta": {
+        "food": -6851,
+        "tokens": -1178,
+        "minerals": -900,
+        "crystals": -347,
+        "gas": 275,
+        "sulfur": 114,
+        "weapons": 14,
+        "ammo": 30,
+        "armor": 23,
+        "explosives": 18,
+        "medicines": 17,
+        "herbs": 8,
+        "mycelium": 9,
+        "psiomycin": 18
+      },
+      "buffers": {
+        "gasstation": 180,
+        "sulfurstation": 180,
+        "ironmine": 172,
+        "goldmine": 175,
+        "farm": 180,
+        "greenhouse": 180,
+        "incubator": 177
+      },
+      "shortages": {
+        "food": false,
+        "tokens": false
+      }
+    },
+    {
+      "planets": 3,
+      "recruiting": true,
+      "powerMix": "gas",
+      "gasPower": 16.477000000001,
+      "grids": [
+        {
+          "capacity": 160,
+          "demand": 39,
+          "used": 39,
+          "gasPerMinute": 0,
+          "offline": 0
+        },
+        {
+          "capacity": 160,
+          "demand": 29,
+          "used": 29,
+          "gasPerMinute": 0,
+          "offline": 0
+        },
+        {
+          "capacity": 160,
+          "demand": 29,
+          "used": 29,
+          "gasPerMinute": 0,
+          "offline": 0
+        }
+      ],
+      "rateProfile": "H35 extraction",
+      "seconds": 900,
+      "trained": 34,
+      "queued": 9,
+      "stock": {
+        "food": 23240,
+        "tokens": 28930,
+        "minerals": 0,
+        "crystals": 76,
+        "gas": 283,
+        "sulfur": 114,
+        "weapons": 10,
+        "ammo": 27,
+        "armor": 21,
+        "explosives": 18,
+        "medicines": 15,
+        "herbs": 0,
+        "mycelium": 12,
+        "psiomycin": 18
+      },
+      "delta": {
+        "food": -6760,
+        "tokens": -1070,
+        "minerals": -900,
+        "crystals": -374,
+        "gas": 283,
+        "sulfur": 114,
+        "weapons": 10,
+        "ammo": 27,
+        "armor": 21,
+        "explosives": 18,
+        "medicines": 15,
+        "herbs": 0,
+        "mycelium": 12,
+        "psiomycin": 18
+      },
+      "buffers": {
+        "gasstation": 180,
+        "sulfurstation": 180,
+        "ironmine": 176,
+        "goldmine": 178,
+        "farm": 180,
+        "greenhouse": 180,
+        "incubator": 178
+      },
+      "shortages": {
+        "food": false,
+        "tokens": false
+      }
+    }
+  ]
+}

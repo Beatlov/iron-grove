@@ -228,3 +228,6 @@ canvas{display:block;image-rendering:pixelated;touch-action:none}
 
 /* H35: unranked battle setup needs only class and headcount. */
 .lab-row{grid-template-columns:40px minmax(70px,1fr) auto}
+
+/* H36: a local power group and explicit building supply controls. */
+.power-counter{padding-left:9px;border-left:1px solid #91a27566}.power-counter.shortage strong,.card-power.shortage{color:#e6ad83}.power-counter canvas{width:24px;height:26px}.card-power{padding:5px 0;margin:3px 0;border-top:1px solid #80926155;border-bottom:1px solid #80926144;font:10px/1.4 monospace}.card-power[hidden]{display:none}.power-actions{display:flex;gap:5px;align-items:center;margin-top:4px}.power-actions button,.power-actions select{font:10px monospace;padding:3px 5px;min-height:23px}.power-actions select{width:145px}

@@ -1,4 +1,4 @@
-/* HELIOS H35: production-first delivery, nearest stores and visible field workers. */
+/* HELIOS H36: production-first delivery, nearest stores and visible field workers. */
 (function(root){
 'use strict';
 function install(api){
@@ -32,7 +32,8 @@ function install(api){
    const push=(kind,from,to,r,amount,buffer=false,order=null)=>{amount=Math.min(capacity,amount);if(amount<1)return;const key=[kind,from.id,to.id,r,order||''].join(':');if(claims.some(c=>c.task?.key===key))return;tasks.push({key,kind,from:from.id,to:to.id,resource:r,amount,buffer,order,priority:logisticsPriorities[kind]+(logisticsPriorities.resources[r]||0)});};
    for(const b of all.filter(b=>b.type==='barracks'&&b.team===d.team&&this.ready(b)))for(const q of b.queue)if(this.supplyOrder(b,q.id,d.team))for(const a of q.allocations){const from=this.get(a.store);if(from)push('military',from,b,a.resource,a.amount,false,q.id);}
    const buffers=all.filter(b=>b.team===d.team&&b.buffer>=1&&stats[b.type]?.resource&&stats[b.type].resource!=='tokens'&&this.ready(b));
-   for(const to of stores.filter(b=>this.hub(b)))for(const r of resources.filter(r=>resourceTiers[r]===1)){const room=this.transportRoom(d,to,r);if(room<1)continue;for(const from of stores.filter(b=>!this.hub(b))){push('production',from,to,r,Math.min(room,this.transportAvailable(d,from,r)));}for(const from of buffers.filter(b=>stats[b.type].resource===r))push('production',from,to,r,Math.min(room,this.transportAvailable(d,from,r,true)),true);}
+   for(const to of stores.filter(b=>stats[b.type]?.fuel&&b.powerEnabled!==false))for(const r of [stats[to.type].fuel]){const room=this.transportRoom(d,to,r);for(const from of stores.filter(b=>b.id!==to.id&&!stats[b.type]?.fuel))push('production',from,to,r,Math.min(room,this.transportAvailable(d,from,r)));for(const from of buffers.filter(b=>stats[b.type].resource===r))push('production',from,to,r,Math.min(room,this.transportAvailable(d,from,r,true)),true);}
+   for(const to of stores.filter(b=>this.hub(b)))for(const r of resources.filter(r=>resourceTiers[r]===1)){const room=this.transportRoom(d,to,r);if(room<1)continue;for(const from of stores.filter(b=>!this.hub(b)&&!stats[b.type]?.fuel)){push('production',from,to,r,Math.min(room,this.transportAvailable(d,from,r)));}for(const from of buffers.filter(b=>stats[b.type].resource===r))push('production',from,to,r,Math.min(room,this.transportAvailable(d,from,r,true)),true);}
    // Output goes to the nearest reachable store from its pickup position, not its home dock.
    for(const to of this.carrierDocks(d.team,d.planet)){for(const from of buffers){const r=stats[from.type].resource;push('output',from,to,r,Math.min(this.transportRoom(d,to,r),this.transportAvailable(d,from,r,true)),true);}for(const from of stores.filter(b=>this.hub(b)))for(const r of resources.filter(r=>resourceTiers[r]===2))push('output',from,to,r,Math.min(this.transportRoom(d,to,r),this.transportAvailable(d,from,r)));}
    return tasks.sort((a,b)=>b.priority-a.priority||(dist(d,this.get(a.from))+dist(this.get(a.from),this.get(a.to)))-(dist(d,this.get(b.from))+dist(this.get(b.from),this.get(b.to)))||a.key.localeCompare(b.key));
