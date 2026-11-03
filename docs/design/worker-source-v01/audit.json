@@ -1,0 +1,156 @@
+{
+  "date": "2026-11-04",
+  "gameVersion": "H37",
+  "status": "originals-preserved-not-integrated",
+  "sourceArchive": "image-edit-target-3c0a833ba7a2c797.zip",
+  "sourceArchiveSha256": "1344eb70aa9dc912054cf1ecfdb3b5d2f8e4fbf495a5218028dad9bee75dcbbd",
+  "imagesModified": false,
+  "files": [
+    {
+      "file": "image-edit-target-3c0a833ba7a2c797.png",
+      "size": [
+        1303,
+        1207
+      ],
+      "mode": "RGBA",
+      "format": "PNG",
+      "alphaValues": 256,
+      "transparentPixels": 874947,
+      "opaquePixels": 1730,
+      "partialAlphaPixels": 696044,
+      "sha256": "6e1c1f9ad260b035575e47c9f1b687819f31280e877a833617cd0834a32541fa",
+      "bytes": 876146,
+      "role": "unclassified-building-source"
+    },
+    {
+      "file": "work.png",
+      "size": [
+        1086,
+        1448
+      ],
+      "mode": "RGBA",
+      "format": "PNG",
+      "alphaValues": 256,
+      "transparentPixels": 853212,
+      "opaquePixels": 785,
+      "partialAlphaPixels": 718531,
+      "sha256": "d872e89065aeb291e2726ede8f6efb2c49df5f27b72581acb31735920038325f",
+      "bytes": 1310824,
+      "visuallyObservedColumns": 6,
+      "visuallyObservedRows": 8,
+      "targetSheetSize": [
+        192,
+        256
+      ],
+      "matchesTargetSize": false,
+      "exactFrameRectsVerified": false,
+      "directionOrderVerified": false,
+      "pivotVerified": false,
+      "loopVerified": false
+    },
+    {
+      "file": "carry_walk.png",
+      "size": [
+        1254,
+        1254
+      ],
+      "mode": "RGBA",
+      "format": "PNG",
+      "alphaValues": 256,
+      "transparentPixels": 839224,
+      "opaquePixels": 1033,
+      "partialAlphaPixels": 732259,
+      "sha256": "ec9845bf8e40428a7175cf2ef9a7f6c713f6673f5c9fb9001983960def1cace6",
+      "bytes": 1359838,
+      "visuallyObservedColumns": 8,
+      "visuallyObservedRows": 8,
+      "targetSheetSize": [
+        256,
+        256
+      ],
+      "matchesTargetSize": false,
+      "exactFrameRectsVerified": false,
+      "directionOrderVerified": false,
+      "pivotVerified": false,
+      "loopVerified": false
+    },
+    {
+      "file": "death.png",
+      "size": [
+        1086,
+        1448
+      ],
+      "mode": "RGBA",
+      "format": "PNG",
+      "alphaValues": 256,
+      "transparentPixels": 919682,
+      "opaquePixels": 767,
+      "partialAlphaPixels": 652079,
+      "sha256": "96413dfb1d6bef1b9f167a2ce919f07859b13a9f5bde98356824375a23d0d613",
+      "bytes": 1167170,
+      "visuallyObservedColumns": 6,
+      "visuallyObservedRows": 8,
+      "targetSheetSize": [
+        192,
+        256
+      ],
+      "matchesTargetSize": false,
+      "exactFrameRectsVerified": false,
+      "directionOrderVerified": false,
+      "pivotVerified": false,
+      "loopVerified": false
+    },
+    {
+      "file": "walk.png",
+      "size": [
+        1254,
+        1254
+      ],
+      "mode": "RGBA",
+      "format": "PNG",
+      "alphaValues": 256,
+      "transparentPixels": 882169,
+      "opaquePixels": 2529,
+      "partialAlphaPixels": 687818,
+      "sha256": "239036f159f2c7d219d20e094a05805a58aa20a10b4136b5c3019e17b928d7cf",
+      "bytes": 1287885,
+      "visuallyObservedColumns": 8,
+      "visuallyObservedRows": 8,
+      "targetSheetSize": [
+        256,
+        256
+      ],
+      "matchesTargetSize": false,
+      "exactFrameRectsVerified": false,
+      "directionOrderVerified": false,
+      "pivotVerified": false,
+      "loopVerified": false
+    },
+    {
+      "file": "idle.png",
+      "size": [
+        887,
+        1774
+      ],
+      "mode": "RGBA",
+      "format": "PNG",
+      "alphaValues": 256,
+      "transparentPixels": 1041054,
+      "opaquePixels": 2021,
+      "partialAlphaPixels": 530463,
+      "sha256": "31a684df72ade89e032e6f1e8efa4947288850a32155a9b7764c32ed71387b29",
+      "bytes": 950147,
+      "visuallyObservedColumns": 4,
+      "visuallyObservedRows": 8,
+      "targetSheetSize": [
+        128,
+        256
+      ],
+      "matchesTargetSize": false,
+      "exactFrameRectsVerified": false,
+      "directionOrderVerified": false,
+      "pivotVerified": false,
+      "loopVerified": false
+    }
+  ]
+}
