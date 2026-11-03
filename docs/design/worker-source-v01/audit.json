@@ -152,5 +152,7 @@
       "pivotVerified": false,
       "loopVerified": false
     }
-  ]
+  ],
+  "buildingIdentityConfirmed": "base",
+  "buildingIdentityConfirmedDate": "2026-11-04"
 }

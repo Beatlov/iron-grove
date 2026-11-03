@@ -190,3 +190,7 @@ Reports: crystal-access-report.cjs (60s warmup+300s raw/delivery), power-report/
 ## Cross-chat sprite generation documentation
 
 Read `docs/design/SPRITE_GENERATION.md` for measured current dimensions and proposed PNG contracts. Keep its full building catalogue and scale distinctions in sync with engine/art changes. Current compact resident (~12x20 inside a future32x32 frame) differs from the optional larger20–28x26–28 art template; do not silently enlarge units. Animation counts/FPS/manifest in that document are proposals, not an implemented atlas loader. Documentation-only additions keep HELIOS H37 unchanged.
+
+## Prepared source assets v01
+
+`art-source/worker/v01` holds 256 prepared32x32 frames (idle4/walk8/carry8/work6/death6 across8 headings S,N,W,E,SW,SE,NW,NE); compact ~20px bodies and pivot16,29. `art-source/base/v01` holds static96x96 base, pivot48,48. These are NOT wired into art.js/game.js. Originals stay byte-identical under docs/design/worker-source-v01. Optional authoring scripts prepare-sprites.py/check-prepared-sprites.py need Pillow/NumPy/SciPy only outside runtime; never add game dependencies. Preserve source variation caveats and source registration metadata; do not assume perfect per-frame tool identity. `art-source/preview.html` reviews animation separately from campaign.

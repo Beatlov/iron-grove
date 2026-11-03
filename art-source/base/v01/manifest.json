@@ -1,0 +1,64 @@
+{
+  "id": "base",
+  "version": "v01",
+  "status": "prepared-not-integrated",
+  "frame": {
+    "width": 96,
+    "height": 96
+  },
+  "footprint": {
+    "width": 4,
+    "height": 4,
+    "cellPixels": 24
+  },
+  "pivot": {
+    "x": 48,
+    "y": 48
+  },
+  "alpha": "binary",
+  "palette": [
+    "#101416",
+    "#20282b",
+    "#30393b",
+    "#39464d",
+    "#6d7776",
+    "#87928f",
+    "#674c35",
+    "#947142",
+    "#b9ac85",
+    "#ded2ab",
+    "#8d6318",
+    "#be912d",
+    "#e4aa20",
+    "#4c603d",
+    "#7c8b62",
+    "#a6d23e",
+    "#ca982b"
+  ],
+  "source": "docs/design/worker-source-v01/image-edit-target-3c0a833ba7a2c797.png",
+  "sourceSha256": "6e1c1f9ad260b035575e47c9f1b687819f31280e877a833617cd0834a32541fa",
+  "sourceBounds": [
+    92,
+    76,
+    1228,
+    1056
+  ],
+  "sourcePivot": [
+    660.0,
+    566.0
+  ],
+  "scale": 0.08098591549295775,
+  "animations": {
+    "idle": {
+      "file": "idle.png",
+      "frames": 1,
+      "loop": false,
+      "sha256": "a2f7ec58dec537f14edd9a7b988a6fa61e7245fd62d465ccb58c36c29cc5c061"
+    }
+  },
+  "limitations": [
+    "Only the supplied static building is prepared; no working/construction/damaged states.",
+    "Decorations and concrete are preserved from source inside footprint.",
+    "The supplied image has one prominent front door; game access remains four-sided."
+  ]
+}

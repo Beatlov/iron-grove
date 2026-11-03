@@ -1,0 +1,179 @@
+{
+  "date": "2026-11-04",
+  "status": "prepared-not-integrated",
+  "sourceImagesUnchanged": true,
+  "workerFrames": 256,
+  "animations": {
+    "idle": {
+      "sheetSize": [
+        128,
+        256
+      ],
+      "frames": 32,
+      "nativeBoundsWidths": [
+        11,
+        13
+      ],
+      "nativeBoundsHeights": [
+        18,
+        20
+      ],
+      "lowestOpaqueYExclusive": [
+        28,
+        29
+      ],
+      "medianChangedPixelsBetweenPoses": 36.0,
+      "loopSeamChangedPixelsByDirection": [
+        37,
+        60,
+        45,
+        39,
+        40,
+        45,
+        46,
+        38
+      ],
+      "allFramesInsideCanvas": true,
+      "binaryAlpha": true,
+      "paletteColorsUsed": 13
+    },
+    "walk": {
+      "sheetSize": [
+        256,
+        256
+      ],
+      "frames": 64,
+      "nativeBoundsWidths": [
+        12,
+        14
+      ],
+      "nativeBoundsHeights": [
+        19,
+        20
+      ],
+      "lowestOpaqueYExclusive": [
+        28,
+        29
+      ],
+      "medianChangedPixelsBetweenPoses": 101.5,
+      "loopSeamChangedPixelsByDirection": [
+        134,
+        95,
+        107,
+        103,
+        89,
+        142,
+        111,
+        125
+      ],
+      "allFramesInsideCanvas": true,
+      "binaryAlpha": true,
+      "paletteColorsUsed": 13
+    },
+    "carry_walk": {
+      "sheetSize": [
+        256,
+        256
+      ],
+      "frames": 64,
+      "nativeBoundsWidths": [
+        13,
+        15
+      ],
+      "nativeBoundsHeights": [
+        19,
+        21
+      ],
+      "lowestOpaqueYExclusive": [
+        28,
+        30
+      ],
+      "medianChangedPixelsBetweenPoses": 85.0,
+      "loopSeamChangedPixelsByDirection": [
+        116,
+        109,
+        86,
+        59,
+        96,
+        52,
+        40,
+        114
+      ],
+      "allFramesInsideCanvas": true,
+      "binaryAlpha": true,
+      "paletteColorsUsed": 13
+    },
+    "work": {
+      "sheetSize": [
+        192,
+        256
+      ],
+      "frames": 48,
+      "nativeBoundsWidths": [
+        11,
+        16
+      ],
+      "nativeBoundsHeights": [
+        19,
+        21
+      ],
+      "lowestOpaqueYExclusive": [
+        29,
+        29
+      ],
+      "medianChangedPixelsBetweenPoses": 111.0,
+      "loopSeamChangedPixelsByDirection": [
+        49,
+        68,
+        10,
+        109,
+        91,
+        67,
+        67,
+        50
+      ],
+      "allFramesInsideCanvas": true,
+      "binaryAlpha": true,
+      "paletteColorsUsed": 13
+    },
+    "death": {
+      "sheetSize": [
+        192,
+        256
+      ],
+      "frames": 48,
+      "nativeBoundsWidths": [
+        10,
+        22
+      ],
+      "nativeBoundsHeights": [
+        9,
+        21
+      ],
+      "lowestOpaqueYExclusive": [
+        25,
+        29
+      ],
+      "medianChangedPixelsBetweenPoses": 165.5,
+      "loopSeamChangedPixelsByDirection": null,
+      "allFramesInsideCanvas": true,
+      "binaryAlpha": true,
+      "paletteColorsUsed": 12
+    }
+  },
+  "building": {
+    "id": "base",
+    "size": [
+      96,
+      96
+    ],
+    "opaqueBounds": [
+      2,
+      8,
+      94,
+      87
+    ],
+    "binaryAlpha": true,
+    "allVisiblePartsInsideFootprint": true
+  }
+}

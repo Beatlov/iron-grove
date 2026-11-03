@@ -1,0 +1,40 @@
+{
+  "date": "2026-11-04",
+  "page": "art-source/preview.html",
+  "animations": [
+    {
+      "action": "idle",
+      "framesPerDirection": 4,
+      "playbackChanges": true,
+      "pauseStepRestart": true
+    },
+    {
+      "action": "walk",
+      "framesPerDirection": 8,
+      "playbackChanges": true,
+      "pauseStepRestart": true
+    },
+    {
+      "action": "carry_walk",
+      "framesPerDirection": 8,
+      "playbackChanges": true,
+      "pauseStepRestart": true
+    },
+    {
+      "action": "work",
+      "framesPerDirection": 6,
+      "playbackChanges": true,
+      "pauseStepRestart": true
+    },
+    {
+      "action": "death",
+      "framesPerDirection": 6,
+      "playbackChanges": false,
+      "pauseStepRestart": true
+    }
+  ],
+  "errors": [],
+  "requestFailures": [],
+  "offline": "already-loaded-preview-keeps-playing-with-network-disabled; no offline reload claim",
+  "gameIntegration": false
+}
