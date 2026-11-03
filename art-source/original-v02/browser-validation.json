@@ -1,0 +1,43 @@
+{
+  "version": "original-v02",
+  "date": "2026-11-04",
+  "comparedFrames": 256,
+  "directOriginalCropPixelEquality": true,
+  "processedPngsRequested": false,
+  "originalBaseSize": [
+    1303,
+    1207
+  ],
+  "animations": [
+    {
+      "action": "idle",
+      "playbackPauseStepRestart": true,
+      "scaleControls": true
+    },
+    {
+      "action": "walk",
+      "playbackPauseStepRestart": true,
+      "scaleControls": true
+    },
+    {
+      "action": "carry_walk",
+      "playbackPauseStepRestart": true,
+      "scaleControls": true
+    },
+    {
+      "action": "work",
+      "playbackPauseStepRestart": true,
+      "scaleControls": true
+    },
+    {
+      "action": "death",
+      "playbackPauseStepRestart": true,
+      "scaleControls": true
+    }
+  ],
+  "errors": [],
+  "failedRequests": [],
+  "loadedPreviewWorksOffline": true,
+  "offlineReloadTested": false,
+  "gameIntegration": false
+}

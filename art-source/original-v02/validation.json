@@ -1,0 +1,9 @@
+{
+  "version": "original-v02",
+  "pixelProcessing": "none",
+  "sourcePngsUnchanged": 6,
+  "workerFrames": 256,
+  "sourcePixelsPartitionedExactlyOnce": true,
+  "frameWindowsUnclipped": true,
+  "metadataJsMatchesJson": true
+}

@@ -194,3 +194,7 @@ Read `docs/design/SPRITE_GENERATION.md` for measured current dimensions and prop
 ## Prepared source assets v01
 
 `art-source/worker/v01` holds 256 prepared32x32 frames (idle4/walk8/carry8/work6/death6 across8 headings S,N,W,E,SW,SE,NW,NE); compact ~20px bodies and pivot16,29. `art-source/base/v01` holds static96x96 base, pivot48,48. These are NOT wired into art.js/game.js. Originals stay byte-identical under docs/design/worker-source-v01. Optional authoring scripts prepare-sprites.py/check-prepared-sprites.py need Pillow/NumPy/SciPy only outside runtime; never add game dependencies. Preserve source variation caveats and source registration metadata; do not assume perfect per-frame tool identity. `art-source/preview.html` reviews animation separately from campaign.
+
+## Original-image preview v02 (current graphics handoff)
+
+Default art-source/preview.html uses original PNGs directly via original-v02/manifest.json + frames.js and preview-original.js. Do not quantize, threshold, outline or downsample approved source images; change display scale only. map-original-sprites.py/check-original-sprites.py are stdlib-only coordinate/integrity tools, no PNG writes. Source slot partition includes partial-alpha fringes; 384x384 viewing window is NOT unit size. The processed v01 atlases/preview-processed-v01.html remain archived, not default. Source pose/death-direction variation remains. No game integration/build bump.
